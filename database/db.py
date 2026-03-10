@@ -38,6 +38,26 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'unpaid',
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'unpaid',
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
     print("قاعدة البيانات جاهزة ✅")
