@@ -1,0 +1,35 @@
+import sqlite3
+
+def connect():
+    connection = sqlite3.connect("database/amilcar.db")
+    return connection
+
+def create_tables():
+    conn = connect()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cars (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            brand TEXT NOT NULL,
+            model TEXT NOT NULL,
+            plate TEXT NOT NULL,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+    print("قاعدة البيانات جاهزة ✅")
+
+if __name__ == "__main__":
+    create_tables()

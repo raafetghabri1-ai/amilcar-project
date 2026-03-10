@@ -1,0 +1,10 @@
+cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cars (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            brand TEXT NOT NULL,
+            model TEXT NOT NULL,
+            plate TEXT NOT NULL,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
