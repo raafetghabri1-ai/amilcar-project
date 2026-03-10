@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>الفواتير - amilcar</title>
+    <style>
+        body { font-family: Arial; background: #f0f0f0; margin: 0; }
+        h1 { background: #2c3e50; color: white; padding: 20px; margin: 0; text-align: center; }
+        nav { background: #34495e; padding: 10px; text-align: center; }
+        nav a { color: white; margin: 0 15px; text-decoration: none; font-size: 16px; }
+        table { width: 90%; margin: 30px auto; background: white; border-collapse: collapse; }
+        th { background: #2c3e50; color: white; padding: 15px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>مركز amilcar</h1>
+    <nav><a href="/">الرئيسية</a> <a href="/customers">العملاء</a> <a href="/appointments">المواعيد</a> <a href="/invoices">الفواتير</a></nav>
+    <table>
+        <tr><th>الرقم</th><th>العميل</th><th>السيارة</th><th>الخدمة</th><th>المبلغ</th><th>الحالة</th></tr>
+        {% for inv in invoices %}
+        <tr><td>{{ inv[0] }}</td><td>{{ inv[1] }}</td><td>{{ inv[2] }} {{ inv[3] }}</td><td>{{ inv[4] }}</td><td>{{ inv[5] }} دينار</td><td>{{ inv[6] }}</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

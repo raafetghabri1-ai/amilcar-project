@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>المواعيد - amilcar</title>
+    <style>
+        body { font-family: Arial; background: #f0f0f0; margin: 0; }
+        h1 { background: #2c3e50; color: white; padding: 20px; margin: 0; text-align: center; }
+        nav { background: #34495e; padding: 10px; text-align: center; }
+        nav a { color: white; margin: 0 15px; text-decoration: none; font-size: 16px; }
+        table { width: 90%; margin: 30px auto; background: white; border-collapse: collapse; }
+        th { background: #2c3e50; color: white; padding: 15px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>مركز amilcar</h1>
+    <nav><a href="/">الرئيسية</a> <a href="/customers">العملاء</a> <a href="/appointments">المواعيد</a> <a href="/invoices">الفواتير</a></nav>
+    <table>
+        <tr><th>الرقم</th><th>العميل</th><th>السيارة</th><th>التاريخ</th><th>الخدمة</th><th>الحالة</th></tr>
+        {% for a in appointments %}
+        <tr><td>{{ a[0] }}</td><td>{{ a[1] }}</td><td>{{ a[2] }} {{ a[3] }}</td><td>{{ a[4] }}</td><td>{{ a[5] }}</td><td>{{ a[6] }}</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
