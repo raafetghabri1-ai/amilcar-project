@@ -27,6 +27,17 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            car_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            service TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
     print("قاعدة البيانات جاهزة ✅")

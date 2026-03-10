@@ -1,14 +1,15 @@
 from database.db import create_tables
-from models.customer import add_customer, get_all_customers
-from models.car import add_car, get_customer_cars
+from models.customer import add_customer
+from models.car import add_car
+from models.appointment import add_appointment, get_appointments
 
-# إنشاء قاعدة البيانات
 create_tables()
 
-# إضافة سيارة للعميل رقم 1
+add_customer("أحمد محمد", "0501234567")
 add_car(1, "Toyota", "Corolla", "ABC-1234")
+add_appointment(1, "2026-03-11", "تغيير زيت")
 
-# عرض سيارات العميل رقم 1
-cars = get_customer_cars(1)
-for car in cars:
-    print(car)
+print("\n--- المواعيد ---")
+appointments = get_appointments()
+for a in appointments:
+    print(a)
