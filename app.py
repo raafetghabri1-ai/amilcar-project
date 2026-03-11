@@ -1,4 +1,5 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for
+from models.customer import add_customer
 from models.report import total_customers, total_appointments, total_revenue
 from models.customer import get_all_customers
 from models.appointment import get_appointments
@@ -32,5 +33,14 @@ def invoices():
     all_invoices = get_all_invoices()
     return render_template('invoices.html', invoices=all_invoices)
 
+
+@app.route("/add_customer", methods=["GET", "POST"])
+def new_customer():
+    if request.method == "POST":
+        name = request.form["name"]
+        phone = request.form["phone"]
+        add_customer(name, phone)
+        return redirect("/customers")
+    return render_template("add_customer.html")
 if __name__ == '__main__':
     app.run(debug=True)
