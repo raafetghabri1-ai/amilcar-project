@@ -1,38 +1,63 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>المواعيد - amilcar</title>
+    <title>AMILCAR - Invoices</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; }
-        .hero { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 40px 0; text-align: center; }
-        thead { background: #1a1a2e; color: white; }
+        body { background: #0d0d0d; color: #f0f0f0; font-family: 'Cinzel', serif; margin: 0; }
+        .hero { background: linear-gradient(135deg, #1a1a2e, #0d0d0d); border-bottom: 2px solid #D4AF37; padding: 60px 0; text-align: center; }
+        .hero h1 { color: #D4AF37; font-size: 3.5rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
+        .hero .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.9rem; margin-top: 8px; }
+        .navbar { background: #1a1a2e !important; border-bottom: 1px solid #D4AF37; }
+        .nav-link { color: #D4AF37 !important; letter-spacing: 2px; font-size: 0.8rem; padding: 15px 20px !important; }
+        .nav-link:hover { color: #C41E3A !important; }
+        .table { color: #f0f0f0; }
+        .table thead { background: #1a1a2e; color: #D4AF37; letter-spacing: 2px; font-size: 0.8rem; border-bottom: 1px solid #D4AF37; }
+        .table tbody tr { border-bottom: 1px solid #222; }
+        .table tbody tr:hover { background: #1a1a2e; }
+        .btn-gold { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 10px 20px; border-radius: 4px; }
+        .btn-gold:hover { background: #C41E3A; color: white; }
+        .page-title { color: #D4AF37; letter-spacing: 4px; font-size: 1rem; }
+        .badge-unpaid { background: #C41E3A; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 1px; }
+        .badge-paid { background: #2d6a4f; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 1px; }
+        .amount { color: #D4AF37; font-weight: 700; }
     </style>
 </head>
 <body>
-    <div class="hero"><h2>🚗 مركز amilcar لعناية السيارات</h2></div>
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background:#16213e">
+    <div class="hero">
+        <h1>AMILCAR</h1>
+        <p class="tagline">WHERE CARS BECOME ART</p>
+    </div>
+    <nav class="navbar">
         <div class="container">
-            <div class="navbar-nav mx-auto">
-                <a class="nav-link text-white" href="/">🏠 الرئيسية</a>
-                <a class="nav-link text-white" href="/customers">👤 العملاء</a>
-                <a class="nav-link text-white" href="/appointments">📅 المواعيد</a>
-                <a class="nav-link text-white" href="/invoices">💰 الفواتير</a>
+            <div class="navbar-nav mx-auto d-flex flex-row">
+                <a class="nav-link" href="/">HOME</a>
+                <a class="nav-link" href="/customers">CLIENTS</a>
+                <a class="nav-link" href="/appointments">APPOINTMENTS</a>
+                <a class="nav-link" href="/invoices">INVOICES</a>
             </div>
         </div>
     </nav>
-    <div class="container mt-4">
-        <h4 class="mb-3">📅 قائمة المواعيد</h4>
-        <table class="table table-hover">
-            <thead><tr><th>الرقم</th><th>العميل</th><th>السيارة</th><th>التاريخ</th><th>الخدمة</th><th>الحالة</th></tr></thead>
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <p class="page-title mb-0">INVOICES</p>
+            <a href="/add_invoice" class="btn btn-gold">+ NEW INVOICE</a>
+        </div>
+        <table class="table">
+            <thead><tr><th>#</th><th>APPOINTMENT</th><th>AMOUNT</th><th>STATUS</th></tr></thead>
             <tbody>
-            {% for a in appointments %}
-            <tr><td>{{ a[0] }}</td><td>{{ a[1] }}</td><td>{{ a[2] }} {{ a[3] }}</td><td>{{ a[4] }}</td><td>{{ a[5] }}</td><td><span class="badge bg-warning">{{ a[6] }}</span></td></tr>
+            {% for inv in invoices %}
+            <tr>
+                <td>{{ inv[0] }}</td>
+                <td>{{ inv[1] }}</td>
+                <td class="amount">{{ inv[5] }} DT</td>
+                <td><span class="badge-unpaid">{{ inv[6] }}</span></td>
+            </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
