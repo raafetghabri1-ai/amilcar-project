@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from models.customer import get_all_customers
+from models.report import total_customers, total_appointments, total_revenue
 from models.appointment import get_appointments
 from models.invoice import get_all_invoices
 from database.db import create_tables
