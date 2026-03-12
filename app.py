@@ -1,5 +1,4 @@
-from flask import Flask, render_template
-from flask import ... request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 from models.customer import get_all_customers
 from models.appointment import get_appointments
 from models.invoice import get_all_invoices
@@ -40,5 +39,19 @@ def new_customer():
         return redirect(url_for('customers'))
     return render_template('add_customer.html')
 from flask import Flask, render_template, request, redirect, url_for
+
+@app.route("/add_appointment", methods=["GET", "POST"])
+def new_appointment():
+    if request.method == "POST":
+        car_id = request.form["car_id"]
+        date = request.form["date"]
+        service = request.form["service"]
+        from models.appointment import add_appointment
+        add_appointment(car_id, date, service)
+        return redirect("/appointments")
+    from models.car import get_customer_cars
+    from models.customer import get_all_customers
+    all_customers = get_all_customers()
+    return render_template("add_appointment.html", customers=all_customers)
 if __name__ == '__main__':
     app.run(debug=True)

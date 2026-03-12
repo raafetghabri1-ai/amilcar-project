@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>اضافة موعد - amilcar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body style="background:#f8f9fa">
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:40px;text-align:center">
+        <h2>مركز amilcar لعناية السيارات</h2>
+    </div>
+    <nav class="navbar navbar-dark" style="background:#16213e">
+        <div class="container"><div class="navbar-nav mx-auto">
+            <a class="nav-link text-white" href="/">الرئيسية</a>
+            <a class="nav-link text-white" href="/customers">العملاء</a>
+            <a class="nav-link text-white" href="/appointments">المواعيد</a>
+            <a class="nav-link text-white" href="/invoices">الفواتير</a>
+        </div></div>
+    </nav>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card p-4 shadow">
+                    <h4 class="mb-4">اضافة موعد جديد</h4>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">رقم السيارة</label>
+                            <input type="number" name="car_id" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">التاريخ</label>
+                            <input type="date" name="date" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">الخدمة</label>
+                            <select name="service" class="form-control">
+                                <option value="غسيل عادي - 35 DT">غسيل عادي - 35 DT</option>
+                                <option value="Céramique Spray - 55 DT">Céramique Spray - 55 DT</option>
+                                <option value="Detailing - تقييم">Detailing - يتطلب تقييم (من 100 DT)</option>
+                                <option value="Polissage - تقييم">Polissage - يتطلب تقييم (من 350 DT)</option>
+                                <option value="Nano Céramique - حضور">Nano Céramique - يتطلب حضور للورشة</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">ملاحظات</label>
+                            <textarea name="notes" class="form-control" rows="3" placeholder="أي تفاصيل إضافية..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">اضافة الموعد</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
