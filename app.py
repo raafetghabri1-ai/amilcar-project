@@ -53,5 +53,15 @@ def new_appointment():
     from models.customer import get_all_customers
     all_customers = get_all_customers()
     return render_template("add_appointment.html", customers=all_customers)
+
+@app.route("/add_invoice", methods=["GET", "POST"])
+def new_invoice():
+    if request.method == "POST":
+        appointment_id = request.form["appointment_id"]
+        amount = request.form["amount"]
+        from models.invoice import add_invoice
+        add_invoice(appointment_id, float(amount))
+        return redirect("/invoices")
+    return render_template("add_invoice.html")
 if __name__ == '__main__':
     app.run(debug=True)
