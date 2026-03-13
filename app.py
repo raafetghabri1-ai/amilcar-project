@@ -64,5 +64,14 @@ def new_invoice():
         add_invoice(appointment_id, float(amount))
         return redirect("/invoices")
     return render_template("add_invoice.html")
+
+@app.route("/pay_invoice/<int:invoice_id>")
+def pay_invoice(invoice_id):
+    from database.db import connect
+    conn = connect()
+    conn.execute("UPDATE invoices SET status = 'paid' WHERE id = ?", (invoice_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/invoices")
 if __name__ == '__main__':
     app.run(debug=True)

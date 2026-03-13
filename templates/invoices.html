@@ -46,14 +46,25 @@
             <a href="/add_invoice" class="btn btn-gold">+ NEW INVOICE</a>
         </div>
         <table class="table">
-            <thead><tr><th>#</th><th>APPOINTMENT</th><th>AMOUNT</th><th>STATUS</th></tr></thead>
+            <thead><tr><th>#</th><th>APPOINTMENT</th><th>AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead>
             <tbody>
             {% for inv in invoices %}
             <tr>
                 <td>{{ inv[0] }}</td>
                 <td>{{ inv[1] }}</td>
                 <td class="amount">{{ inv[5] }} DT</td>
-                <td><span class="badge-unpaid">{{ inv[6] }}</span></td>
+                <td>
+                {% if inv[6] == "unpaid" %}
+                <span class="badge-unpaid">UNPAID</span>
+                {% else %}
+                <span class="badge-paid">PAID</span>
+                {% endif %}
+                </td>
+                <td>
+                {% if inv[6] == "unpaid" %}
+                <a href="/pay_invoice/{{ inv[0] }}" class="btn btn-gold" style="font-size:0.7rem;padding:5px 10px;">MARK AS PAID</a>
+                {% endif %}
+                </td>
             </tr>
             {% endfor %}
             </tbody>
