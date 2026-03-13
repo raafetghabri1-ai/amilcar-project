@@ -73,5 +73,39 @@ def pay_invoice(invoice_id):
     conn.commit()
     conn.close()
     return redirect("/invoices")
+
+import os
+from werkzeug.utils import secure_filename
+UPLOAD_FOLDER = 'static/uploads'
+
+@app.route("/request_quote", methods=["GET", "POST"])
+def request_quote():
+    if request.method == "POST":
+        name = request.form["name"]
+        phone = request.form["phone"]
+        service = request.form["service"]
+        files = request.files.getlist("photos")
+        saved = []
+        for f in files:
+            if f.filename:
+                filename = secure_filename(f.filename)
+                f.save(os.path.join(UPLOAD_FOLDER, filename))
+                saved.append(filename)
+        from database.db import connect
+        conn = connect()
+        conn.execute("INSERT INTO quotes (name, phone, service, photos) VALUES (?,?,?,?)",
+            (name, phone, service, ",".join(saved)))
+        conn.commit()
+        conn.close()
+        return render_template("quote_success.html")
+    return render_template("request_quote.html")
+
+@app.route("/quotes")
+def quotes():
+    from database.db import connect
+    conn = connect()
+    all_quotes = conn.execute("SELECT * FROM quotes ORDER BY id DESC").fetchall()
+    conn.close()
+    return render_template("quotes.html", quotes=all_quotes)
 if __name__ == '__main__':
     app.run(debug=True)
