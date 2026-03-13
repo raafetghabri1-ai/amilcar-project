@@ -10,10 +10,15 @@ create_tables()
 
 @app.route('/')
 def index():
+    from database.db import connect
+    conn = connect()
+    pending_quotes = conn.execute("SELECT COUNT(*) FROM quotes WHERE status = 'pending'").fetchone()[0]
+    conn.close()
     stats = {
         'customers': total_customers(),
         'appointments': total_appointments(),
-        'revenue': total_revenue()
+        'revenue': total_revenue(),
+        'quotes': pending_quotes
     }
     return render_template('index.html', stats=stats)
 

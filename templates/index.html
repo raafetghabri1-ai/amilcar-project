@@ -41,35 +41,44 @@
     </nav>
     <div class="container mt-5">
         <div class="row g-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card">
                     <h2>{{ stats.customers }}</h2>
                     <p>CLIENTS</p>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card">
                     <h2>{{ stats.appointments }}</h2>
                     <p>APPOINTMENTS</p>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card">
                     <h2>{{ stats.revenue }}</h2>
                     <p>REVENUE (DT)</p>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>{{ stats.quotes }}</h2>
+                    <p>PENDING QUOTES</p>
+                </div>
+            </div>
         </div>
         <hr class="divider">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <a href="/add_customer" class="btn btn-gold w-100">+ NEW CLIENT</a>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <a href="/add_appointment" class="btn btn-gold w-100">+ NEW APPOINTMENT</a>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <a href="/add_invoice" class="btn btn-gold w-100">+ NEW INVOICE</a>
+            </div>
+            <div class="col-md-3">
+                <a href="/quotes" class="btn btn-gold w-100">VIEW QUOTES</a>
             </div>
         </div>
     </div>
