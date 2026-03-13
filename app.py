@@ -121,5 +121,15 @@ def new_car():
     from models.customer import get_all_customers
     all_customers = get_all_customers()
     return render_template("add_car.html", customers=all_customers)
+
+@app.route("/set_price/<int:quote_id>", methods=["POST"])
+def set_price(quote_id):
+    price = request.form["price"]
+    from database.db import connect
+    conn = connect()
+    conn.execute("UPDATE quotes SET price = ?, status = 'priced' WHERE id = ?", (float(price), quote_id))
+    conn.commit()
+    conn.close()
+    return redirect("/quotes")
 if __name__ == '__main__':
     app.run(debug=True)

@@ -58,7 +58,15 @@
                 <img src="/static/uploads/{{ photo }}" class="photo-thumb">
                 {% endif %}
                 {% endfor %}
-            </div>
+                    {% if q[5] == "pending" %}
+            <form method="POST" action="/set_price/{{ q[0] }}" class="mt-3 d-flex gap-2">
+                <input type="number" name="price" class="form-control" placeholder="PRICE (DT)" step="0.1" style="background:#0d0d0d;border:1px solid #D4AF37;color:#f0f0f0;font-family:Cinzel;max-width:200px">
+                <button type="submit" class="btn" style="background:#D4AF37;color:#0d0d0d;font-family:Cinzel;letter-spacing:2px;font-weight:700">SET PRICE</button>
+            </form>
+        {% else %}
+            <p class="mt-2" style="color:#D4AF37;letter-spacing:2px;font-size:0.85rem">PRICE: {{ q[6] }} DT</p>
+        {% endif %}
+        </div>
         </div>
         {% endfor %}
     </div>
