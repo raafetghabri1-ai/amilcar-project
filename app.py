@@ -107,5 +107,19 @@ def quotes():
     all_quotes = conn.execute("SELECT * FROM quotes ORDER BY id DESC").fetchall()
     conn.close()
     return render_template("quotes.html", quotes=all_quotes)
+
+@app.route("/add_car", methods=["GET", "POST"])
+def new_car():
+    if request.method == "POST":
+        customer_id = request.form["customer_id"]
+        brand = request.form["brand"]
+        model = request.form["model"]
+        plate = request.form["plate"]
+        from models.car import add_car
+        add_car(customer_id, brand, model, plate)
+        return redirect("/customers")
+    from models.customer import get_all_customers
+    all_customers = get_all_customers()
+    return render_template("add_car.html", customers=all_customers)
 if __name__ == '__main__':
     app.run(debug=True)
