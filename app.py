@@ -68,7 +68,9 @@ def new_invoice():
         from models.invoice import add_invoice
         add_invoice(appointment_id, float(amount))
         return redirect("/invoices")
-    return render_template("add_invoice.html")
+    from models.appointment import get_appointments
+    all_appointments = get_appointments()
+    return render_template("add_invoice.html", appointments=all_appointments)
 
 @app.route("/pay_invoice/<int:invoice_id>")
 def pay_invoice(invoice_id):
@@ -136,5 +138,51 @@ def set_price(quote_id):
     conn.commit()
     conn.close()
     return redirect("/quotes")
+
+@app.route("/update_appointment/<int:appointment_id>/<status>")
+def update_appointment(appointment_id, status):
+    from database.db import connect
+    conn = connect()
+    conn.execute("UPDATE appointments SET status = ? WHERE id = ?", (status, appointment_id))
+    conn.commit()
+    conn.close()
+    return redirect("/appointments")
+
+@app.route("/customer/<int:customer_id>")
+def customer_detail(customer_id):
+    from database.db import connect
+    conn = connect()
+    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    cars = conn.execute("SELECT * FROM cars WHERE customer_id = ?", (customer_id,)).fetchall()
+    appointments = conn.execute("SELECT a.* FROM appointments a JOIN cars c ON a.car_id = c.id WHERE c.customer_id = ? ORDER BY a.id DESC", (customer_id,)).fetchall()
+    conn.close()
+    return render_template("customer_detail.html", customer=customer, cars=cars, appointments=appointments)
+
+@app.route("/delete_customer/<int:customer_id>")
+def delete_customer(customer_id):
+    from database.db import connect
+    conn = connect()
+    conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/customers")
+
+@app.route("/delete_appointment/<int:appointment_id>")
+def delete_appointment(appointment_id):
+    from database.db import connect
+    conn = connect()
+    conn.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/appointments")
+
+@app.route("/delete_invoice/<int:invoice_id>")
+def delete_invoice(invoice_id):
+    from database.db import connect
+    conn = connect()
+    conn.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/invoices")
 if __name__ == '__main__':
     app.run(debug=True)

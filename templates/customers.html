@@ -44,10 +44,10 @@
             <a href="/add_customer" class="btn btn-gold me-2">+ NEW CLIENT</a><a href="/add_car" class="btn btn-gold">+ ADD CAR</a>
         </div>
         <table class="table">
-            <thead><tr><th>#</th><th>NAME</th><th>PHONE</th></tr></thead>
+            <thead><tr><th>#</th><th>NAME</th><th>PHONE</th><th>ACTION</th></tr></thead>
             <tbody>
             {% for customer in customers %}
-            <tr><td>{{ customer[0] }}</td><td>{{ customer[1] }}</td><td>{{ customer[2] }}</td></tr>
+            <tr><td>{{ customer[0] }}</td><td><a href="/customer/{{ customer[0] }}" style="color:#D4AF37;text-decoration:none">{{ customer[1] }}</a></td><td>{{ customer[2] }}</td><td><a href="/delete_customer/{{ customer[0] }}" style="background:#C41E3A;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗ DELETE</a></td></tr>
             {% endfor %}
             </tbody>
         </table>

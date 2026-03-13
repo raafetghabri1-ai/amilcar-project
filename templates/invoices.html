@@ -47,7 +47,7 @@
             <a href="/add_invoice" class="btn btn-gold">+ NEW INVOICE</a>
         </div>
         <table class="table">
-            <thead><tr><th>#</th><th>APPOINTMENT</th><th>AMOUNT</th><th>STATUS</th><th>ACTION</th></tr></thead>
+            <thead><tr><th>#</th><th>APPOINTMENT</th><th>AMOUNT</th><th>STATUS</th><th>ACTION</th><th>DELETE</th></tr></thead>
             <tbody>
             {% for inv in invoices %}
             <tr>
@@ -66,7 +66,7 @@
                 <a href="/pay_invoice/{{ inv[0] }}" class="btn btn-gold" style="font-size:0.7rem;padding:5px 10px;">MARK AS PAID</a>
                 {% endif %}
                 </td>
-            </tr>
+            <td><a href="/delete_invoice/{{ inv[0] }}" style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗</a></td></tr>
             {% endfor %}
             </tbody>
         </table>
