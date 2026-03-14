@@ -65,6 +65,9 @@
             </form>
         {% else %}
             <p class="mt-2" style="color:#D4AF37;letter-spacing:2px;font-size:0.85rem">PRICE: {{ q[6] }} DT</p>
+            {% if q[5] == 'priced' %}
+            <a href="/convert_quote/{{ q[0] }}" class="btn mt-2" style="background:#2d6a4f;color:white;font-family:Cinzel;letter-spacing:2px;font-size:0.8rem" onclick="return confirm('Convert this quote to an appointment?')">✓ CONVERT TO APPOINTMENT</a>
+            {% endif %}
         {% endif %}
         </div>
         </div>

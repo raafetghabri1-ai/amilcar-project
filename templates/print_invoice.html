@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AMILCAR - Invoice #{{ inv[0] }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: white; color: #0d0d0d; font-family: 'Cinzel', serif; margin: 0; padding: 40px; }
+        .header { text-align: center; border-bottom: 3px solid #D4AF37; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { color: #D4AF37; font-size: 3rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
+        .header .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.85rem; }
+        .header .sub { color: #888; font-size: 0.7rem; letter-spacing: 3px; }
+        .invoice-title { font-size: 1.2rem; letter-spacing: 4px; color: #1a1a2e; margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .info-block h6 { color: #888; letter-spacing: 2px; font-size: 0.7rem; margin-bottom: 6px; }
+        .info-block p { color: #0d0d0d; font-size: 0.85rem; margin: 2px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        thead { background: #1a1a2e; color: #D4AF37; }
+        th { padding: 12px; text-align: left; letter-spacing: 2px; font-size: 0.75rem; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .total-row { background: #f9f9f9; font-weight: 700; }
+        .total-row td { color: #D4AF37; font-size: 1rem; }
+        .footer { text-align: center; margin-top: 40px; border-top: 1px solid #D4AF37; padding-top: 20px; color: #888; font-size: 0.7rem; letter-spacing: 2px; }
+        .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 2px; }
+        .status-paid { background: #2d6a4f; color: white; }
+        .status-unpaid { background: #C41E3A; color: white; }
+        .btn-print { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 10px 30px; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
+        @media print { .btn-print { display: none; } }
+    </style>
+</head>
+<body>
+    <button class="btn-print" onclick="window.print()">🖨 PRINT</button>
+    <div class="header">
+        <h1>AMILCAR</h1>
+        <p class="tagline">WHERE CARS BECOME ART</p>
+        <p class="sub">AUTO CARE — MAHRES, SFAX</p>
+    </div>
+    <p class="invoice-title">INVOICE #{{ inv[0] }}</p>
+    <div class="info-row">
+        <div class="info-block">
+            <h6>CLIENT</h6>
+            <p>{{ inv[6] }}</p>
+            <p>📞 {{ inv[7] }}</p>
+        </div>
+        <div class="info-block">
+            <h6>CAR</h6>
+            <p>{{ inv[8] }} {{ inv[9] }}</p>
+            <p>🔖 {{ inv[10] }}</p>
+        </div>
+        <div class="info-block">
+            <h6>DATE</h6>
+            <p>{{ inv[4] }}</p>
+        </div>
+        <div class="info-block">
+            <h6>STATUS</h6>
+            <span class="status {% if inv[3] == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
+                {{ inv[3]|upper }}
+            </span>
+        </div>
+    </div>
+    <table>
+        <thead><tr><th>SERVICE</th><th>AMOUNT</th></tr></thead>
+        <tbody>
+            <tr><td>{{ inv[5] }}</td><td>{{ inv[2] }} DT</td></tr>
+            <tr class="total-row"><td>TOTAL</td><td>{{ inv[2] }} DT</td></tr>
+        </tbody>
+    </table>
+    <div class="footer">
+        <p>AMILCAR AUTO CARE — MAHRES, SFAX, TUNISIA</p>
+        <p>Thank you for choosing AMILCAR</p>
+    </div>
+</body>
+</html>

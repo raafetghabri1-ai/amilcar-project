@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AMILCAR - Monthly Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #0d0d0d; color: #f0f0f0; font-family: 'Cinzel', serif; margin: 0; }
+        .hero { background: linear-gradient(135deg, #1a1a2e, #0d0d0d); border-bottom: 2px solid #D4AF37; padding: 60px 0; text-align: center; }
+        .hero h1 { color: #D4AF37; font-size: 3.5rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
+        .hero .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.9rem; margin-top: 8px; }
+        .navbar { background: #1a1a2e !important; border-bottom: 1px solid #D4AF37; }
+        .nav-link { color: #D4AF37 !important; letter-spacing: 2px; font-size: 0.8rem; padding: 15px 20px !important; }
+        .nav-link:hover { color: #C41E3A !important; }
+        .stat-card { background: #1a1a2e; border: 1px solid #D4AF37; border-radius: 8px; padding: 30px 20px; text-align: center; }
+        .stat-card h2 { color: #D4AF37; font-size: 2.5rem; font-weight: 900; margin: 0; }
+        .stat-card p { color: #888; letter-spacing: 3px; font-size: 0.7rem; margin-top: 8px; }
+        .table { color: #f0f0f0; }
+        .table thead { background: #1a1a2e; color: #D4AF37; letter-spacing: 2px; font-size: 0.8rem; border-bottom: 1px solid #D4AF37; }
+        .table tbody tr { border-bottom: 1px solid #222; }
+        .table tbody tr:hover { background: #1a1a2e; }
+        .page-title { color: #D4AF37; letter-spacing: 4px; font-size: 1rem; }
+        .month-nav { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .month-nav a { color: #D4AF37; text-decoration: none; letter-spacing: 2px; font-size: 0.85rem; padding: 8px 16px; border: 1px solid #D4AF37; border-radius: 4px; }
+        .month-nav a:hover { background: #D4AF37; color: #0d0d0d; }
+        .badge-pending { background: #C41E3A; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; }
+        .badge-completed { background: #2d6a4f; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; }
+        .badge-paid { background: #2d6a4f; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; }
+        .badge-unpaid { background: #C41E3A; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>AMILCAR</h1>
+        <p class="tagline">WHERE CARS BECOME ART</p>
+    </div>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-nav mx-auto d-flex flex-row">
+                <a class="nav-link" href="/">HOME</a>
+                <a class="nav-link" href="/customers">CLIENTS</a>
+                <a class="nav-link" href="/appointments">APPOINTMENTS</a>
+                <a class="nav-link" href="/invoices">INVOICES</a>
+                <a class="nav-link" href="/quotes">QUOTES</a>
+                <a class="nav-link" href="/daily">TODAY</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <p class="page-title text-center mb-4">MONTHLY REPORT — {{ month_label }}</p>
+        <div class="month-nav">
+            <a href="/monthly?month={{ prev_month }}">◀ {{ prev_label }}</a>
+            <a href="/monthly?month={{ next_month }}">{{ next_label }} ▶</a>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>{{ stats.appointments }}</h2>
+                    <p>APPOINTMENTS</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>{{ stats.completed }}</h2>
+                    <p>COMPLETED</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>{{ stats.revenue }} DT</h2>
+                    <p>REVENUE (PAID)</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>{{ stats.unpaid }} DT</h2>
+                    <p>UNPAID</p>
+                </div>
+            </div>
+        </div>
+        <p class="page-title mb-3">APPOINTMENTS</p>
+        <table class="table mb-5">
+            <thead><tr><th>#</th><th>CLIENT</th><th>CAR</th><th>DATE</th><th>SERVICE</th><th>STATUS</th></tr></thead>
+            <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>{{ a[0] }}</td>
+                <td>{{ a[1] }}</td>
+                <td>{{ a[2] }} {{ a[3] }}</td>
+                <td>{{ a[4] }}</td>
+                <td>{{ a[5] }}</td>
+                <td>
+                {% if a[6] == 'completed' %}<span class="badge-completed">COMPLETED</span>
+                {% else %}<span class="badge-pending">PENDING</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="page-title mb-3">INVOICES</p>
+        <table class="table">
+            <thead><tr><th>#</th><th>CLIENT</th><th>SERVICE</th><th>AMOUNT</th><th>STATUS</th></tr></thead>
+            <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td>{{ inv[0] }}</td>
+                <td>{{ inv[1] }}</td>
+                <td>{{ inv[2] }}</td>
+                <td style="color:#D4AF37;font-weight:700">{{ inv[3] }} DT</td>
+                <td>
+                {% if inv[4] == 'paid' %}<span class="badge-paid">PAID</span>
+                {% else %}<span class="badge-unpaid">UNPAID</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

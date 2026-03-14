@@ -39,6 +39,7 @@
                 <a class="nav-link" href="/appointments">APPOINTMENTS</a>
                 <a class="nav-link" href="/invoices">INVOICES</a>
                 <a class="nav-link" href="/quotes">QUOTES</a>
+                <a class="nav-link" href="/daily">TODAY</a>
             </div>
         </div>
     </nav>
@@ -46,14 +47,21 @@
         <div class="info-card">
             <h4 style="color:#D4AF37;letter-spacing:3px">{{ customer[1] }}</h4>
             <p style="color:#aaa;font-size:0.85rem;letter-spacing:2px">📞 {{ customer[2] }}</p>
+            <a href="/edit_customer/{{ customer[0] }}" class="btn btn-gold me-2" style="font-size:0.8rem">✏ EDIT</a>
             <a href="/add_car?customer_id={{ customer[0] }}" class="btn btn-gold" style="font-size:0.8rem">+ ADD CAR</a>
         </div>
         <p class="section-title">CARS</p>
         <table class="table mb-5">
-            <thead><tr><th>#</th><th>BRAND</th><th>MODEL</th><th>PLATE</th></tr></thead>
+            <thead><tr><th>#</th><th>BRAND</th><th>MODEL</th><th>PLATE</th><th>ACTION</th></tr></thead>
             <tbody>
             {% for car in cars %}
-            <tr><td>{{ car[0] }}</td><td>{{ car[2] }}</td><td>{{ car[3] }}</td><td>{{ car[4] }}</td></tr>
+            <tr>
+                <td>{{ car[0] }}</td><td>{{ car[2] }}</td><td>{{ car[3] }}</td><td>{{ car[4] }}</td>
+                <td>
+                    <a href="/edit_car/{{ car[0] }}" style="color:#D4AF37;text-decoration:none;margin-right:8px">✏</a>
+                    <a href="/delete_car/{{ car[0] }}" style="background:#C41E3A;color:white;padding:3px 8px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE THIS CAR?')">✗</a>
+                </td>
+            </tr>
             {% endfor %}
             </tbody>
         </table>

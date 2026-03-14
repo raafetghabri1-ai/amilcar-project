@@ -38,6 +38,7 @@
                 <a class="nav-link" href="/appointments">APPOINTMENTS</a>
                 <a class="nav-link" href="/invoices">INVOICES</a>
                 <a class="nav-link" href="/quotes">QUOTES</a>
+                <a class="nav-link" href="/daily">TODAY</a>
             </div>
         </div>
     </nav>
@@ -66,7 +67,7 @@
                 <a href="/pay_invoice/{{ inv[0] }}" class="btn btn-gold" style="font-size:0.7rem;padding:5px 10px;">MARK AS PAID</a>
                 {% endif %}
                 </td>
-            <td><a href="/delete_invoice/{{ inv[0] }}" style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗</a></td></tr>
+            <td><a href="/print_invoice/{{ inv[0] }}" style="background:#D4AF37;color:#0d0d0d;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none;margin-right:4px">🖨 PRINT</a></td><td><a href="/delete_invoice/{{ inv[0] }}" style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗</a></td></tr>
             {% endfor %}
             </tbody>
         </table>

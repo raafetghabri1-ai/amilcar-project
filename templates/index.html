@@ -36,6 +36,8 @@
                 <a class="nav-link" href="/appointments">APPOINTMENTS</a>
                 <a class="nav-link" href="/invoices">INVOICES</a>
                 <a class="nav-link" href="/quotes">QUOTES</a>
+                <a class="nav-link" href="/daily">TODAY</a>
+                <a class="nav-link" href="/monthly">MONTHLY</a>
             </div>
         </div>
     </nav>
@@ -67,6 +69,26 @@
             </div>
         </div>
         <hr class="divider">
+        {% if pending_appointments %}
+        <div style="background:#1a1a2e;border:1px solid #C41E3A;border-radius:8px;padding:20px;margin-bottom:30px;">
+            <p style="color:#C41E3A;letter-spacing:3px;font-size:0.85rem;margin-bottom:15px;">⚠ PENDING APPOINTMENTS ({{ pending_appointments|length }})</p>
+            <table class="table" style="color:#f0f0f0;margin:0;">
+                <thead style="background:#0d0d0d;color:#D4AF37;letter-spacing:2px;font-size:0.75rem;">
+                    <tr><th>CLIENT</th><th>CAR</th><th>DATE</th><th>SERVICE</th></tr>
+                </thead>
+                <tbody>
+                {% for a in pending_appointments %}
+                <tr style="border-bottom:1px solid #222;">
+                    <td>{{ a[1] }}</td>
+                    <td>{{ a[2] }} {{ a[3] }}</td>
+                    <td>{{ a[4] }}</td>
+                    <td>{{ a[5] }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
         <div class="row g-3">
             <div class="col-md-3">
                 <a href="/add_customer" class="btn btn-gold w-100">+ NEW CLIENT</a>
