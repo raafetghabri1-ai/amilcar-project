@@ -91,7 +91,7 @@
             <div class="sidebar-section-title" onclick="toggleSection(this)">PRINCIPAL <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
                 <li><a href="/"><span class="icon">🏠</span> Accueil</a></li>
-                <li><a href="/custom_dashboard"><span class="icon">📊</span> Mon Dashboard</a></li>
+                {% if session.get('role') == 'admin' %}<li><a href="/custom_dashboard"><span class="icon">📊</span> Mon Dashboard</a></li>{% endif %}
                 <li><a href="/daily"><span class="icon">📋</span> Aujourd'hui</a></li>
                 <li><a href="/notifications"><span class="icon">🔔</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
                 <li><a href="/live_board"><span class="icon">📺</span> Atelier Live</a></li>
@@ -103,22 +103,24 @@
         <div class="sidebar-section">
             <div class="sidebar-section-title" onclick="toggleSection(this)">CAR & MOTO CARE <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
-                <li><a href="/care_dashboard"><span class="icon">📊</span> Dashboard Care</a></li>
+                {% if session.get('role') == 'admin' %}<li><a href="/care_dashboard"><span class="icon">📊</span> Dashboard Care</a></li>{% endif %}
                 <li><a href="/gallery_global"><span class="icon">📸</span> Galerie Avant/Après</a></li>
                 <li><a href="/treatments"><span class="icon">🛡️</span> Traitements</a></li>
                 <li><a href="/detailing_packs"><span class="icon">📦</span> Packs Detailing</a></li>
                 <li><a href="/wash_subscriptions"><span class="icon">🔄</span> Abonnements</a></li>
                 <li><a href="/client_reviews"><span class="icon">⭐</span> Avis Clients</a></li>
+                <li><a href="/service_checklists"><span class="icon">📋</span> Checklists</a></li>
+                {% if session.get('role') == 'admin' %}
                 <li><a href="/product_usage"><span class="icon">🧴</span> Produits</a></li>
                 <li><a href="/upsell_rules"><span class="icon">💡</span> Upsell</a></li>
                 <li><a href="/smart_reminders"><span class="icon">🔔</span> Rappels</a></li>
-                <li><a href="/service_checklists"><span class="icon">📋</span> Checklists</a></li>
                 <li><a href="/product_trends"><span class="icon">📈</span> Tendances Produits</a></li>
                 <li><a href="/profitability_vehicle_type"><span class="icon">🚗</span> Rentabilité Type</a></li>
                 <li><a href="/pack_configurations"><span class="icon">📦</span> Configs Packs</a></li>
                 <li><a href="/portfolio" target="_blank"><span class="icon">🖼️</span> Portfolio</a></li>
                 <li><a href="/booking_online" target="_blank"><span class="icon">🌐</span> Réservation Online</a></li>
                 <li><a href="/pack_configurator" target="_blank"><span class="icon">🎨</span> Configurateur</a></li>
+                {% endif %}
             </ul>
         </div>
 
@@ -128,6 +130,7 @@
             <ul class="sidebar-links">
                 <li><a href="/customers"><span class="icon">👥</span> Clients</a></li>
                 <li><a href="/crm_followups"><span class="icon">🔄</span> Suivi CRM</a></li>
+                {% if session.get('role') == 'admin' %}
                 <li><a href="/referrals"><span class="icon">🤝</span> Parrainage</a></li>
                 <li><a href="/fleet_companies"><span class="icon">🏢</span> Flottes</a></li>
                 <li><a href="/loyalty"><span class="icon">🎁</span> Fidélité</a></li>
@@ -137,6 +140,7 @@
                 <li><a href="/marketing_campaigns"><span class="icon">📧</span> Campagnes</a></li>
                 <li><a href="/vip_program"><span class="icon">👑</span> Programme VIP</a></li>
                 <li><a href="/churn_prediction"><span class="icon">🔮</span> Churn</a></li>
+                {% endif %}
             </ul>
         </div>
 
@@ -147,15 +151,18 @@
                 <li><a href="/appointments"><span class="icon">📅</span> Rendez-vous</a></li>
                 <li><a href="/calendar"><span class="icon">📆</span> Calendrier</a></li>
                 <li><a href="/queue"><span class="icon">⏳</span> File d'attente</a></li>
+                {% if session.get('role') == 'admin' %}
                 <li><a href="/heatmap"><span class="icon">🗺️</span> Heatmap</a></li>
                 <li><a href="/maintenance_reminders"><span class="icon">🔧</span> Rappels</a></li>
                 <li><a href="/maintenance_plans"><span class="icon">🔄</span> Plans entretien</a></li>
                 <li><a href="/bays"><span class="icon">🏗️</span> Baies service</a></li>
                 <li><a href="/vin_decode"><span class="icon">🔍</span> VIN Decoder</a></li>
                 <li><a href="/capacity"><span class="icon">📊</span> Capacité</a></li>
+                {% endif %}
             </ul>
         </div>
 
+        {% if session.get('role') == 'admin' %}
         <!-- INTELLIGENCE & REVENUS -->
         <div class="sidebar-section">
             <div class="sidebar-section-title" onclick="toggleSection(this)">INTELLIGENCE <span class="chevron">▼</span></div>
@@ -186,18 +193,20 @@
             </ul>
         </div>
 
+        {% endif %}
+
         <!-- FACTURATION -->
         <div class="sidebar-section">
             <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
                 <li><a href="/invoices"><span class="icon">📄</span> Factures</a></li>
                 <li><a href="/quotes"><span class="icon">📋</span> Devis</a></li>
+                {% if session.get('role') == 'admin' %}
                 <li><a href="/quotes_advanced"><span class="icon">📋</span> Devis+</a></li>
                 <li><a href="/expenses"><span class="icon">💸</span> Dépenses</a></li>
                 <li><a href="/warranties"><span class="icon">🛡️</span> Garanties</a></li>
                 <li><a href="/accounting"><span class="icon">🧾</span> Comptabilité</a></li>
                 <li><a href="/contracts"><span class="icon">📋</span> Contrats</a></li>
-                {% if session.get('role') == 'admin' %}
                 <li><a href="/invoice_terms"><span class="icon">📄</span> CGV</a></li>
                 <li><a href="/coupons"><span class="icon">🏷️</span> Coupons</a></li>
                 <li><a href="/dynamic_pricing_pro"><span class="icon">💲</span> Tarifs Dynamiques</a></li>
@@ -205,16 +214,15 @@
             </ul>
         </div>
 
+        {% if session.get('role') == 'admin' %}
         <!-- STOCK & ACHATS -->
         <div class="sidebar-section">
             <div class="sidebar-section-title" onclick="toggleSection(this)">STOCK & ACHATS <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
                 <li><a href="/inventory"><span class="icon">📦</span> Inventaire</a></li>
-                {% if session.get('role') == 'admin' %}
                 <li><a href="/inventory_dashboard"><span class="icon">📊</span> Stock+</a></li>
                 <li><a href="/suppliers"><span class="icon">🏭</span> Fournisseurs</a></li>
                 <li><a href="/auto_purchase_orders"><span class="icon">🔄</span> Commandes Auto</a></li>
-                {% endif %}
             </ul>
         </div>
 
@@ -234,15 +242,14 @@
                 <li><a href="/branch_benchmark"><span class="icon">📊</span> Benchmark</a></li>
                 <li><a href="/monthly_comparison"><span class="icon">📈</span> Comparaison</a></li>
                 <li><a href="/quality_dashboard"><span class="icon">✅</span> Qualité</a></li>
-                {% if session.get('role') == 'admin' %}
                 <li><a href="/ceo_dashboard"><span class="icon">📊</span> CEO</a></li>
                 <li><a href="/advanced_report"><span class="icon">📊</span> Rapport+</a></li>
                 <li><a href="/profitability"><span class="icon">💰</span> Rentabilité</a></li>
                 <li><a href="/retention_analysis"><span class="icon">📊</span> Rétention</a></li>
                 <li><a href="/scheduled_reports"><span class="icon">📊</span> Auto-Rapports</a></li>
-                {% endif %}
             </ul>
         </div>
+        {% endif %}
 
         {% if session.get('role') == 'admin' %}
         <!-- ÉQUIPE -->
@@ -299,6 +306,9 @@
             <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
                 <li><a href="/mobile"><span class="icon">📱</span> Vue Mobile</a></li>
+                {% if session.get('role') == 'admin' %}
+                <li><a href="/espace-client" target="_blank"><span class="icon">👤</span> Portail Client</a></li>
+                {% endif %}
             </ul>
         </div>
 

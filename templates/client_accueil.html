@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AMILCAR — Mon Espace</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--radius:16px}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px;-webkit-font-smoothing:antialiased}
+        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+        .top-bar .greet{font-size:.75rem;color:var(--muted)}
+        .top-bar .name{font-size:1rem;color:var(--gold);font-weight:700}
+        .top-bar .logout{color:var(--muted);text-decoration:none;font-size:.75rem;padding:6px 12px;border:1px solid var(--border);border-radius:8px}
+        .container-c{max-width:500px;margin:0 auto;padding:16px}
+        .welcome-banner{background:linear-gradient(135deg,#1a1505 0%,#0d0d0d 100%);border:1px solid rgba(212,175,55,.3);border-radius:var(--radius);padding:24px 20px;margin-bottom:16px;text-align:center}
+        .welcome-banner .level{display:inline-block;padding:4px 16px;border-radius:20px;font-size:.7rem;font-weight:700;letter-spacing:1px;margin-bottom:8px}
+        .welcome-banner .pts{color:var(--gold);font-size:1.8rem;font-weight:800}
+        .welcome-banner .pts-label{color:var(--muted);font-size:.7rem}
+        .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+        .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center}
+        .stat-box .num{font-size:1.4rem;font-weight:800}
+        .stat-box .lbl{font-size:.6rem;color:var(--muted);margin-top:2px}
+        .card-c{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px}
+        .card-c h6{color:var(--gold);font-size:.85rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+        .item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+        .item-row:last-child{border-bottom:none}
+        .item-row .title{font-size:.82rem;font-weight:600}
+        .item-row .sub{font-size:.68rem;color:var(--muted)}
+        .badge-s{display:inline-block;padding:2px 8px;border-radius:8px;font-size:.55rem;font-weight:700;letter-spacing:.5px}
+        .badge-pending{background:rgba(212,175,55,.15);color:var(--gold)}
+        .badge-progress{background:rgba(59,130,246,.15);color:var(--blue)}
+        .badge-done{background:rgba(34,197,94,.15);color:var(--green)}
+        .badge-unpaid{background:rgba(239,68,68,.15);color:var(--red)}
+        .btn-book{display:block;background:var(--gold);color:#000;text-align:center;padding:16px;border-radius:var(--radius);font-weight:700;text-decoration:none;font-size:1rem;letter-spacing:1px;margin:20px 0}
+        .btn-book:hover{background:#e5c040;color:#000}
+        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100;max-width:100%;backdrop-filter:blur(10px)}
+        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px;transition:color .2s}
+        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
+        .nav-bottom a.active{color:var(--gold)}
+        .flash-msg{background:var(--bg3);border-left:3px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.78rem}
+    </style>
+</head>
+<body>
+<!-- Top Bar -->
+<div class="top-bar">
+    <div>
+        <div class="greet">Bonjour</div>
+        <div class="name">{{ customer.name }} 👋</div>
+    </div>
+    <a href="/espace-client/deconnexion" class="logout">Déconnexion</a>
+</div>
+
+<div class="container-c">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="flash-msg">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="level" style="background:{{ '#cd7f32' if loyalty=='bronze' else '#c0c0c0' if loyalty=='silver' else 'var(--gold)' if loyalty=='gold' else '#e5e4e2' }};color:#000">
+            {{ '🥉 BRONZE' if loyalty=='bronze' else '🥈 ARGENT' if loyalty=='silver' else '🥇 OR' if loyalty=='gold' else '💎 PLATINE' }}
+        </div>
+        <div class="pts">{{ '{:,}'.format(points) }}</div>
+        <div class="pts-label">points de fidélité</div>
+        {% if balance > 0 %}
+        <div style="margin-top:8px;color:var(--green);font-size:.85rem;font-weight:600">💳 Solde: {{ '{:,.0f}'.format(balance) }} DT</div>
+        {% endif %}
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-box">
+            <div class="num" style="color:var(--blue)">{{ cars|length }}</div>
+            <div class="lbl">Véhicules</div>
+        </div>
+        <div class="stat-box">
+            <div class="num" style="color:var(--gold)">{{ active_count }}</div>
+            <div class="lbl">En cours</div>
+        </div>
+        <div class="stat-box">
+            <div class="num" style="color:var(--green)">{{ completed_count }}</div>
+            <div class="lbl">Terminés</div>
+        </div>
+    </div>
+
+    {% if invoices_unpaid > 0 %}
+    <div class="card-c" style="border-color:var(--red)">
+        <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.5rem">⚠️</span>
+            <div>
+                <div style="color:var(--red);font-weight:600;font-size:.85rem">{{ invoices_unpaid }} facture{{ 's' if invoices_unpaid > 1 }} en attente</div>
+                <a href="/espace-client/factures" style="color:var(--gold);font-size:.72rem">Voir les factures →</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- My Cars -->
+    <div class="card-c">
+        <h6>🚗 Mes véhicules</h6>
+        {% for c in cars %}
+        <div class="item-row">
+            <div>
+                <div class="title">{{ c.brand }} {{ c.model }}</div>
+                <div class="sub">{{ c.plate }}{% if c.vehicle_type %} • {{ c.vehicle_type }}{% endif %}</div>
+            </div>
+            <span style="font-size:1.2rem">{{ '🏍️' if c.vehicle_type and 'moto' in (c.vehicle_type|lower) else '🚗' }}</span>
+        </div>
+        {% else %}
+        <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:10px">Aucun véhicule enregistré</div>
+        {% endfor %}
+    </div>
+
+    <!-- Recent Appointments -->
+    <div class="card-c">
+        <h6>📅 Derniers rendez-vous</h6>
+        {% for a in appointments[:5] %}
+        <a href="/espace-client/suivi/{{ a.id }}" style="text-decoration:none;color:inherit">
+        <div class="item-row">
+            <div>
+                <div class="title">{{ a.service_type or 'Service' }}</div>
+                <div class="sub">{{ a.date }} • {{ a.brand }} {{ a.model }}</div>
+            </div>
+            <div style="text-align:right">
+                <span class="badge-s {{ 'badge-pending' if a.status in ('pending','confirmed') else 'badge-progress' if a.status=='in_progress' else 'badge-done' }}">
+                    {{ 'En attente' if a.status=='pending' else 'Confirmé' if a.status=='confirmed' else 'En cours' if a.status=='in_progress' else 'Terminé' if a.status in ('Terminé','completed','done') else a.status }}
+                </span>
+                {% if a.total_price %}<div style="color:var(--gold);font-weight:600;font-size:.75rem;margin-top:4px">{{ a.total_price }} DT</div>{% endif %}
+            </div>
+        </div>
+        </a>
+        {% else %}
+        <div style="color:var(--muted);font-size:.8rem;text-align:center;padding:10px">Aucun rendez-vous</div>
+        {% endfor %}
+    </div>
+
+    <!-- Book Now -->
+    <a href="/espace-client/reserver" class="btn-book">✨ Réserver un rendez-vous</a>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="nav-bottom">
+    <a href="/espace-client/accueil" class="active"><span class="ico">🏠</span>Accueil</a>
+    <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
+    <a href="/espace-client/reserver"><span class="ico">📅</span>Réserver</a>
+    <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
+    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
+</div>
+</body>
+</html>

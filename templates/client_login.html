@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AMILCAR — Espace Client</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--radius:16px}
+        *{box-sizing:border-box}
+        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;min-height:100vh;-webkit-font-smoothing:antialiased}
+        .client-header{background:linear-gradient(135deg,#0a0a0a 0%,#1a1a1a 100%);padding:40px 24px 30px;text-align:center;border-bottom:1px solid var(--gold);position:relative}
+        .client-header .logo{height:50px;margin-bottom:8px}
+        .client-header h1{color:var(--gold);font-size:1.6rem;font-weight:800;letter-spacing:4px;margin:0}
+        .client-header p{color:var(--muted);font-size:.7rem;letter-spacing:2px;margin:4px 0 0}
+        .login-box{max-width:400px;margin:50px auto;padding:0 20px}
+        .login-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:40px 28px;text-align:center}
+        .login-card .emoji{font-size:3.5rem;margin-bottom:16px}
+        .login-card h3{color:var(--gold);font-size:1.2rem;font-weight:700;margin:0 0 6px}
+        .login-card .sub{color:var(--muted);font-size:.78rem;margin-bottom:28px}
+        .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:16px 20px;border-radius:12px;font-size:1.1rem;text-align:center;letter-spacing:2px;outline:none;transition:border .2s}
+        .form-input:focus{border-color:var(--gold)}
+        .form-input::placeholder{color:var(--muted);letter-spacing:0}
+        .btn-gold{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:16px;font-size:1rem;cursor:pointer;transition:all .2s;margin-top:20px;letter-spacing:1px}
+        .btn-gold:hover{background:#e5c040;transform:translateY(-1px)}
+        .flash-msg{background:var(--bg3);border:1px solid var(--red);border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.8rem;color:var(--red);text-align:center}
+        .footer-text{text-align:center;margin-top:60px;padding-bottom:30px;color:var(--muted);font-size:.6rem;letter-spacing:1px}
+    </style>
+</head>
+<body>
+<div class="client-header">
+    <img src="/static/logo.png" alt="AMILCAR" class="logo">
+    <h1>AMILCAR</h1>
+    <p>{{ shop.get('shop_tagline', 'WHERE CARS BECOME ART') }}</p>
+</div>
+
+<div class="login-box">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="flash-msg">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <div class="login-card">
+        <div class="emoji">🚗</div>
+        <h3>Mon Espace Client</h3>
+        <p class="sub">Connectez-vous avec votre numéro de téléphone</p>
+        <form method="POST" action="/espace-client/connexion">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="tel" name="phone" class="form-input" placeholder="Votre numéro de téléphone" required inputmode="tel" autocomplete="tel">
+            <button type="submit" class="btn-gold">Se connecter</button>
+        </form>
+    </div>
+</div>
+
+<div class="footer-text">© AMILCAR Auto Care — Tous droits réservés</div>
+</body>
+</html>

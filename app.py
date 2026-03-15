@@ -10655,6 +10655,182 @@ def knowledge_base_delete(article_id):
     flash("Article supprimé", "success")
     return redirect("/knowledge_base")
 
+# ═══════════════════════════════════════════════════════════════
+# ═══  CLIENT PORTAL — Professional Mobile PWA  ═══
+# ═══════════════════════════════════════════════════════════════
+
+def client_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('client_id'):
+            return redirect('/espace-client')
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route("/espace-client")
+def espace_client():
+    if session.get('client_id'):
+        return redirect('/espace-client/accueil')
+    with get_db() as conn:
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_login.html", shop=shop)
+
+@app.route("/espace-client/connexion", methods=["POST"])
+def espace_client_login():
+    phone = request.form.get("phone", "").strip()
+    if not phone:
+        flash("Veuillez entrer votre numéro", "danger")
+        return redirect("/espace-client")
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
+        if not customer:
+            flash("Numéro non trouvé. Contactez-nous pour créer votre compte.", "danger")
+            return redirect("/espace-client")
+        session['client_id'] = customer['id']
+        session['client_name'] = customer['name']
+        session['client_phone'] = customer['phone']
+    return redirect("/espace-client/accueil")
+
+@app.route("/espace-client/deconnexion")
+def espace_client_logout():
+    session.pop('client_id', None)
+    session.pop('client_name', None)
+    session.pop('client_phone', None)
+    return redirect("/espace-client")
+
+@app.route("/espace-client/accueil")
+@client_required
+def espace_client_accueil():
+    client_id = session['client_id']
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
+        if not customer:
+            session.pop('client_id', None)
+            return redirect('/espace-client')
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
+        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
+            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+            WHERE a.customer_id=? ORDER BY a.date DESC LIMIT 10""", (client_id,)).fetchall()
+        active_count = sum(1 for a in appointments if a['status'] in ('pending', 'confirmed', 'in_progress'))
+        completed_count = sum(1 for a in appointments if a['status'] in ('Terminé', 'completed', 'done'))
+        balance = customer.get('wallet_balance', 0) or 0
+        points = customer.get('loyalty_points_total', 0) or 0
+        loyalty = customer.get('loyalty_level', 'bronze') or 'bronze'
+        try:
+            invoices_unpaid = conn.execute("""SELECT COUNT(*) FROM invoices
+                WHERE customer_id=? AND status IN ('unpaid','partial')""", (client_id,)).fetchone()[0]
+        except Exception:
+            invoices_unpaid = 0
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_accueil.html", customer=customer, cars=cars,
+        appointments=appointments, active_count=active_count, completed_count=completed_count,
+        balance=balance, points=points, loyalty=loyalty, invoices_unpaid=invoices_unpaid, shop=shop)
+
+@app.route("/espace-client/vehicules")
+@client_required
+def espace_client_vehicules():
+    client_id = session['client_id']
+    with get_db() as conn:
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
+        car_data = []
+        for car in cars:
+            appts = conn.execute("""SELECT date, service_type, status, total_price
+                FROM appointments WHERE car_id=? ORDER BY date DESC LIMIT 5""", (car['id'],)).fetchall()
+            treatments = conn.execute("""SELECT treatment_type, applied_date, warranty_expiry
+                FROM treatments WHERE car_id=? ORDER BY applied_date DESC LIMIT 3""", (car['id'],)).fetchall()
+            car_data.append({'car': car, 'appointments': appts, 'treatments': treatments})
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_vehicules.html", car_data=car_data, shop=shop)
+
+@app.route("/espace-client/rendez-vous")
+@client_required
+def espace_client_rdv():
+    client_id = session['client_id']
+    with get_db() as conn:
+        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
+            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+            WHERE a.customer_id=? ORDER BY a.date DESC""", (client_id,)).fetchall()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_rdv.html", appointments=appointments, shop=shop)
+
+@app.route("/espace-client/reserver", methods=["GET", "POST"])
+@client_required
+def espace_client_reserver():
+    client_id = session['client_id']
+    with get_db() as conn:
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
+        services = conn.execute("SELECT * FROM services WHERE active=1 ORDER BY name").fetchall()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+        if request.method == "POST":
+            car_id = request.form.get("car_id", type=int)
+            service_type = request.form.get("service_type", "").strip()
+            date = request.form.get("date", "").strip()
+            time_slot = request.form.get("time", "").strip()
+            notes = request.form.get("notes", "").strip()[:500]
+            if not all([car_id, service_type, date]):
+                flash("Veuillez remplir tous les champs obligatoires", "danger")
+            else:
+                # Verify car belongs to client
+                car_check = conn.execute("SELECT id FROM cars WHERE id=? AND customer_id=?", (car_id, client_id)).fetchone()
+                if not car_check:
+                    flash("Véhicule non trouvé", "danger")
+                else:
+                    customer = conn.execute("SELECT name, phone FROM customers WHERE id=?", (client_id,)).fetchone()
+                    conn.execute("""INSERT INTO appointments (customer_id, car_id, date, time, service_type,
+                        status, notes, customer_name, customer_phone)
+                        VALUES (?,?,?,?,?,'pending',?,?,?)""",
+                        (client_id, car_id, date, time_slot, service_type, notes,
+                         customer['name'], customer['phone']))
+                    conn.commit()
+                    flash("Rendez-vous demandé avec succès! Nous vous confirmerons bientôt.", "success")
+                    return redirect("/espace-client/rendez-vous")
+    return render_template("client_reserver.html", cars=cars, services=services, shop=shop)
+
+@app.route("/espace-client/factures")
+@client_required
+def espace_client_factures():
+    client_id = session['client_id']
+    with get_db() as conn:
+        invoices = conn.execute("""SELECT i.*, ca.brand, ca.model, ca.plate
+            FROM invoices i LEFT JOIN cars ca ON i.car_id=ca.id
+            WHERE i.customer_id=? ORDER BY i.date DESC""", (client_id,)).fetchall()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_factures.html", invoices=invoices, shop=shop)
+
+@app.route("/espace-client/fidelite")
+@client_required
+def espace_client_fidelite():
+    client_id = session['client_id']
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
+        points = customer.get('loyalty_points_total', 0) or 0
+        loyalty = customer.get('loyalty_level', 'bronze') or 'bronze'
+        balance = customer.get('wallet_balance', 0) or 0
+        wallet = conn.execute("""SELECT * FROM wallet_transactions WHERE customer_id=?
+            ORDER BY created_at DESC LIMIT 15""", (client_id,)).fetchall()
+        treatments = conn.execute("""SELECT t.*, ca.brand, ca.model FROM treatments t
+            LEFT JOIN cars ca ON t.car_id=ca.id WHERE t.customer_id=?
+            ORDER BY t.applied_date DESC LIMIT 10""", (client_id,)).fetchall()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_fidelite.html", customer=customer, points=points,
+        loyalty=loyalty, balance=balance, wallet=wallet, treatments=treatments, shop=shop)
+
+@app.route("/espace-client/suivi/<int:appointment_id>")
+@client_required
+def espace_client_suivi(appointment_id):
+    client_id = session['client_id']
+    with get_db() as conn:
+        appt = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
+            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+            WHERE a.id=? AND a.customer_id=?""", (appointment_id, client_id)).fetchone()
+        if not appt:
+            flash("Rendez-vous non trouvé", "danger")
+            return redirect("/espace-client/rendez-vous")
+        photos = conn.execute("""SELECT * FROM vehicle_gallery WHERE appointment_id=?
+            ORDER BY photo_type, uploaded_at""", (appointment_id,)).fetchall()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_suivi.html", appt=appt, photos=photos, shop=shop)
+
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
 

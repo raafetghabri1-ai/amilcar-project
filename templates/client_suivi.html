@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AMILCAR — Suivi</title>
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f59e0b;--radius:16px}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:30px}
+        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
+        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
+        .container-c{max-width:500px;margin:0 auto;padding:16px}
+        .card-c{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+        .card-c h6{color:var(--gold);font-size:.85rem;font-weight:700;margin-bottom:14px}
+
+        /* Status Timeline */
+        .timeline{padding:0 0 0 24px;position:relative}
+        .timeline::before{content:'';position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--border)}
+        .timeline-step{position:relative;padding:0 0 20px 16px}
+        .timeline-step:last-child{padding-bottom:0}
+        .timeline-step .dot{position:absolute;left:-20px;top:2px;width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:var(--bg)}
+        .timeline-step .dot.active{border-color:var(--gold);background:var(--gold)}
+        .timeline-step .dot.current{border-color:var(--blue);background:var(--blue);box-shadow:0 0 8px rgba(59,130,246,.4)}
+        .timeline-step .dot.done{border-color:var(--green);background:var(--green)}
+        .timeline-step .title{font-size:.82rem;font-weight:600}
+        .timeline-step .sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+
+        .info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+        .info-row:last-child{border:none}
+        .info-row .lbl{color:var(--muted)}
+        .info-row .val{font-weight:600}
+
+        .photos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+        .photos-grid img{width:100%;height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+        .photo-label{color:var(--gold);font-size:.65rem;font-weight:600;text-align:center;margin-top:4px;letter-spacing:1px}
+        .badge-main{display:inline-block;padding:6px 16px;border-radius:10px;font-size:.8rem;font-weight:700;letter-spacing:1px}
+        .btn-back{display:block;background:var(--bg3);color:var(--gold);text-align:center;padding:14px;border-radius:12px;text-decoration:none;font-weight:600;font-size:.9rem;margin-top:16px;border:1px solid var(--border)}
+    </style>
+</head>
+<body>
+<div class="top-bar">
+    <a href="/espace-client/rendez-vous">←</a>
+    <h2>📍 Suivi</h2>
+    <span style="width:20px"></span>
+</div>
+
+<div class="container-c">
+    <!-- Status Banner -->
+    <div style="text-align:center;margin-bottom:20px">
+        {% set status_color = 'var(--gold)' if appt.status=='pending' else 'var(--blue)' if appt.status=='confirmed' else 'var(--orange)' if appt.status=='in_progress' else 'var(--green)' if appt.status in ('Terminé','completed','done') else 'var(--red)' %}
+        {% set status_text = 'En attente de confirmation' if appt.status=='pending' else 'Confirmé' if appt.status=='confirmed' else 'En cours de traitement' if appt.status=='in_progress' else 'Terminé ✓' if appt.status in ('Terminé','completed','done') else 'Annulé' %}
+        <span class="badge-main" style="background:{{ status_color }};color:#000">{{ status_text }}</span>
+    </div>
+
+    <!-- Details -->
+    <div class="card-c">
+        <h6>📋 Détails du rendez-vous</h6>
+        <div class="info-row">
+            <span class="lbl">Service</span>
+            <span class="val">{{ appt.service_type or 'Service' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="lbl">Véhicule</span>
+            <span class="val">{{ appt.brand }} {{ appt.model }}</span>
+        </div>
+        <div class="info-row">
+            <span class="lbl">Immatriculation</span>
+            <span class="val" style="color:var(--gold)">{{ appt.plate }}</span>
+        </div>
+        <div class="info-row">
+            <span class="lbl">Date</span>
+            <span class="val">{{ appt.date }}{% if appt.time %} à {{ appt.time }}{% endif %}</span>
+        </div>
+        {% if appt.total_price %}
+        <div class="info-row">
+            <span class="lbl">Montant</span>
+            <span class="val" style="color:var(--gold);font-size:1rem">{{ appt.total_price }} DT</span>
+        </div>
+        {% endif %}
+        {% if appt.notes %}
+        <div class="info-row">
+            <span class="lbl">Notes</span>
+            <span class="val" style="font-weight:400;font-size:.75rem">{{ appt.notes }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Progress Timeline -->
+    <div class="card-c">
+        <h6>📍 Progression</h6>
+        {% set steps = [
+            ('Demande reçue', 'Votre rendez-vous a été enregistré', ['pending','confirmed','in_progress','Terminé','completed','done']),
+            ('Confirmé', 'Rendez-vous confirmé par l\'équipe', ['confirmed','in_progress','Terminé','completed','done']),
+            ('En cours', 'Votre véhicule est en traitement', ['in_progress','Terminé','completed','done']),
+            ('Terminé', 'Le service est terminé', ['Terminé','completed','done'])
+        ] %}
+        <div class="timeline">
+            {% for title, desc, valid_statuses in steps %}
+            {% set is_done = appt.status in valid_statuses %}
+            {% set is_current = (loop.index == 1 and appt.status == 'pending') or
+                                (loop.index == 2 and appt.status == 'confirmed') or
+                                (loop.index == 3 and appt.status == 'in_progress') or
+                                (loop.index == 4 and appt.status in ('Terminé','completed','done')) %}
+            <div class="timeline-step">
+                <div class="dot {{ 'done' if is_done and not is_current else 'current' if is_current else '' }}"></div>
+                <div class="title" style="{{ 'color:var(--green)' if is_done else '' }}">{{ title }}</div>
+                <div class="sub">{{ desc }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Photos Before/After -->
+    {% set before_photos = photos|selectattr('photo_type','equalto','before')|list %}
+    {% set after_photos = photos|selectattr('photo_type','equalto','after')|list %}
+    {% if before_photos or after_photos %}
+    <div class="card-c">
+        <h6>📸 Photos Avant / Après</h6>
+        {% if before_photos %}
+        <div class="photo-label">AVANT</div>
+        <div class="photos-grid">
+            {% for p in before_photos %}
+            <img src="/{{ p.photo_path }}" alt="Avant">
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if after_photos %}
+        <div class="photo-label" style="margin-top:16px">APRÈS</div>
+        <div class="photos-grid">
+            {% for p in after_photos %}
+            <img src="/{{ p.photo_path }}" alt="Après">
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <a href="/espace-client/rendez-vous" class="btn-back">← Retour aux rendez-vous</a>
+</div>
+</body>
+</html>
