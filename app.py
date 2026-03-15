@@ -3625,8 +3625,14 @@ def pwa_manifest():
         "theme_color": "#D4AF37",
         "orientation": "portrait-primary",
         "icons": [
-            {"src": "/static/logo.png", "sizes": "192x192", "type": "image/png"},
-            {"src": "/static/logo.png", "sizes": "512x512", "type": "image/png"}
+            {"src": "/static/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png"},
+            {"src": "/static/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png"},
+            {"src": "/static/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png"},
+            {"src": "/static/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any"},
+            {"src": "/static/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png"},
+            {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png"},
+            {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
         ]
     }
     response = make_response(jsonify(manifest))
@@ -10650,7 +10656,7 @@ def knowledge_base_delete(article_id):
     return redirect("/knowledge_base")
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
 
 # ─── Context Processor for Notification Badge ───
 @app.context_processor

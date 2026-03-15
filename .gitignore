@@ -9,3 +9,5 @@ convert_*.py
 seed_data.py
 backup.py
 .venv/
+logs/
+*.pid
