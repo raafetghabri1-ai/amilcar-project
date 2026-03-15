@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Évaluez Votre Expérience - AMILCAR</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #0a0a0a; color: #ccc; font-family: 'Inter', sans-serif; }
+        .rating-container { max-width: 500px; margin: 40px auto; padding: 30px; background: #1a1a1a; border-radius: 15px; border: 1px solid rgba(212,175,55,0.2); }
+        .logo-text { color: #D4AF37; font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 5px; }
+        .sub-text { color: #888; font-size: 0.7rem; text-align: center; letter-spacing: 3px; margin-bottom: 25px; }
+        .star-rating { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+        .star-rating input { display: none; }
+        .star-rating label { font-size: 2.5rem; cursor: pointer; transition: 0.2s; color: #333; }
+        .star-rating label:hover, .star-rating label:hover ~ label { color: #D4AF37; }
+        .star-rating input:checked ~ label { color: #D4AF37; }
+        .info-line { color: #888; font-size: 0.85rem; text-align: center; margin-bottom: 5px; }
+        .info-highlight { color: #D4AF37; font-weight: 600; }
+        textarea { background: #111; border: 1px solid #333; color: #ccc; border-radius: 10px; }
+        textarea:focus { border-color: #D4AF37; box-shadow: 0 0 0 2px rgba(212,175,55,0.2); background: #111; color: #ccc; }
+        .btn-submit { background: linear-gradient(135deg, #D4AF37, #B8960C); color: #000; font-weight: 700; border: none; border-radius: 10px; padding: 12px; width: 100%; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(212,175,55,0.3); }
+    </style>
+</head>
+<body>
+    <div class="rating-container">
+        <div class="logo-text">AMILCAR</div>
+        <div class="sub-text">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
+        <hr style="border-color:#333">
+        <h5 style="text-align:center;color:#D4AF37;margin-bottom:15px">⭐ Évaluez Votre Expérience</h5>
+        <p class="info-line">Client: <span class="info-highlight">{{ appt[1] }}</span></p>
+        <p class="info-line">Service: <span class="info-highlight">{{ appt[2] }}</span></p>
+        <p class="info-line">Date: <span class="info-highlight">{{ appt[3] }}</span></p>
+        <p class="info-line">Véhicule: <span class="info-highlight">{{ appt[4] }} {{ appt[5] }}</span></p>
+
+        <form method="POST" action="/rate/{{ token }}">
+            <div class="star-rating" style="direction:rtl">
+                {% for i in range(5, 0, -1) %}
+                <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" {% if i == 5 %}required{% endif %}>
+                <label for="star{{ i }}">★</label>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
+                <textarea name="comment" class="form-control" rows="3" placeholder="Votre commentaire (optionnel)..." maxlength="500"></textarea>
+            </div>
+            <button type="submit" class="btn-submit">Envoyer l'Évaluation</button>
+        </form>
+    </div>
+</body>
+</html>

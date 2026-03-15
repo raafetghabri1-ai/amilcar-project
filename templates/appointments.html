@@ -72,6 +72,7 @@
             <a href="/gallery/{{ a[0] }}" style="color:#888;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Photos">📷</a>
             {% if a[6] == 'completed' %}
             <a href="#" onclick="openRating({{ a[0] }})" style="color:#D4AF37;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Évaluer">★</a>
+            <a href="/send_rating_link/{{ a[0] }}" target="_blank" style="background:#25D366;color:white;padding:2px 6px;border-radius:4px;font-size:0.6rem;text-decoration:none;margin:0 2px" title="Demander évaluation WhatsApp">⭐📱</a>
             {% endif %}
             {% if a[6] == 'pending' %}
             <a href="/whatsapp_reminder/{{ a[0] }}" target="_blank" style="background:#25D366;color:white;padding:2px 6px;border-radius:4px;font-size:0.65rem;text-decoration:none;margin:0 2px" title="WhatsApp">📱</a>

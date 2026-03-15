@@ -27,12 +27,14 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">DATE</label>
-                        <input type="date" name="date" class="form-control" required>
+                        <input type="date" name="date" id="apptDate" class="form-control" required onchange="checkSlots()">
+                        <div id="slotsInfo" style="display:none;margin-top:5px"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">HEURE</label>
-                        <input type="time" name="time" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333">
+                        <input type="time" name="time" id="apptTime" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333">
                         <small style="color:#555;font-size:0.65rem">Optionnel — évite les doubles réservations</small>
+                        <div id="availableSlots" style="display:none;margin-top:5px;display:flex;flex-wrap:wrap;gap:4px"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">SERVICE</label>
@@ -89,6 +91,37 @@ function filterCars() {
 }
 function toggleRepeatCount() {
     document.getElementById('repeatCountDiv').style.display = document.getElementById('repeatSelect').value ? 'block' : 'none';
+}
+function checkSlots() {
+    var date = document.getElementById('apptDate').value;
+    if (!date) return;
+    fetch('/api/available_slots?date=' + date).then(r => r.json()).then(data => {
+        var info = document.getElementById('slotsInfo');
+        info.style.display = 'block';
+        if (data.full) {
+            info.innerHTML = '<span style="color:#C41E3A;font-size:0.75rem;font-weight:600">⚠️ Journée complète (' + data.total_booked + '/' + data.max_daily + ')</span>';
+        } else {
+            info.innerHTML = '<span style="color:#22c55e;font-size:0.75rem">✅ ' + data.total_booked + '/' + data.max_daily + ' réservés</span>';
+        }
+        var slotsDiv = document.getElementById('availableSlots');
+        slotsDiv.style.display = 'flex';
+        slotsDiv.innerHTML = '';
+        data.slots.forEach(function(s) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = s.time;
+            btn.style.cssText = 'font-size:0.6rem;padding:2px 6px;border-radius:4px;border:1px solid #333;cursor:pointer;' +
+                (s.available ? 'background:#1a1a2e;color:#22c55e' : 'background:#333;color:#666;text-decoration:line-through;cursor:not-allowed');
+            if (s.available) {
+                btn.onclick = function() {
+                    document.getElementById('apptTime').value = s.time;
+                    slotsDiv.querySelectorAll('button').forEach(b => b.style.borderColor = '#333');
+                    btn.style.borderColor = '#D4AF37';
+                };
+            }
+            slotsDiv.appendChild(btn);
+        });
+    });
 }
 </script>
 {% endblock %}

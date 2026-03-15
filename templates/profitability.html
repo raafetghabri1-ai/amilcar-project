@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %} - Rentabilité des Services{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">💰 Analyse de Rentabilité des Services</h3>
+</div>
+
+<!-- Summary Chart -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">Revenus vs Coûts Matières</h6>
+            <canvas id="profitChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🔝 Top Services par Marge</h6>
+            <div id="topMargin"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th class="text-end">Nb</th>
+                    <th class="text-end">Revenus (DT)</th>
+                    <th class="text-end">Coût Matières (DT)</th>
+                    <th class="text-end">Bénéfice (DT)</th>
+                    <th class="text-end">Marge %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in services %}
+                <tr>
+                    <td><strong>{{ s.service }}</strong></td>
+                    <td class="text-end">{{ s.count }}</td>
+                    <td class="text-end" style="color:#22c55e">{{ s.revenue }}</td>
+                    <td class="text-end" style="color:#C41E3A">{{ s.material_cost }}</td>
+                    <td class="text-end" style="color:{% if s.profit >= 0 %}#D4AF37{% else %}#C41E3A{% endif %};font-weight:700">{{ s.profit }}</td>
+                    <td class="text-end">
+                        <span class="badge {% if s.margin >= 70 %}bg-success{% elif s.margin >= 40 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                            {{ s.margin }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not services %}
+                <tr><td colspan="6" style="text-align:center;color:#666">Aucune donnée de service complété</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var services = {{ services|tojson }};
+if (services.length) {
+    new Chart(document.getElementById('profitChart'), {
+        type: 'bar',
+        data: {
+            labels: services.map(s => s.service.substring(0, 25)),
+            datasets: [
+                { label: 'Revenus', data: services.map(s => s.revenue), backgroundColor: 'rgba(34,197,94,0.7)', borderRadius: 4 },
+                { label: 'Coût Matières', data: services.map(s => s.material_cost), backgroundColor: 'rgba(196,30,58,0.7)', borderRadius: 4 },
+                { label: 'Bénéfice', data: services.map(s => s.profit), backgroundColor: 'rgba(212,175,55,0.7)', borderRadius: 4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#888' } } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#888' } }, x: { ticks: { color: '#888', font: { size: 9 } } } }
+        }
+    });
+
+    // Top margins
+    var sorted = [...services].sort((a, b) => b.margin - a.margin).slice(0, 5);
+    var html = '';
+    sorted.forEach((s, i) => {
+        var barWidth = Math.min(s.margin, 100);
+        html += '<div style="margin-bottom:12px">' +
+            '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+            '<span style="font-size:0.8rem;color:#ccc">' + (i+1) + '. ' + s.service.substring(0,30) + '</span>' +
+            '<span style="color:#D4AF37;font-weight:700;font-size:0.85rem">' + s.margin + '%</span></div>' +
+            '<div style="background:rgba(255,255,255,0.05);border-radius:4px;height:8px">' +
+            '<div style="background:linear-gradient(90deg,#D4AF37,#C41E3A);height:100%;border-radius:4px;width:'+barWidth+'%"></div>' +
+            '</div></div>';
+    });
+    document.getElementById('topMargin').innerHTML = html;
+}
+</script>
+{% endblock %}

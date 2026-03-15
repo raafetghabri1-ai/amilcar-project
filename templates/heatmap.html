@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %} - Carte de Chaleur{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🗺️ Carte de Chaleur des Rendez-vous</h3>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📊 Par Jour de la Semaine</h6>
+            <canvas id="chartDay" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🕐 Par Heure</h6>
+            <canvas id="chartHour" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📈 Tendance Mensuelle</h6>
+            <canvas id="chartMonthly" height="120"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🔥 Matrice Jour × Heure</h6>
+            <div id="heatmapMatrix" style="overflow-x:auto"></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🏆 Jours les Plus Chargés</h6>
+            <div id="busiestDays"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+fetch('/api/heatmap_data').then(r=>r.json()).then(data => {
+    // Day chart
+    new Chart(document.getElementById('chartDay'), {
+        type: 'bar',
+        data: {
+            labels: data.by_day.map(d => d.day),
+            datasets: [{
+                label: 'Rendez-vous',
+                data: data.by_day.map(d => d.count),
+                backgroundColor: 'rgba(212,175,55,0.7)',
+                borderColor: '#D4AF37',
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#888' } }, x: { ticks: { color: '#888' } } }
+        }
+    });
+
+    // Hour chart
+    new Chart(document.getElementById('chartHour'), {
+        type: 'bar',
+        data: {
+            labels: data.by_hour.map(h => h.time),
+            datasets: [{
+                label: 'Rendez-vous',
+                data: data.by_hour.map(h => h.count),
+                backgroundColor: 'rgba(196,30,58,0.7)',
+                borderColor: '#C41E3A',
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#888' } }, x: { ticks: { color: '#888', font: { size: 10 } } } }
+        }
+    });
+
+    // Monthly trend
+    new Chart(document.getElementById('chartMonthly'), {
+        type: 'line',
+        data: {
+            labels: data.monthly.map(m => m.month),
+            datasets: [{
+                label: 'Rendez-vous',
+                data: data.monthly.map(m => m.count),
+                borderColor: '#D4AF37',
+                backgroundColor: 'rgba(212,175,55,0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#888' } }, x: { ticks: { color: '#888' } } }
+        }
+    });
+
+    // Heatmap matrix
+    const days = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    const hours = [...new Set(data.matrix.map(m => m.time))].sort();
+    if (hours.length > 0) {
+        let maxCount = Math.max(...data.matrix.map(m => m.count), 1);
+        let table = '<table style="width:100%;font-size:0.75rem;border-collapse:collapse">';
+        table += '<tr><td></td>';
+        hours.forEach(h => table += '<td style="text-align:center;color:#888;padding:4px;font-size:0.65rem">'+h+'</td>');
+        table += '</tr>';
+        days.forEach((day, di) => {
+            table += '<tr><td style="color:#D4AF37;padding:6px;white-space:nowrap;font-weight:600">'+day+'</td>';
+            hours.forEach(h => {
+                let cell = data.matrix.find(m => m.day === di && m.time === h);
+                let cnt = cell ? cell.count : 0;
+                let intensity = cnt / maxCount;
+                let bg = cnt === 0 ? 'rgba(255,255,255,0.03)' :
+                    'rgba(212,175,55,' + (0.2 + intensity * 0.8).toFixed(2) + ')';
+                table += '<td style="text-align:center;padding:6px;border-radius:4px;background:'+bg+';color:'+(intensity > 0.5 ? '#000' : '#ccc')+'">'+cnt+'</td>';
+            });
+            table += '</tr>';
+        });
+        table += '</table>';
+        document.getElementById('heatmapMatrix').innerHTML = table;
+    } else {
+        document.getElementById('heatmapMatrix').innerHTML = '<p style="color:#888;text-align:center">Pas de données horaires</p>';
+    }
+
+    // Busiest days
+    let bd = '';
+    data.busiest_days.forEach((d, i) => {
+        bd += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+            '<span style="color:#D4AF37;font-weight:600">#'+(i+1)+' '+d.date+'</span>' +
+            '<span style="background:#D4AF37;color:#000;padding:2px 10px;border-radius:10px;font-weight:700;font-size:0.8rem">'+d.count+'</span></div>';
+    });
+    document.getElementById('busiestDays').innerHTML = bd || '<p style="color:#888">Aucune donnée</p>';
+});
+</script>
+{% endblock %}

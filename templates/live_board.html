@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %} - Tableau Atelier{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📋 Tableau de Bord Atelier</h3>
+    <div class="d-flex gap-2">
+        <span class="badge bg-secondary" id="lastRefresh"></span>
+        <button class="btn btn-sm btn-gold" onclick="loadBoard()">🔄 Actualiser</button>
+    </div>
+</div>
+
+<div class="row g-3" id="boardContainer">
+    <!-- Pending -->
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5 style="color:#D4AF37;border-bottom:2px solid #D4AF37;padding-bottom:10px">
+                ⏳ EN ATTENTE <span class="badge bg-warning text-dark" id="countPending">0</span>
+            </h5>
+            <div id="colPending" class="board-column"></div>
+        </div>
+    </div>
+    <!-- In Progress -->
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5 style="color:#3b82f6;border-bottom:2px solid #3b82f6;padding-bottom:10px">
+                🔧 EN COURS <span class="badge bg-primary" id="countProgress">0</span>
+            </h5>
+            <div id="colProgress" class="board-column"></div>
+        </div>
+    </div>
+    <!-- Completed -->
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5 style="color:#22c55e;border-bottom:2px solid #22c55e;padding-bottom:10px">
+                ✅ TERMINÉ <span class="badge bg-success" id="countCompleted">0</span>
+            </h5>
+            <div id="colCompleted" class="board-column"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.board-column { min-height: 200px; }
+.board-card {
+    background: var(--card-bg, #1a1a1a);
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+}
+.board-card:hover { border-color: #D4AF37; transform: translateY(-2px); }
+.board-card .bc-customer { font-weight: 700; color: #D4AF37; font-size: 0.9rem; }
+.board-card .bc-car { color: #888; font-size: 0.75rem; }
+.board-card .bc-service { margin-top: 6px; font-size: 0.82rem; }
+.board-card .bc-time { color: #D4AF37; font-size: 0.7rem; margin-top: 4px; }
+.board-card .bc-actions { margin-top: 8px; display: flex; gap: 5px; }
+.board-card .bc-actions button { font-size: 0.65rem; padding: 3px 8px; border-radius: 5px; border: none; cursor: pointer; }
+.btn-move-progress { background: #3b82f6; color: #fff; }
+.btn-move-done { background: #22c55e; color: #fff; }
+.btn-move-back { background: #f59e0b; color: #000; }
+</style>
+<script>
+function renderCard(item, col) {
+    let actions = '';
+    if (col === 'pending') {
+        actions = '<button class="btn-move-progress" onclick="moveCard('+item.id+',\'in_progress\')">▶ Commencer</button>';
+    } else if (col === 'in_progress') {
+        actions = '<button class="btn-move-done" onclick="moveCard('+item.id+',\'completed\')">✅ Terminer</button>' +
+                  '<button class="btn-move-back" onclick="moveCard('+item.id+',\'pending\')">⏪ Retour</button>';
+    }
+    return '<div class="board-card">' +
+        '<div class="bc-customer">'+item.customer+'</div>' +
+        '<div class="bc-car">'+item.car+' — '+item.plate+'</div>' +
+        '<div class="bc-service">'+item.service+'</div>' +
+        (item.tech ? '<div class="bc-time">👷 '+item.tech+'</div>' : '') +
+        (item.time ? '<div class="bc-time">🕐 '+item.time+' ('+item.duration+' min)</div>' : '') +
+        '<div class="bc-actions">'+actions+'</div>' +
+    '</div>';
+}
+function loadBoard() {
+    fetch('/api/live_board').then(r=>r.json()).then(data => {
+        let h = '';
+        data.pending.forEach(i => h += renderCard(i, 'pending'));
+        document.getElementById('colPending').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('countPending').textContent = data.pending.length;
+
+        h = '';
+        data.in_progress.forEach(i => h += renderCard(i, 'in_progress'));
+        document.getElementById('colProgress').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('countProgress').textContent = data.in_progress.length;
+
+        h = '';
+        data.completed.forEach(i => h += renderCard(i, 'completed'));
+        document.getElementById('colCompleted').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('countCompleted').textContent = data.completed.length;
+
+        document.getElementById('lastRefresh').textContent = 'Mis à jour: ' + new Date().toLocaleTimeString('fr-FR');
+    });
+}
+function moveCard(id, status) {
+    fetch('/api/update_board_status', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id, status: status})
+    }).then(r => r.json()).then(() => loadBoard());
+}
+loadBoard();
+setInterval(loadBoard, 15000);
+</script>
+{% endblock %}

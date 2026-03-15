@@ -90,6 +90,10 @@
             <a href="/edit_invoice/{{ inv[0] }}" class="action-edit" style="margin:0 3px">✎</a>
             <a href="/print_invoice/{{ inv[0] }}" style="background:#D4AF37;color:#0d0d0d;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none">🖨</a>
             <a href="/download_invoice/{{ inv[0] }}" style="background:#2d6a4f;color:white;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none">PDF</a>
+            <form method="POST" action="/generate_invoice_qr/{{ inv[0] }}" class="form-action-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn" style="background:#6B21A8;color:white;font-size:0.65rem;padding:3px 8px;border:none;border-radius:4px" title="Générer QR Code">QR</button>
+            </form>
             <form method="POST" action="/email_invoice/{{ inv[0] }}" class="form-action-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="btn" style="background:#1B6B93;color:white;font-size:0.65rem;padding:3px 8px;border:none;border-radius:4px" title="Envoyer Facture">📧</button>

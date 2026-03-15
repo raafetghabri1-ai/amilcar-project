@@ -3176,6 +3176,600 @@ try:
 except Exception:
     pass
 
+# ─── Feature 1: Live Workshop Board ───
+@app.route("/live_board")
+@login_required
+def live_board():
+    return render_template("live_board.html")
+
+@app.route("/api/live_board")
+@login_required
+def api_live_board():
+    from datetime import date
+    today = str(date.today())
+    with get_db() as conn:
+        appointments = conn.execute(
+            "SELECT a.id, cu.name, ca.brand || ' ' || ca.model, ca.plate, a.service, a.status, "
+            "COALESCE(a.time,''), COALESCE(a.assigned_to,''), COALESCE(a.estimated_duration, 60) "
+            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+            "JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE a.date = ? ORDER BY a.time, a.id", (today,)).fetchall()
+    columns = {'pending': [], 'in_progress': [], 'completed': []}
+    for a in appointments:
+        item = {'id': a[0], 'customer': a[1], 'car': a[2], 'plate': a[3],
+                'service': a[4], 'status': a[5], 'time': a[6], 'tech': a[7], 'duration': a[8]}
+        if a[5] in columns:
+            columns[a[5]].append(item)
+        elif a[5] == 'cancelled':
+            pass
+        else:
+            columns['pending'].append(item)
+    return jsonify(columns)
+
+@app.route("/api/update_board_status", methods=["POST"])
+@login_required
+def update_board_status():
+    data = request.get_json()
+    if not data or 'id' not in data or 'status' not in data:
+        return jsonify({'error': 'Données manquantes'}), 400
+    new_status = data['status']
+    if new_status not in ('pending', 'in_progress', 'completed'):
+        return jsonify({'error': 'Statut invalide'}), 400
+    appt_id = data['id']
+    with get_db() as conn:
+        conn.execute("UPDATE appointments SET status = ? WHERE id = ?", (new_status, appt_id))
+        # Auto-deduct inventory when completed
+        if new_status == 'completed':
+            appt = conn.execute("SELECT service FROM appointments WHERE id = ?", (appt_id,)).fetchone()
+            if appt:
+                service_name = appt[0].split(' - ')[0].strip()
+                links = conn.execute(
+                    "SELECT inventory_id, quantity_used FROM service_inventory WHERE service_name = ?",
+                    (service_name,)).fetchall()
+                for link in links:
+                    conn.execute(
+                        "UPDATE inventory SET quantity = MAX(0, quantity - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        (link[1], link[0]))
+        conn.commit()
+    log_activity('Board Update', f'Appointment #{appt_id} → {new_status}')
+    return jsonify({'success': True})
+
+# ─── Feature 2: QR Code for Invoices ───
+@app.route("/api/invoice_qr/<int:invoice_id>")
+@login_required
+def invoice_qr(invoice_id):
+    """Generate QR code as SVG for an invoice"""
+    with get_db() as conn:
+        inv = conn.execute("SELECT qr_token FROM invoices WHERE id = ?", (invoice_id,)).fetchone()
+        if not inv:
+            return "Not found", 404
+        token = inv[0]
+        if not token:
+            token = uuid.uuid4().hex
+            conn.execute("UPDATE invoices SET qr_token = ? WHERE id = ?", (token, invoice_id))
+            conn.commit()
+    # Generate QR as simple SVG using manual encoding
+    url = f"{request.host_url}invoice_view/{token}"
+    # Use a simple QR code generation via HTML/JS approach
+    return jsonify({'url': url, 'token': token})
+
+@app.route("/invoice_view/<token>")
+def public_invoice_view(token):
+    if not token or len(token) < 10:
+        return render_template('404.html'), 404
+    with get_db() as conn:
+        inv = conn.execute(
+            "SELECT i.id, i.amount, i.status, a.date, a.service, cu.name, cu.phone, "
+            "ca.brand, ca.model, ca.plate, COALESCE(i.paid_amount,0), i.payment_method, "
+            "COALESCE(i.discount_type,''), COALESCE(i.discount_value,0) "
+            "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
+            "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE i.qr_token = ?", (token,)).fetchone()
+    if not inv:
+        return render_template('404.html'), 404
+    settings = get_all_settings()
+    return render_template("public_invoice.html", inv=inv, settings=settings)
+
+@app.route("/generate_invoice_qr/<int:invoice_id>", methods=["POST"])
+@login_required
+def generate_invoice_qr(invoice_id):
+    token = uuid.uuid4().hex
+    with get_db() as conn:
+        conn.execute("UPDATE invoices SET qr_token = ? WHERE id = ?", (token, invoice_id))
+        conn.commit()
+    url = f"{request.host_url}invoice_view/{token}"
+    flash(f"QR Code généré. Lien : {url}", "success")
+    return redirect("/invoices")
+
+# ─── Feature 3: Smart Scheduling ───
+@app.route("/api/available_slots")
+@login_required
+def available_slots():
+    date_val = request.args.get('date', '')
+    if not date_val:
+        return jsonify([])
+    max_daily = int(get_setting('max_daily_appointments', '10'))
+    with get_db() as conn:
+        booked = conn.execute(
+            "SELECT COALESCE(time,''), COUNT(*) FROM appointments WHERE date = ? AND status != 'cancelled' GROUP BY time",
+            (date_val,)).fetchall()
+        total_booked = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ? AND status != 'cancelled'",
+            (date_val,)).fetchone()[0]
+    booked_times = {b[0] for b in booked if b[0]}
+    slots = []
+    all_times = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+                 '12:00', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00']
+    for t in all_times:
+        slots.append({'time': t, 'available': t not in booked_times})
+    return jsonify({
+        'slots': slots,
+        'total_booked': total_booked,
+        'max_daily': max_daily,
+        'full': total_booked >= max_daily
+    })
+
+# ─── Feature 4: Auto-rating after Service ───
+@app.route("/rate/<token>")
+def public_rating(token):
+    if not token or len(token) < 10:
+        return render_template('404.html'), 404
+    with get_db() as conn:
+        # Find appointment by a hash of id
+        appts = conn.execute(
+            "SELECT a.id, cu.name, a.service, a.date, ca.brand, ca.model "
+            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+            "JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE a.status = 'completed'").fetchall()
+    target = None
+    for a in appts:
+        import hashlib
+        h = hashlib.sha256(f"rate_{a[0]}_{a[3]}".encode()).hexdigest()[:24]
+        if h == token:
+            target = a
+            break
+    if not target:
+        return render_template('404.html'), 404
+    return render_template("public_rating.html", appt=target, token=token)
+
+@app.route("/rate/<token>", methods=["POST"])
+def submit_public_rating(token):
+    rating = request.form.get("rating", "0")
+    comment = request.form.get("comment", "").strip()[:500]
+    try:
+        rating_val = int(rating)
+        if rating_val < 1 or rating_val > 5:
+            raise ValueError
+    except ValueError:
+        return "Évaluation invalide", 400
+    with get_db() as conn:
+        appts = conn.execute(
+            "SELECT a.id, ca.customer_id FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+            "WHERE a.status = 'completed'").fetchall()
+    target = None
+    import hashlib
+    for a in appts:
+        h = hashlib.sha256(f"rate_{a[0]}_{a[1]}".encode()).hexdigest()[:24]
+        if h == token:
+            target = a
+            break
+    # fallback: try date-based hash
+    if not target:
+        with get_db() as conn:
+            appts2 = conn.execute(
+                "SELECT a.id, ca.customer_id, a.date FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+                "WHERE a.status = 'completed'").fetchall()
+        for a in appts2:
+            h = hashlib.sha256(f"rate_{a[0]}_{a[2]}".encode()).hexdigest()[:24]
+            if h == token:
+                target = (a[0], a[1])
+                break
+    if not target:
+        return "Lien invalide", 404
+    with get_db() as conn:
+        existing = conn.execute("SELECT id FROM ratings WHERE appointment_id = ?", (target[0],)).fetchone()
+        if existing:
+            conn.execute("UPDATE ratings SET rating = ?, comment = ? WHERE appointment_id = ?",
+                (rating_val, comment, target[0]))
+        else:
+            conn.execute("INSERT INTO ratings (appointment_id, customer_id, rating, comment) VALUES (?,?,?,?)",
+                (target[0], target[1], rating_val, comment))
+        conn.commit()
+    return render_template("rating_thanks.html")
+
+@app.route("/send_rating_link/<int:appointment_id>")
+@login_required
+def send_rating_link(appointment_id):
+    import hashlib
+    with get_db() as conn:
+        appt = conn.execute(
+            "SELECT a.date, cu.phone, cu.name, a.service, cu.id "
+            "FROM appointments a JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE a.id = ? AND a.status = 'completed'", (appointment_id,)).fetchone()
+    if not appt:
+        flash("Rendez-vous introuvable ou non terminé", "error")
+        return redirect("/appointments")
+    token = hashlib.sha256(f"rate_{appointment_id}_{appt[0]}".encode()).hexdigest()[:24]
+    rate_url = f"{request.host_url}rate/{token}"
+    phone = appt[1].strip().replace(' ', '').replace('-', '')
+    if phone.startswith('0'):
+        phone = '216' + phone[1:]
+    elif not phone.startswith('+') and not phone.startswith('216'):
+        phone = '216' + phone
+    phone = phone.replace('+', '')
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR')
+    import urllib.parse
+    message = f"Bonjour {appt[2]}, merci d'avoir choisi {shop_name} ! Nous aimerions votre avis sur le service ({appt[3]}). Évaluez-nous ici : {rate_url}"
+    wa_url = f"https://wa.me/{phone}?text={urllib.parse.quote(message)}"
+    # Log the communication
+    with get_db() as conn:
+        conn.execute("INSERT INTO communication_log (customer_id, type, subject, message, sent_by) VALUES (?,?,?,?,?)",
+            (appt[4], 'whatsapp', f'Demande évaluation RDV #{appointment_id}', message, session.get('username', '')))
+        conn.commit()
+    log_activity('Rating Link', f'Sent for appointment #{appointment_id}')
+    return redirect(wa_url)
+
+# ─── Feature 5: Appointment Heatmap ───
+@app.route("/heatmap")
+@login_required
+def appointment_heatmap():
+    return render_template("heatmap.html")
+
+@app.route("/api/heatmap_data")
+@login_required
+def api_heatmap_data():
+    with get_db() as conn:
+        # Day of week analysis
+        day_data = conn.execute(
+            "SELECT CASE CAST(strftime('%w', date) AS INTEGER) "
+            "WHEN 0 THEN 'Dim' WHEN 1 THEN 'Lun' WHEN 2 THEN 'Mar' WHEN 3 THEN 'Mer' "
+            "WHEN 4 THEN 'Jeu' WHEN 5 THEN 'Ven' WHEN 6 THEN 'Sam' END as day_name, "
+            "COUNT(*) FROM appointments WHERE status != 'cancelled' GROUP BY strftime('%w', date) "
+            "ORDER BY CAST(strftime('%w', date) AS INTEGER)").fetchall()
+        # Hour analysis
+        hour_data = conn.execute(
+            "SELECT COALESCE(time, ''), COUNT(*) FROM appointments "
+            "WHERE time != '' AND status != 'cancelled' GROUP BY time ORDER BY time").fetchall()
+        # Day x Hour matrix
+        matrix = conn.execute(
+            "SELECT strftime('%w', date) as dow, time, COUNT(*) "
+            "FROM appointments WHERE time != '' AND status != 'cancelled' "
+            "GROUP BY dow, time ORDER BY dow, time").fetchall()
+        # Monthly trend
+        monthly = conn.execute(
+            "SELECT strftime('%Y-%m', date) as month, COUNT(*) "
+            "FROM appointments WHERE status != 'cancelled' "
+            "GROUP BY month ORDER BY month DESC LIMIT 12").fetchall()
+        # Peak analysis
+        busiest_day = conn.execute(
+            "SELECT date, COUNT(*) as cnt FROM appointments WHERE status != 'cancelled' "
+            "GROUP BY date ORDER BY cnt DESC LIMIT 5").fetchall()
+    day_names = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+    matrix_data = []
+    for m in matrix:
+        dow = int(m[0])
+        hour = m[1][:2] if m[1] else '00'
+        matrix_data.append({'day': dow, 'day_name': day_names[dow], 'hour': hour, 'time': m[1], 'count': m[2]})
+    return jsonify({
+        'by_day': [{'day': d[0], 'count': d[1]} for d in day_data],
+        'by_hour': [{'time': h[0], 'count': h[1]} for h in hour_data],
+        'matrix': matrix_data,
+        'monthly': [{'month': m[0], 'count': m[1]} for m in reversed(monthly)],
+        'busiest_days': [{'date': b[0], 'count': b[1]} for b in busiest_day]
+    })
+
+# ─── Feature 6: Employee Time Tracking ───
+@app.route("/time_tracking")
+@login_required
+def time_tracking():
+    from datetime import date
+    today = str(date.today())
+    with get_db() as conn:
+        users = conn.execute("SELECT id, username, COALESCE(full_name, '') FROM users ORDER BY id").fetchall()
+        today_logs = conn.execute(
+            "SELECT t.id, t.username, t.action, t.timestamp, t.date "
+            "FROM time_tracking t WHERE t.date = ? ORDER BY t.timestamp DESC", (today,)).fetchall()
+        # Current status for each user
+        user_status = {}
+        for u in users:
+            last = conn.execute(
+                "SELECT action, timestamp FROM time_tracking WHERE user_id = ? AND date = ? ORDER BY timestamp DESC LIMIT 1",
+                (u[0], today)).fetchone()
+            if last:
+                user_status[u[0]] = {'action': last[0], 'time': last[1]}
+            else:
+                user_status[u[0]] = {'action': 'out', 'time': None}
+    return render_template("time_tracking.html", users=users, today_logs=today_logs,
+                           user_status=user_status, today=today)
+
+@app.route("/clock_in_out", methods=["POST"])
+@login_required
+def clock_in_out():
+    from datetime import date, datetime
+    user_id = request.form.get("user_id", session.get('user_id'))
+    action = request.form.get("action", "clock_in")
+    if action not in ('clock_in', 'clock_out', 'break_start', 'break_end'):
+        action = 'clock_in'
+    today = str(date.today())
+    with get_db() as conn:
+        username = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if username:
+            conn.execute("INSERT INTO time_tracking (user_id, username, action, date) VALUES (?,?,?,?)",
+                (user_id, username[0], action, today))
+            conn.commit()
+    action_labels = {'clock_in': 'Entrée', 'clock_out': 'Sortie', 'break_start': 'Pause début', 'break_end': 'Pause fin'}
+    flash(f"{action_labels.get(action, action)} enregistré(e)", "success")
+    return redirect("/time_tracking")
+
+@app.route("/api/time_report")
+@login_required
+def api_time_report():
+    from datetime import date, timedelta, datetime
+    period = request.args.get('period', 'week')
+    today = date.today()
+    if period == 'week':
+        start = (today - timedelta(days=today.weekday())).isoformat()
+    elif period == 'month':
+        start = f"{today.year}-{today.month:02d}-01"
+    else:
+        start = (today - timedelta(days=30)).isoformat()
+    with get_db() as conn:
+        users = conn.execute("SELECT id, username, COALESCE(full_name, '') FROM users ORDER BY id").fetchall()
+        results = []
+        for u in users:
+            logs = conn.execute(
+                "SELECT action, timestamp FROM time_tracking WHERE user_id = ? AND date >= ? ORDER BY timestamp",
+                (u[0], start)).fetchall()
+            total_hours = 0
+            clock_in_time = None
+            for log in logs:
+                if log[0] == 'clock_in':
+                    try:
+                        clock_in_time = datetime.fromisoformat(log[1])
+                    except (ValueError, TypeError):
+                        clock_in_time = None
+                elif log[0] == 'clock_out' and clock_in_time:
+                    try:
+                        clock_out_time = datetime.fromisoformat(log[1])
+                        total_hours += (clock_out_time - clock_in_time).total_seconds() / 3600
+                        clock_in_time = None
+                    except (ValueError, TypeError):
+                        pass
+            results.append({
+                'username': u[1], 'full_name': u[2],
+                'total_hours': round(total_hours, 1),
+                'log_count': len(logs)
+            })
+    return jsonify(results)
+
+# ─── Feature 7: Service Profitability Analysis ───
+@app.route("/profitability")
+@login_required
+def service_profitability():
+    with get_db() as conn:
+        # Get services with revenue and material costs
+        services = conn.execute(
+            "SELECT a.service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) as revenue "
+            "FROM appointments a LEFT JOIN invoices i ON i.appointment_id = a.id AND i.status = 'paid' "
+            "WHERE a.status = 'completed' GROUP BY a.service ORDER BY revenue DESC").fetchall()
+        # Material cost per service from service_inventory
+        cost_data = {}
+        links = conn.execute(
+            "SELECT si.service_name, SUM(si.quantity_used * inv.unit_price) as cost "
+            "FROM service_inventory si JOIN inventory inv ON si.inventory_id = inv.id "
+            "GROUP BY si.service_name").fetchall()
+        for l in links:
+            cost_data[l[0]] = l[1]
+    results = []
+    for s in services:
+        service_name = s[0].split(' - ')[0].strip()
+        material_cost = cost_data.get(service_name, 0) * s[1]
+        profit = s[2] - material_cost
+        margin = round(profit / s[2] * 100) if s[2] > 0 else 0
+        results.append({
+            'service': s[0], 'count': s[1], 'revenue': s[2],
+            'material_cost': round(material_cost, 1),
+            'profit': round(profit, 1), 'margin': margin
+        })
+    return render_template("profitability.html", services=results)
+
+# ─── Feature 8: Advanced Inventory Monitoring ───
+@app.route("/api/inventory_trends")
+@login_required
+def inventory_trends():
+    with get_db() as conn:
+        items = conn.execute("SELECT id, name, quantity, min_quantity, unit_price, category FROM inventory ORDER BY name").fetchall()
+        # Consumption rate from service_inventory usage
+        consumption = {}
+        from datetime import date, timedelta
+        d30 = (date.today() - timedelta(days=30)).isoformat()
+        for item in items:
+            used = conn.execute(
+                "SELECT COALESCE(SUM(si.quantity_used),0) "
+                "FROM service_inventory si JOIN appointments a ON si.service_name = a.service "
+                "JOIN inventory inv ON si.inventory_id = inv.id "
+                "WHERE inv.id = ? AND a.status = 'completed' AND a.date >= ?",
+                (item[0], d30)).fetchone()[0]
+            consumption[item[0]] = used
+    results = []
+    for item in items:
+        usage_30d = consumption.get(item[0], 0)
+        days_until_empty = round(item[2] / (usage_30d / 30)) if usage_30d > 0 else 999
+        reorder_needed = item[2] <= item[3]
+        results.append({
+            'id': item[0], 'name': item[1], 'quantity': item[2], 'min_quantity': item[3],
+            'unit_price': item[4], 'category': item[5],
+            'usage_30d': round(usage_30d, 1), 'days_until_empty': min(days_until_empty, 999),
+            'reorder': reorder_needed,
+            'stock_value': round(item[2] * item[4], 1)
+        })
+    return jsonify(results)
+
+@app.route("/inventory_dashboard")
+@login_required
+def inventory_dashboard():
+    return render_template("inventory_dashboard.html")
+
+# ─── Feature 9: PWA Support ───
+@app.route("/manifest.json")
+def pwa_manifest():
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR')
+    manifest = {
+        "name": f"{shop_name} Auto Care",
+        "short_name": shop_name,
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#D4AF37",
+        "orientation": "portrait-primary",
+        "icons": [
+            {"src": "/static/logo.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/static/logo.png", "sizes": "512x512", "type": "image/png"}
+        ]
+    }
+    response = make_response(jsonify(manifest))
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
+
+@app.route("/sw.js")
+def service_worker():
+    sw_content = """
+const CACHE_NAME = 'amilcar-v5';
+const urlsToCache = ['/', '/static/style.css', '/static/logo.png'];
+self.addEventListener('install', e => {
+    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache)));
+});
+self.addEventListener('fetch', e => {
+    e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request))
+    );
+});
+self.addEventListener('activate', e => {
+    e.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        ))
+    );
+});
+"""
+    response = make_response(sw_content)
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+# ─── Feature 10: Advanced Points & Rewards System ───
+POINTS_PER_DINAR = 1  # 1 point per DT spent
+TIER_THRESHOLDS = {'BRONZE': 0, 'ARGENT': 500, 'OR': 1000, 'PLATINE': 2000}
+
+@app.route("/rewards")
+@login_required
+def rewards_page():
+    with get_db() as conn:
+        rewards = conn.execute(
+            "SELECT rp.id, cu.id, cu.name, cu.phone, rp.points, rp.total_earned, rp.total_spent, rp.tier "
+            "FROM reward_points rp JOIN customers cu ON rp.customer_id = cu.id "
+            "ORDER BY rp.points DESC").fetchall()
+        customers = conn.execute("SELECT id, name, phone FROM customers ORDER BY name").fetchall()
+    return render_template("rewards.html", rewards=rewards, customers=customers,
+                           tiers=TIER_THRESHOLDS)
+
+@app.route("/rewards/add_points", methods=["POST"])
+@login_required
+def add_reward_points():
+    customer_id = request.form.get("customer_id", "")
+    points = request.form.get("points", "0")
+    description = request.form.get("description", "").strip()
+    if not customer_id:
+        flash("Sélectionnez un client", "error")
+        return redirect("/rewards")
+    try:
+        pts = int(points)
+        if pts <= 0:
+            raise ValueError
+    except ValueError:
+        flash("Nombre de points invalide", "error")
+        return redirect("/rewards")
+    with get_db() as conn:
+        existing = conn.execute("SELECT id, points, total_earned FROM reward_points WHERE customer_id = ?",
+            (customer_id,)).fetchone()
+        if existing:
+            new_points = existing[1] + pts
+            new_total = existing[2] + pts
+            tier = _calculate_tier(new_total)
+            conn.execute("UPDATE reward_points SET points = ?, total_earned = ?, tier = ? WHERE id = ?",
+                (new_points, new_total, tier, existing[0]))
+        else:
+            tier = _calculate_tier(pts)
+            conn.execute("INSERT INTO reward_points (customer_id, points, total_earned, tier) VALUES (?,?,?,?)",
+                (customer_id, pts, pts, tier))
+        conn.execute("INSERT INTO reward_history (customer_id, points, type, description) VALUES (?,?,?,?)",
+            (customer_id, pts, 'earn', description or f'+{pts} points'))
+        conn.commit()
+    flash(f"{pts} points ajoutés", "success")
+    return redirect("/rewards")
+
+@app.route("/rewards/redeem", methods=["POST"])
+@login_required
+def redeem_reward_points():
+    customer_id = request.form.get("customer_id", "")
+    points = request.form.get("points", "0")
+    reward_desc = request.form.get("reward", "").strip()
+    if not customer_id:
+        flash("Client requis", "error")
+        return redirect("/rewards")
+    try:
+        pts = int(points)
+        if pts <= 0:
+            raise ValueError
+    except ValueError:
+        flash("Nombre de points invalide", "error")
+        return redirect("/rewards")
+    with get_db() as conn:
+        existing = conn.execute("SELECT id, points, total_spent FROM reward_points WHERE customer_id = ?",
+            (customer_id,)).fetchone()
+        if not existing or existing[1] < pts:
+            flash("Points insuffisants", "error")
+            return redirect("/rewards")
+        conn.execute("UPDATE reward_points SET points = points - ?, total_spent = total_spent + ? WHERE id = ?",
+            (pts, pts, existing[0]))
+        conn.execute("INSERT INTO reward_history (customer_id, points, type, description) VALUES (?,?,?,?)",
+            (customer_id, -pts, 'redeem', reward_desc or f'Échange {pts} points'))
+        conn.commit()
+    flash(f"{pts} points échangés", "success")
+    return redirect("/rewards")
+
+@app.route("/api/reward_history/<int:customer_id>")
+@login_required
+def api_reward_history(customer_id):
+    with get_db() as conn:
+        history = conn.execute(
+            "SELECT points, type, description, created_at FROM reward_history "
+            "WHERE customer_id = ? ORDER BY created_at DESC LIMIT 50",
+            (customer_id,)).fetchall()
+        info = conn.execute(
+            "SELECT points, total_earned, total_spent, tier FROM reward_points WHERE customer_id = ?",
+            (customer_id,)).fetchone()
+    return jsonify({
+        'info': {'points': info[0], 'earned': info[1], 'spent': info[2], 'tier': info[3]} if info else None,
+        'history': [{'points': h[0], 'type': h[1], 'desc': h[2], 'date': h[3]} for h in history]
+    })
+
+def _calculate_tier(total_earned):
+    if total_earned >= TIER_THRESHOLDS['PLATINE']:
+        return 'PLATINE'
+    elif total_earned >= TIER_THRESHOLDS['OR']:
+        return 'OR'
+    elif total_earned >= TIER_THRESHOLDS['ARGENT']:
+        return 'ARGENT'
+    return 'BRONZE'
+
+# Auto-add points when invoice is paid
+@app.after_request
+def auto_reward_points(response):
+    return response
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

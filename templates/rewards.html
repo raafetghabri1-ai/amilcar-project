@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %} - Points & Récompenses{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🎁 Programme de Fidélité & Récompenses</h3>
+</div>
+
+<!-- Add Points / Redeem -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#22c55e;margin-bottom:15px">➕ Ajouter des Points</h6>
+            <form method="POST" action="/rewards/add_points">
+                <select name="customer_id" class="form-select form-select-sm mb-2" style="background:#1a1a1a;color:#ccc;border-color:#333" required>
+                    <option value="">-- Sélectionner un client --</option>
+                    {% for c in customers %}
+                    <option value="{{ c[0] }}">{{ c[1] }} ({{ c[2] }})</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="points" class="form-control form-control-sm mb-2" placeholder="Nombre de points" min="1" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <input type="text" name="description" class="form-control form-control-sm mb-2" placeholder="Description (optionnel)" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <button class="btn btn-sm btn-success w-100">✅ Ajouter</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#C41E3A;margin-bottom:15px">🎁 Échanger des Points</h6>
+            <form method="POST" action="/rewards/redeem">
+                <select name="customer_id" class="form-select form-select-sm mb-2" style="background:#1a1a1a;color:#ccc;border-color:#333" required>
+                    <option value="">-- Sélectionner un client --</option>
+                    {% for c in customers %}
+                    <option value="{{ c[0] }}">{{ c[1] }} ({{ c[2] }})</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="points" class="form-control form-control-sm mb-2" placeholder="Points à échanger" min="1" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <input type="text" name="reward" class="form-control form-control-sm mb-2" placeholder="Récompense (ex: Lavage gratuit)" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <button class="btn btn-sm btn-danger w-100">🎁 Échanger</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tier Legend -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card p-3 d-flex flex-row justify-content-center gap-4 flex-wrap">
+            <span style="color:#cd7f32;font-weight:700">🥉 BRONZE (0+)</span>
+            <span style="color:#c0c0c0;font-weight:700">🥈 ARGENT (500+)</span>
+            <span style="color:#D4AF37;font-weight:700">🥇 OR (1000+)</span>
+            <span style="color:#E5E4E2;font-weight:700">💎 PLATINE (2000+)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Leaderboard -->
+<div class="card p-3">
+    <h6 style="color:#D4AF37;margin-bottom:15px">🏆 Classement des Clients</h6>
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Client</th>
+                    <th>Téléphone</th>
+                    <th class="text-end">Points Actuels</th>
+                    <th class="text-end">Total Gagné</th>
+                    <th class="text-end">Total Dépensé</th>
+                    <th>Niveau</th>
+                    <th>Historique</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rewards %}
+                <tr>
+                    <td style="color:#D4AF37;font-weight:700">{{ loop.index }}</td>
+                    <td><a href="/customer/{{ r[1] }}" style="color:#D4AF37">{{ r[2] }}</a></td>
+                    <td style="color:#888">{{ r[3] }}</td>
+                    <td class="text-end" style="font-weight:700;color:#22c55e">{{ r[4] }}</td>
+                    <td class="text-end" style="color:#888">{{ r[5] }}</td>
+                    <td class="text-end" style="color:#888">{{ r[6] }}</td>
+                    <td>
+                        {% if r[7] == 'PLATINE' %}<span class="badge" style="background:#E5E4E2;color:#000">💎 PLATINE</span>
+                        {% elif r[7] == 'OR' %}<span class="badge" style="background:#D4AF37;color:#000">🥇 OR</span>
+                        {% elif r[7] == 'ARGENT' %}<span class="badge" style="background:#c0c0c0;color:#000">🥈 ARGENT</span>
+                        {% else %}<span class="badge" style="background:#cd7f32;color:#fff">🥉 BRONZE</span>{% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="showHistory({{ r[1] }}, '{{ r[2] }}')" style="font-size:0.65rem">📋</button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not rewards %}
+                <tr><td colspan="8" style="text-align:center;color:#666">Aucun client inscrit au programme</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background:#1a1a1a;border:1px solid #333">
+            <div class="modal-header" style="border-color:#333">
+                <h5 class="modal-title" style="color:#D4AF37" id="historyTitle">Historique</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="historyBody">
+                <p style="color:#888;text-align:center">Chargement...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function showHistory(customerId, name) {
+    document.getElementById('historyTitle').textContent = 'Historique de ' + name;
+    document.getElementById('historyBody').innerHTML = '<p style="color:#888;text-align:center">Chargement...</p>';
+    new bootstrap.Modal(document.getElementById('historyModal')).show();
+
+    fetch('/api/reward_history/' + customerId).then(r => r.json()).then(data => {
+        let html = '';
+        if (data.info) {
+            html += '<div class="row g-2 mb-3">' +
+                '<div class="col-4"><div class="stat-card"><h2 style="font-size:1.5rem">'+data.info.points+'</h2><p>Points</p></div></div>' +
+                '<div class="col-4"><div class="stat-card"><h2 style="font-size:1.5rem;color:#22c55e;-webkit-text-fill-color:#22c55e">'+data.info.earned+'</h2><p>Gagné</p></div></div>' +
+                '<div class="col-4"><div class="stat-card"><h2 style="font-size:1.5rem;color:#C41E3A;-webkit-text-fill-color:#C41E3A">'+data.info.spent+'</h2><p>Dépensé</p></div></div></div>';
+        }
+        if (data.history.length) {
+            html += '<table class="table table-dark table-sm"><thead><tr><th>Date</th><th>Type</th><th>Points</th><th>Description</th></tr></thead><tbody>';
+            data.history.forEach(h => {
+                let badge = h.type === 'earn' ? '<span class="badge bg-success">+Gagné</span>' : '<span class="badge bg-danger">-Échangé</span>';
+                html += '<tr><td style="color:#888;font-size:0.8rem">'+h.date+'</td><td>'+badge+'</td>' +
+                    '<td style="color:'+(h.points > 0 ? '#22c55e' : '#C41E3A')+';font-weight:700">'+h.points+'</td>' +
+                    '<td>'+h.desc+'</td></tr>';
+            });
+            html += '</tbody></table>';
+        } else {
+            html += '<p style="color:#888;text-align:center">Aucun historique</p>';
+        }
+        document.getElementById('historyBody').innerHTML = html;
+    });
+}
+</script>
+{% endblock %}

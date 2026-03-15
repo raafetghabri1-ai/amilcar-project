@@ -181,6 +181,42 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS time_tracking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            action TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            date TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reward_points (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL UNIQUE,
+            points INTEGER DEFAULT 0,
+            total_earned INTEGER DEFAULT 0,
+            total_spent INTEGER DEFAULT 0,
+            tier TEXT DEFAULT 'BRONZE',
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reward_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            points INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -198,6 +234,8 @@ def create_tables():
         ("ALTER TABLE invoices ADD COLUMN discount_type TEXT DEFAULT ''", None),
         ("ALTER TABLE invoices ADD COLUMN discount_value REAL DEFAULT 0", None),
         ("ALTER TABLE customers ADD COLUMN portal_token TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN estimated_duration INTEGER DEFAULT 60", None),
+        ("ALTER TABLE invoices ADD COLUMN qr_token TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -216,6 +254,9 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_cars_plate ON cars(plate)",
         "CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)",
         "CREATE INDEX IF NOT EXISTS idx_comm_log_customer ON communication_log(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_time_tracking_user ON time_tracking(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_time_tracking_date ON time_tracking(date)",
+        "CREATE INDEX IF NOT EXISTS idx_reward_points_customer ON reward_points(customer_id)",
     ]
     for idx in indexes:
         try:
