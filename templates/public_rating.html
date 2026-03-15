@@ -4,48 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Évaluez Votre Expérience - AMILCAR</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background: #0a0a0a; color: #ccc; font-family: 'Inter', sans-serif; }
-        .rating-container { max-width: 500px; margin: 40px auto; padding: 30px; background: #1a1a1a; border-radius: 15px; border: 1px solid rgba(212,175,55,0.2); }
-        .logo-text { color: #D4AF37; font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 5px; }
-        .sub-text { color: #888; font-size: 0.7rem; text-align: center; letter-spacing: 3px; margin-bottom: 25px; }
-        .star-rating { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f4f6f9; color: #333; font-family: 'Inter', sans-serif; min-height: 100vh; padding: 20px; }
+        .top-bar { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 20px 0; text-align: center; border-radius: 15px 15px 0 0; }
+        .top-bar .logo { color: #D4AF37; font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; }
+        .top-bar .tagline { color: rgba(255,255,255,0.5); font-size: 0.6rem; letter-spacing: 4px; margin-top: 3px; }
+        .rating-container { max-width: 500px; margin: 30px auto; background: #fff; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); overflow: hidden; }
+        .rating-body { padding: 30px; }
+        .rating-body h5 { text-align: center; color: #1a1a2e; font-weight: 700; margin-bottom: 20px; font-size: 1.1rem; }
+        .star-rating { display: flex; justify-content: center; gap: 8px; margin: 25px 0; }
         .star-rating input { display: none; }
-        .star-rating label { font-size: 2.5rem; cursor: pointer; transition: 0.2s; color: #333; }
-        .star-rating label:hover, .star-rating label:hover ~ label { color: #D4AF37; }
-        .star-rating input:checked ~ label { color: #D4AF37; }
-        .info-line { color: #888; font-size: 0.85rem; text-align: center; margin-bottom: 5px; }
-        .info-highlight { color: #D4AF37; font-weight: 600; }
-        textarea { background: #111; border: 1px solid #333; color: #ccc; border-radius: 10px; }
-        textarea:focus { border-color: #D4AF37; box-shadow: 0 0 0 2px rgba(212,175,55,0.2); background: #111; color: #ccc; }
-        .btn-submit { background: linear-gradient(135deg, #D4AF37, #B8960C); color: #000; font-weight: 700; border: none; border-radius: 10px; padding: 12px; width: 100%; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(212,175,55,0.3); }
+        .star-rating label { font-size: 2.8rem; cursor: pointer; transition: all 0.2s ease; color: #ddd; }
+        .star-rating label:hover, .star-rating label:hover ~ label { color: #f59e0b; transform: scale(1.15); }
+        .star-rating input:checked ~ label { color: #f59e0b; }
+        .info-line { color: #666; font-size: 0.85rem; text-align: center; margin-bottom: 6px; }
+        .info-highlight { color: #1a1a2e; font-weight: 700; }
+        .info-box { background: #f8f9fc; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+        textarea { background: #f8f9fc; border: 1px solid #e0e0e0; color: #333; border-radius: 10px; width: 100%; padding: 12px; font-family: 'Inter', sans-serif; font-size: 0.9rem; resize: vertical; }
+        textarea:focus { border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.15); outline: none; }
+        .btn-submit { background: linear-gradient(135deg, #D4AF37, #B8960C); color: #fff; font-weight: 700; border: none; border-radius: 10px; padding: 14px; width: 100%; font-size: 1rem; cursor: pointer; margin-top: 10px; transition: all 0.3s; letter-spacing: 0.5px; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(212,175,55,0.35); }
     </style>
 </head>
 <body>
     <div class="rating-container">
-        <div class="logo-text">AMILCAR</div>
-        <div class="sub-text">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
-        <hr style="border-color:#333">
-        <h5 style="text-align:center;color:#D4AF37;margin-bottom:15px">⭐ Évaluez Votre Expérience</h5>
-        <p class="info-line">Client: <span class="info-highlight">{{ appt[1] }}</span></p>
-        <p class="info-line">Service: <span class="info-highlight">{{ appt[2] }}</span></p>
-        <p class="info-line">Date: <span class="info-highlight">{{ appt[3] }}</span></p>
-        <p class="info-line">Véhicule: <span class="info-highlight">{{ appt[4] }} {{ appt[5] }}</span></p>
+        <div class="top-bar">
+            <div class="logo">AMILCAR</div>
+            <div class="tagline">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
+        </div>
+        <div class="rating-body">
+            <h5>⭐ Évaluez Votre Expérience</h5>
+            <div class="info-box">
+                <p class="info-line">Client: <span class="info-highlight">{{ appt[1] }}</span></p>
+                <p class="info-line">Service: <span class="info-highlight">{{ appt[2] }}</span></p>
+                <p class="info-line">Date: <span class="info-highlight">{{ appt[3] }}</span></p>
+                <p class="info-line" style="margin-bottom:0">Véhicule: <span class="info-highlight">{{ appt[4] }} {{ appt[5] }}</span></p>
+            </div>
 
-        <form method="POST" action="/rate/{{ token }}">
-            <div class="star-rating" style="direction:rtl">
-                {% for i in range(5, 0, -1) %}
-                <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" {% if i == 5 %}required{% endif %}>
-                <label for="star{{ i }}">★</label>
-                {% endfor %}
-            </div>
-            <div class="mb-3">
-                <textarea name="comment" class="form-control" rows="3" placeholder="Votre commentaire (optionnel)..." maxlength="500"></textarea>
-            </div>
-            <button type="submit" class="btn-submit">Envoyer l'Évaluation</button>
-        </form>
+            <form method="POST" action="/rate/{{ token }}">
+                <div class="star-rating" style="direction:rtl">
+                    {% for i in range(5, 0, -1) %}
+                    <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" {% if i == 5 %}required{% endif %}>
+                    <label for="star{{ i }}">★</label>
+                    {% endfor %}
+                </div>
+                <div style="margin-bottom:15px">
+                    <textarea name="comment" rows="3" placeholder="Votre commentaire (optionnel)..." maxlength="500"></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Envoyer l'Évaluation</button>
+            </form>
+        </div>
     </div>
 </body>
 </html>

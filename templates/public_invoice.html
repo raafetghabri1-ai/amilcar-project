@@ -4,55 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facture - AMILCAR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background: #0a0a0a; color: #ccc; font-family: 'Inter', sans-serif; }
-        .invoice-container { max-width: 600px; margin: 40px auto; padding: 30px; background: #1a1a1a; border-radius: 15px; border: 1px solid rgba(212,175,55,0.2); }
-        .logo-text { color: #D4AF37; font-size: 1.8rem; font-weight: 800; text-align: center; }
-        .sub-text { color: #888; font-size: 0.7rem; text-align: center; letter-spacing: 3px; margin-bottom: 25px; }
-        .inv-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #f4f6f9; color: #333; font-family: 'Inter', sans-serif; min-height: 100vh; padding: 20px; }
+        .top-bar { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 20px 0; text-align: center; border-radius: 15px 15px 0 0; }
+        .top-bar .logo { color: #D4AF37; font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; }
+        .top-bar .tagline { color: rgba(255,255,255,0.5); font-size: 0.6rem; letter-spacing: 4px; margin-top: 3px; }
+        .invoice-container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); overflow: hidden; }
+        .invoice-body { padding: 30px; }
+        .invoice-title { text-align: center; margin-bottom: 25px; }
+        .invoice-title h4 { color: #1a1a2e; font-weight: 700; font-size: 1.2rem; }
+        .inv-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
         .inv-label { color: #888; font-size: 0.85rem; }
-        .inv-value { color: #ccc; font-weight: 600; }
-        .inv-total { color: #D4AF37; font-size: 1.3rem; font-weight: 800; }
-        .status-badge { padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
-        .status-paid { background: rgba(34,197,94,0.2); color: #22c55e; }
-        .status-unpaid { background: rgba(196,30,58,0.2); color: #C41E3A; }
+        .inv-value { color: #333; font-weight: 600; font-size: 0.9rem; }
+        .inv-total { color: #1a1a2e; font-size: 1.4rem; font-weight: 800; }
+        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+        .status-paid { background: #e8f5e9; color: #2e7d32; }
+        .status-unpaid { background: #fce4ec; color: #c62828; }
+        .total-row { border-top: 2px solid #D4AF37; margin-top: 15px; padding-top: 18px; border-bottom: none; }
+        .footer { text-align: center; padding: 20px 30px 25px; background: #fafafa; border-top: 1px solid #f0f0f0; }
+        .footer p { color: #aaa; font-size: 0.72rem; margin: 2px 0; }
+        .discount-val { color: #c62828; }
+        .paid-val { color: #2e7d32; }
     </style>
 </head>
 <body>
     <div class="invoice-container">
-        <div class="logo-text">AMILCAR</div>
-        <div class="sub-text">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
-        <hr style="border-color:#333">
-
-        <div style="text-align:center;margin-bottom:20px">
-            <h5 style="color:#D4AF37">Facture #{{ inv[0] }}</h5>
-            <span class="status-badge {% if inv[2] == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
-                {% if inv[2] == 'paid' %}✅ PAYÉE{% else %}⏳ EN ATTENTE{% endif %}
-            </span>
+        <div class="top-bar">
+            <div class="logo">AMILCAR</div>
+            <div class="tagline">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
         </div>
+        <div class="invoice-body">
+            <div class="invoice-title">
+                <h4>Facture #{{ inv[0] }}</h4>
+                <span class="status-badge {% if inv[2] == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
+                    {% if inv[2] == 'paid' %}✅ PAYÉE{% else %}⏳ EN ATTENTE{% endif %}
+                </span>
+            </div>
 
-        <div class="inv-row"><span class="inv-label">Client</span><span class="inv-value">{{ inv[5] }}</span></div>
-        <div class="inv-row"><span class="inv-label">Téléphone</span><span class="inv-value">{{ inv[6] }}</span></div>
-        <div class="inv-row"><span class="inv-label">Véhicule</span><span class="inv-value">{{ inv[7] }} {{ inv[8] }} — {{ inv[9] }}</span></div>
-        <div class="inv-row"><span class="inv-label">Service</span><span class="inv-value">{{ inv[4] }}</span></div>
-        <div class="inv-row"><span class="inv-label">Date</span><span class="inv-value">{{ inv[3] }}</span></div>
-        <div class="inv-row"><span class="inv-label">Mode de paiement</span><span class="inv-value">{{ inv[11] or '—' }}</span></div>
+            <div class="inv-row"><span class="inv-label">Client</span><span class="inv-value">{{ inv[5] }}</span></div>
+            <div class="inv-row"><span class="inv-label">Téléphone</span><span class="inv-value">{{ inv[6] }}</span></div>
+            <div class="inv-row"><span class="inv-label">Véhicule</span><span class="inv-value">{{ inv[7] }} {{ inv[8] }} — {{ inv[9] }}</span></div>
+            <div class="inv-row"><span class="inv-label">Service</span><span class="inv-value">{{ inv[4] }}</span></div>
+            <div class="inv-row"><span class="inv-label">Date</span><span class="inv-value">{{ inv[3] }}</span></div>
+            <div class="inv-row"><span class="inv-label">Mode de paiement</span><span class="inv-value">{{ inv[11] or '—' }}</span></div>
 
-        {% if inv[12] and inv[13] > 0 %}
-        <div class="inv-row"><span class="inv-label">Remise ({{ inv[12] }})</span><span class="inv-value" style="color:#C41E3A">-{{ inv[13] }}</span></div>
-        {% endif %}
+            {% if inv[12] and inv[13] > 0 %}
+            <div class="inv-row"><span class="inv-label">Remise ({{ inv[12] }})</span><span class="inv-value discount-val">-{{ inv[13] }}</span></div>
+            {% endif %}
 
-        <div class="inv-row" style="border-top:2px solid #D4AF37;margin-top:10px;padding-top:15px">
-            <span class="inv-label" style="font-size:1rem">Montant Total</span>
-            <span class="inv-total">{{ inv[1] }} DT</span>
+            <div class="inv-row total-row">
+                <span class="inv-label" style="font-size:1rem;font-weight:600">Montant Total</span>
+                <span class="inv-total">{{ inv[1] }} DT</span>
+            </div>
+
+            {% if inv[10] > 0 and inv[2] == 'paid' %}
+            <div class="inv-row"><span class="inv-label">Montant Payé</span><span class="inv-value paid-val">{{ inv[10] }} DT</span></div>
+            {% endif %}
         </div>
-
-        {% if inv[10] > 0 and inv[2] == 'paid' %}
-        <div class="inv-row"><span class="inv-label">Montant Payé</span><span class="inv-value" style="color:#22c55e">{{ inv[10] }} DT</span></div>
-        {% endif %}
-
-        <div style="text-align:center;margin-top:30px;color:#888;font-size:0.75rem">
-            <p>{{ settings.get('shop_name', 'AMILCAR') }}</p>
+        <div class="footer">
+            <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:6px">{{ settings.get('shop_name', 'AMILCAR') }}</p>
             <p>{{ settings.get('shop_address', '') }}</p>
             <p>{{ settings.get('shop_phone', '') }}</p>
         </div>
