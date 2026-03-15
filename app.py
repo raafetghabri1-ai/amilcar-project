@@ -5,6 +5,7 @@ from models.report import total_customers, total_appointments, total_revenue
 from models.appointment import get_appointments
 from models.invoice import get_all_invoices
 from database.db import create_tables, get_db
+import sqlite3
 import os
 import io
 import uuid
@@ -40,6 +41,34 @@ create_tables()
 _login_attempts = {}  # ip -> (count, first_attempt_time)
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 300  # 5 minutes
+
+# ─── API Rate Limiting ───
+_api_rate = {}  # ip -> (count, window_start)
+API_RATE_LIMIT = 60  # requests per minute
+API_RATE_WINDOW = 60  # seconds
+
+def check_api_rate_limit():
+    """Returns True if rate limit exceeded."""
+    ip = request.remote_addr
+    now = time_module.time()
+    if ip in _api_rate:
+        count, window_start = _api_rate[ip]
+        if now - window_start > API_RATE_WINDOW:
+            _api_rate[ip] = (1, now)
+            return False
+        if count >= API_RATE_LIMIT:
+            return True
+        _api_rate[ip] = (count + 1, window_start)
+    else:
+        _api_rate[ip] = (1, now)
+    return False
+
+@app.before_request
+def api_rate_limiter():
+    """Rate limit API endpoints."""
+    if request.path.startswith('/api/'):
+        if check_api_rate_limit():
+            return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -4683,7 +4712,7 @@ def add_maintenance_plan():
         try:
             d = date.fromisoformat(last_done_date)
             next_date = (d + relativedelta(months=interval_months)).isoformat()
-        except:
+        except (ValueError, TypeError, AttributeError):
             pass
     next_km = last_done_km + interval_km if interval_km > 0 else 0
     with get_db() as conn:
@@ -4710,7 +4739,7 @@ def mark_maintenance_done(plan_id):
                 try:
                     from dateutil.relativedelta import relativedelta
                     next_date = (date.today() + relativedelta(months=plan[4])).isoformat()
-                except:
+                except (ValueError, TypeError, AttributeError):
                     pass
             next_km = current_km + plan[3] if plan[3] > 0 else 0
             conn.execute("UPDATE maintenance_plans SET last_done_date=?, last_done_km=?, next_due_date=?, next_due_km=? WHERE id=?",
@@ -4765,7 +4794,7 @@ def add_payment(invoice_id):
             conn.execute("UPDATE invoices SET status='partial', paid_amount=? WHERE id=?", (total_paid, invoice_id))
         try:
             conn.execute("UPDATE invoices SET total_paid=?, remaining=? WHERE id=?", (total_paid, max(0, remaining), invoice_id))
-        except:
+        except (ValueError, TypeError, AttributeError):
             pass
         conn.commit()
     flash(f"Paiement de {amount:.2f} DH enregistré", "success")
@@ -7601,7 +7630,7 @@ def churn_prediction():
                 continue
             try:
                 last_dt = date.fromisoformat(last_visit)
-            except:
+            except (ValueError, TypeError, AttributeError):
                 continue
             days_since = (today - last_dt).days
             visits = cu['visit_count']
@@ -7616,7 +7645,7 @@ def churn_prediction():
                         d1 = date.fromisoformat(all_dates[j-1]['date'])
                         d2 = date.fromisoformat(all_dates[j]['date'])
                         intervals.append((d2-d1).days)
-                    except:
+                    except (ValueError, TypeError, AttributeError):
                         pass
                 avg_interval = sum(intervals)/len(intervals) if intervals else 90
             else:
@@ -7959,7 +7988,7 @@ def log_audit(action, entity_type='', entity_id=0, old_value='', new_value=''):
                 (user_id, username, action, entity_type, entity_id, 
                  str(old_value)[:500], str(new_value)[:500], ip))
             conn.commit()
-    except:
+    except (ValueError, TypeError, AttributeError, sqlite3.Error):
         pass
 
 @app.route("/audit_trail")
@@ -8797,10 +8826,16 @@ def smart_reminders_view():
         conn.commit()
         # Fetch all reminders
         status_filter = request.args.get("status", "")
-        where = f"WHERE status='{status_filter}'" if status_filter else ""
+        if status_filter and status_filter in ('pending', 'sent', 'dismissed'):
+            where = "WHERE sr.status=?"
+            where_params = [status_filter]
+        else:
+            where = ""
+            where_params = []
+            status_filter = ""
         reminders = conn.execute(f"""SELECT sr.*, cu.name as customer_name, cu.phone, c.plate, c.brand, c.model
             FROM smart_reminders sr JOIN customers cu ON sr.customer_id=cu.id LEFT JOIN cars c ON sr.car_id=c.id
-            {where} ORDER BY sr.due_date ASC""").fetchall()
+            {where} ORDER BY sr.due_date ASC""", where_params).fetchall()
         stats = {
             'pending': conn.execute("SELECT COUNT(*) FROM smart_reminders WHERE status='pending'").fetchone()[0],
             'sent': conn.execute("SELECT COUNT(*) FROM smart_reminders WHERE status='sent'").fetchone()[0],
@@ -10303,7 +10338,7 @@ def service_cost_calculator():
             rate_setting = conn.execute("SELECT value FROM settings WHERE key='hourly_labor_rate'").fetchone()
             if rate_setting:
                 hourly_rate = float(rate_setting['value'])
-        except:
+        except (ValueError, TypeError, AttributeError):
             pass
     return render_template('service_cost_calculator.html', services=services,
                           hourly_rate=hourly_rate)
@@ -10343,7 +10378,7 @@ def appointment_waitlist():
             ms = conn.execute("SELECT value FROM settings WHERE key='max_daily_appointments'").fetchone()
             if ms:
                 max_daily = int(ms['value'])
-        except:
+        except (ValueError, TypeError, AttributeError):
             pass
         available_slots = max(0, max_daily - today_count)
     return render_template('appointment_waitlist.html', waitlist=waitlist,
@@ -10451,7 +10486,7 @@ def attendance_record():
                     late_min = int((ci - start).total_seconds() / 60)
                     if late_min > 15:
                         status = 'late'
-            except:
+            except (ValueError, TypeError, AttributeError):
                 pass
         # Calculate overtime
         overtime = 0
@@ -10461,7 +10496,7 @@ def attendance_record():
                 end = datetime.strptime('17:00', '%H:%M')
                 if co > end:
                     overtime = int((co - end).total_seconds() / 60)
-            except:
+            except (ValueError, TypeError, AttributeError):
                 pass
 
         existing = conn.execute("SELECT id FROM employee_attendance WHERE employee_id=? AND date=?",
