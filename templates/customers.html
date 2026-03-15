@@ -2,61 +2,63 @@
 {% block title %} - Clients{% endblock %}
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <p class="page-title mb-0">LISTE DES CLIENTS</p>
+        <div>
+            <p class="page-title mb-0">Clients</p>
+            <p class="page-subtitle mb-0">Gestion de votre base clients</p>
+        </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="/export/customers_excel" class="btn" style="border:1px solid #D4AF37;color:#D4AF37;font-size:0.7rem;padding:6px 12px">⤓ EXPORT</a>
-            <button type="button" class="btn" style="border:1px solid #2d6a4f;color:#2d6a4f;font-size:0.7rem;padding:6px 12px" onclick="document.getElementById('importModal').style.display='block'">⤒ IMPORT</button>
-            <a href="/add_customer" class="btn btn-gold">+ NOUVEAU CLIENT</a>
-            <a href="/add_car" class="btn btn-gold">+ AJOUTER VOITURE</a>
+            <a href="/export/customers_excel" class="btn-ghost btn-sm">↓ Export</a>
+            <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('importModal').style.display='flex'">↑ Import</button>
+            <a href="/add_car" class="btn-outline-gold btn-sm">+ Voiture</a>
+            <a href="/add_customer" class="btn-gold btn-sm">+ Nouveau Client</a>
         </div>
     </div>
     <form method="GET" action="/customers" class="mb-4">
         <div class="input-group">
-            <input type="text" name="q" class="form-control" placeholder="Rechercher par nom ou téléphone..." value="{{ search }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
-            <button type="submit" class="btn btn-gold">RECHERCHER</button>
+            <input type="text" name="q" class="form-control" placeholder="Rechercher par nom ou téléphone..." value="{{ search }}">
+            <button type="submit" class="btn-gold" style="border-radius:0 var(--radius-sm) var(--radius-sm) 0">Rechercher</button>
         </div>
     </form>
+    <div class="table-responsive">
     <table class="table">
-        <thead><tr><th>#</th><th>NOM</th><th>TÉLÉPHONE</th><th>EMAIL</th><th>ACTION</th></tr></thead>
+        <thead><tr><th>#</th><th>Nom</th><th>Téléphone</th><th>Email</th><th>Action</th></tr></thead>
         <tbody>
         {% for customer in customers %}
         <tr>
-            <td>{{ customer[0] }}</td>
-            <td><a href="/customer/{{ customer[0] }}" style="color:#D4AF37;text-decoration:none">{{ customer[1] }}</a></td>
+            <td style="color:var(--text-muted)">{{ customer[0] }}</td>
+            <td><a href="/customer/{{ customer[0] }}" style="color:var(--gold);text-decoration:none;font-weight:600">{{ customer[1] }}</a></td>
             <td>{{ customer[2] }}</td>
-            <td style="font-size:0.8rem;color:#888">{{ customer[4] if customer|length > 4 and customer[4] else '—' }}</td>
+            <td style="color:var(--text-muted);font-size:0.78rem">{{ customer[4] if customer|length > 4 and customer[4] else '—' }}</td>
             <td>
-                <form method="POST" action="/delete_customer/{{ customer[0] }}" class="form-action-inline" onsubmit="return confirm('SUPPRIMER ce client et toutes les données associées ?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn-action-delete">✗ SUPPRIMER</button>
+                <form method="POST" action="/delete_customer/{{ customer[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer ce client et toutes les données associées ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-action-delete">✕ Supprimer</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
     {% if total_pages > 1 %}
-    <nav class="d-flex justify-content-center mt-4">
-        <ul class="pagination" style="gap:5px">
-            {% for p in range(1, total_pages + 1) %}
-            <li>
-                <a href="/customers?q={{ search }}&page={{ p }}" class="btn {% if p == page %}btn-gold{% endif %}" style="font-size:0.75rem;padding:5px 12px;{% if p != page %}color:#888;border:1px solid #333;{% endif %}">{{ p }}</a>
-            </li>
-            {% endfor %}
-        </ul>
+    <nav class="d-flex justify-content-center mt-4" style="gap:6px">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="/customers?q={{ search }}&page={{ p }}" class="btn-page {% if p == page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
     </nav>
     {% endif %}
+
 <!-- Import Modal -->
-<div id="importModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center">
-    <div style="background:var(--bg-card);border:1px solid #D4AF37;border-radius:10px;padding:25px;max-width:450px;width:90%;margin:auto;position:relative;top:50%;transform:translateY(-50%)">
-        <h5 style="color:#D4AF37;letter-spacing:2px;margin-bottom:15px">⇧ IMPORTER DES CLIENTS</h5>
-        <p style="color:#888;font-size:0.75rem;margin-bottom:15px">Format CSV avec séparateur <b>;</b><br>Colonnes : Nom ; Téléphone ; Email ; Notes<br>ou : ID ; Nom ; Téléphone ; Email ; Notes</p>
+<div id="importModal" class="modal-overlay">
+    <div class="modal-box">
+        <p class="modal-title">Importer des Clients</p>
+        <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:16px">Format CSV avec séparateur <b>;</b><br>Colonnes : Nom ; Téléphone ; Email ; Notes<br>ou : ID ; Nom ; Téléphone ; Email ; Notes</p>
         <form method="POST" action="/import/customers" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="file" name="file" accept=".csv,.txt" class="form-control mb-3" required>
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-gold flex-fill">IMPORTER</button>
-                <button type="button" class="btn flex-fill" style="border:1px solid #555;color:#888" onclick="document.getElementById('importModal').style.display='none'">ANNULER</button>
+                <button type="submit" class="btn-gold flex-fill">Importer</button>
+                <button type="button" class="btn-ghost flex-fill" onclick="document.getElementById('importModal').style.display='none'">Annuler</button>
             </div>
         </form>
     </div>

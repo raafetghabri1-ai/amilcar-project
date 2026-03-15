@@ -3,27 +3,27 @@
 {% block content %}
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">NOUVEAU CLIENT</h4>
+            <div class="card p-4" style="animation:fadeInUp 0.4s var(--ease-out)">
+                <h4 class="page-title mb-4">Nouveau Client</h4>
                 <form method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
-                        <label class="form-label">NOM</label>
+                        <label class="form-label">Nom</label>
                         <input type="text" name="name" class="form-control" placeholder="Nom complet" required minlength="2" maxlength="100">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">TÉLÉPHONE</label>
+                        <label class="form-label">Téléphone</label>
                         <input type="tel" name="phone" class="form-control" placeholder="Numéro de téléphone" required pattern="[0-9+\s\-]{4,20}" title="Entrez un numéro de téléphone valide">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">EMAIL</label>
+                        <label class="form-label">Email</label>
                         <input type="email" name="email" class="form-control" placeholder="email@example.com">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">NOTES</label>
+                        <label class="form-label">Notes</label>
                         <textarea name="notes" class="form-control" rows="3" placeholder="Demandes spéciales, préférences, etc."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-gold w-100">AJOUTER CLIENT</button>
+                    <button type="submit" class="btn-gold w-100" style="padding:12px">Ajouter Client</button>
                 </form>
             </div>
         </div>

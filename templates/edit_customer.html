@@ -4,7 +4,7 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">MODIFIER CLIENT</h4>
+                <h4 class="mb-4" >MODIFIER CLIENT</h4>
                 <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
@@ -23,7 +23,7 @@
                         <label class="form-label">NOTES</label>
                         <textarea name="notes" class="form-control" rows="3" placeholder="Demandes spéciales, préférences, etc.">{{ customer[3] or '' }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-gold w-100">ENREGISTRER</button>
+                    <button type="submit" class="btn-gold w-100">ENREGISTRER</button>
                 </form>
             </div>
         </div>

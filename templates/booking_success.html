@@ -13,7 +13,7 @@
         .check{font-size:4rem;margin-bottom:15px}
         .info{background:#fdf6e3;border-radius:10px;padding:15px;margin:20px 0;text-align:left}
         .info-row{display:flex;justify-content:space-between;padding:4px 0;font-size:0.85rem}
-        .info-row span:first-child{color:#888}
+        .info-row span:first-child{color:var(--text-secondary)}
         .info-row span:last-child{font-weight:600;color:#B8860B}
     </style>
 </head>
@@ -21,13 +21,13 @@
     <div class="success-card">
         <div class="brand">AMILCAR</div>
         <div class="check">✅</div>
-        <h4 style="color:#2d6a4f;margin-bottom:10px">Réservation Enregistrée !</h4>
-        <p style="color:#888;font-size:0.9rem">Merci {{ name }}, votre demande a été reçue.</p>
+        <h4 style="color:var(--green);margin-bottom:10px">Réservation Enregistrée !</h4>
+        <p style="color:var(--text-secondary);font-size:0.9rem">Merci {{ name }}, votre demande a été reçue.</p>
         <div class="info">
             <div class="info-row"><span>Date souhaitée</span><span>{{ date }}</span></div>
             {% if time %}<div class="info-row"><span>Heure</span><span>{{ time }}</span></div>{% endif %}
         </div>
-        <p style="color:#888;font-size:0.8rem">Nous vous contacterons pour confirmer votre rendez-vous.</p>
+        <p style="color:var(--text-secondary);font-size:0.8rem">Nous vous contacterons pour confirmer votre rendez-vous.</p>
         <a href="/book" style="color:#B8860B;font-weight:600;text-decoration:none">← Nouvelle réservation</a>
     </div>
 </body>

@@ -3,77 +3,73 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h3 class="page-title mb-0">📸 Archive Photos</h3>
-        <span style="color:#888;font-size:0.8rem">{{ car[-1] }} — {{ car[2] }} {{ car[3] }} ({{ car[4] }})</span>
+        <p class="page-title mb-0">Archive Photos</p>
+        <p class="page-subtitle mb-0">{{ car[-1] }} — {{ car[2] }} {{ car[3] }} ({{ car[4] }})</p>
     </div>
-    <a href="/customer/{{ car[1] }}" class="btn btn-sm" style="border:1px solid #333;color:#888">← Retour Client</a>
+    <a href="/customer/{{ car[1] }}" class="btn-ghost btn-sm">← Retour Client</a>
 </div>
 
-<!-- Upload -->
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;margin-bottom:15px">📤 Ajouter une Photo</h6>
+    <h6 class="section-title">Ajouter une Photo</h6>
     <form method="POST" action="/car_photos/{{ car[0] }}/upload" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Photo</label>
-                <input type="file" name="photo" accept="image/*" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label">Photo</label>
+                <input type="file" name="photo" accept="image/*" class="form-control form-control-sm" required>
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Type</label>
-                <select name="photo_type" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
-                    <option value="before">📷 Avant</option>
-                    <option value="after">📷 Après</option>
-                    <option value="damage">⚠️ Dégât</option>
-                    <option value="other">📎 Autre</option>
+                <label class="form-label">Type</label>
+                <select name="photo_type" class="form-select form-select-sm">
+                    <option value="before">Avant</option>
+                    <option value="after">Après</option>
+                    <option value="damage">Dégât</option>
+                    <option value="other">Autre</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label" style="font-size:0.7rem;color:#888">RDV (optionnel)</label>
-                <select name="appointment_id" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label">RDV (optionnel)</label>
+                <select name="appointment_id" class="form-select form-select-sm">
                     <option value="">-- Aucun --</option>
                     {% for a in appointments %}<option value="{{ a[0] }}">{{ a[1] }} — {{ a[2] }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Description</label>
-                <input type="text" name="description" class="form-control form-control-sm" placeholder="Note..." style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label">Description</label>
+                <input type="text" name="description" class="form-control form-control-sm" placeholder="Note...">
             </div>
             <div class="col-md-2">
-                <button class="btn btn-gold btn-sm w-100">📤 Upload</button>
+                <button class="btn-gold btn-sm w-100">Upload</button>
             </div>
         </div>
     </form>
 </div>
 
-<!-- Photos Grid -->
 <div class="row g-3">
     {% for photo in photos %}
     <div class="col-md-3 col-6">
         <div class="card p-2">
-            <img src="/static/uploads/cars/{{ photo[4] }}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open(this.src)">
+            <img src="/static/uploads/cars/{{ photo[4] }}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer" onclick="window.open(this.src)">
             <div class="mt-2" style="font-size:0.75rem">
                 <div class="d-flex justify-content-between align-items-center">
-                    {% if photo[3] == 'before' %}<span class="badge bg-primary" style="font-size:0.55rem">AVANT</span>
-                    {% elif photo[3] == 'after' %}<span class="badge bg-success" style="font-size:0.55rem">APRÈS</span>
-                    {% elif photo[3] == 'damage' %}<span class="badge bg-danger" style="font-size:0.55rem">DÉGÂT</span>
-                    {% else %}<span class="badge bg-secondary" style="font-size:0.55rem">AUTRE</span>{% endif %}
+                    {% if photo[3] == 'before' %}<span class="badge-progress">Avant</span>
+                    {% elif photo[3] == 'after' %}<span class="badge-completed">Après</span>
+                    {% elif photo[3] == 'damage' %}<span class="badge-unpaid">Dégât</span>
+                    {% else %}<span class="badge-info">Autre</span>{% endif %}
                     <form method="POST" action="/car_photos/delete/{{ photo[0] }}" onsubmit="return confirm('Supprimer ?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button class="btn btn-sm btn-outline-danger" style="font-size:0.5rem;padding:1px 4px">🗑</button>
+                        <button class="btn-action-delete" style="font-size:0.6rem">✕</button>
                     </form>
                 </div>
-                {% if photo[5] %}<p style="color:#888;margin:4px 0 0">{{ photo[5] }}</p>{% endif %}
-                <p style="color:#555;margin:2px 0 0">{{ photo[6][:10] }}</p>
+                {% if photo[5] %}<p style="color:var(--text-secondary);margin:4px 0 0">{{ photo[5] }}</p>{% endif %}
+                <p style="color:var(--text-muted);margin:2px 0 0">{{ photo[6][:10] }}</p>
             </div>
         </div>
     </div>
     {% endfor %}
     {% if not photos %}
     <div class="col-12">
-        <div class="card p-4 text-center" style="color:#666">
-            📷 Aucune photo pour ce véhicule
-        </div>
+        <div class="empty-state">Aucune photo pour ce véhicule</div>
     </div>
     {% endif %}
 </div>

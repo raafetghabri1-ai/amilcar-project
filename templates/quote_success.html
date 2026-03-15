@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %} - Demande Envoyée{% endblock %}
 {% block content %}
-    <div class="text-center">
-        <h2 style="color:#D4AF37;letter-spacing:4px">DEMANDE ENVOYÉE ✓</h2>
-        <p style="color:#888;letter-spacing:2px;font-size:0.85rem">Nous examinerons vos photos et vous contacterons rapidement.</p>
-        <a href="/" class="btn btn-gold mt-3">RETOUR À L'ACCUEIL</a>
+    <div class="empty-state">
+        <p style="font-size:3rem;margin-bottom:16px">✓</p>
+        <h2 class="page-title">Demande Envoyée</h2>
+        <p class="page-subtitle">Nous examinerons vos photos et vous contacterons rapidement.</p>
+        <a href="/" class="btn-gold mt-3">Retour à l'Accueil</a>
     </div>
 {% endblock %}

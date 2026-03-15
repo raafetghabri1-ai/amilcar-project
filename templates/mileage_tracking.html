@@ -27,9 +27,9 @@
             <tr id="row-{{ c[0] }}">
                 <td>{{ c[1] }}</td>
                 <td>{{ c[2] }} {{ c[3] }}</td>
-                <td style="color:#D4AF37">{{ c[4] }}</td>
+                <td style="color:var(--gold)">{{ c[4] }}</td>
                 <td class="text-end"><strong>{{ c[5] }} km</strong></td>
-                <td style="color:#888">{{ c[6] or '—' }}</td>
+                <td style="color:var(--text-secondary)">{{ c[6] or '—' }}</td>
                 <td>
                     {% if c[7] %}
                         <span style="color:{% if c[7] < today %}#C41E3A{% else %}#22c55e{% endif %}">{{ c[7] }}</span>
@@ -48,9 +48,9 @@
 <!-- Edit Modal -->
 <div class="modal fade" id="mileageModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content" style="background:#1a1a1a;border:1px solid #333">
-            <div class="modal-header" style="border-color:#333">
-                <h5 class="modal-title" style="color:#D4AF37">Mise à jour Kilométrage</h5>
+        <div class="modal-content" style="background:#1a1a1a;border:1px solid var(--border-color)">
+            <div class="modal-header" style="border-color:var(--border-color)">
+                <h5 class="modal-title" style="color:var(--gold)">Mise à jour Kilométrage</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="mileageForm" method="POST">
@@ -58,19 +58,19 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Kilométrage actuel</label>
-                        <input type="number" name="mileage" id="mileageInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                        <input type="number" name="mileage" id="mileageInput" class="form-control" style="background:var(--bg-card-solid);color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Date du dernier vidange</label>
-                        <input type="date" name="last_oil_change" id="oilInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                        <input type="date" name="last_oil_change" id="oilInput" class="form-control" style="background:var(--bg-card-solid);color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Date prochain entretien</label>
-                        <input type="date" name="next_service_date" id="nextInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                        <input type="date" name="next_service_date" id="nextInput" class="form-control" style="background:var(--bg-card-solid);color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                 </div>
-                <div class="modal-footer" style="border-color:#333">
-                    <button type="submit" class="btn btn-gold">Enregistrer</button>
+                <div class="modal-footer" style="border-color:var(--border-color)">
+                    <button type="submit" class="btn-gold">Enregistrer</button>
                 </div>
             </form>
         </div>
@@ -91,7 +91,7 @@ function editMileage(carId, mileage, oil, next) {
 // Load alerts
 fetch('/api/mileage_alerts').then(r => r.json()).then(data => {
     if (data.length) {
-        var h = '<div class="card p-3 mb-4" style="border-left:3px solid #C41E3A"><h6 style="color:#C41E3A;margin-bottom:10px">⚠️ Alertes Entretien (' + data.length + ')</h6>';
+        var h = '<div class="card p-3 mb-4" style="border-left:3px solid #C41E3A"><h6 style="color:var(--red);margin-bottom:10px">⚠️ Alertes Entretien (' + data.length + ')</h6>';
         data.forEach(a => {
             h += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
                 '<span>' + (a.overdue ? '🔴' : '🟡') + ' <strong>' + a.customer + '</strong> — ' + a.car + ' (' + a.plate + ')</span>' +

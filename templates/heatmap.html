@@ -11,13 +11,13 @@
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📊 Par Jour de la Semaine</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📊 Par Jour de la Semaine</h6>
             <canvas id="chartDay" height="200"></canvas>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">🕐 Par Heure</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">🕐 Par Heure</h6>
             <canvas id="chartHour" height="200"></canvas>
         </div>
     </div>
@@ -26,7 +26,7 @@
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📈 Tendance Mensuelle</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📈 Tendance Mensuelle</h6>
             <canvas id="chartMonthly" height="120"></canvas>
         </div>
     </div>
@@ -35,13 +35,13 @@
 <div class="row g-3 mb-4">
     <div class="col-md-8">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">🔥 Matrice Jour × Heure</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">🔥 Matrice Jour × Heure</h6>
             <div id="heatmapMatrix" style="overflow-x:auto"></div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">🏆 Jours les Plus Chargés</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">🏆 Jours les Plus Chargés</h6>
             <div id="busiestDays"></div>
         </div>
     </div>
@@ -121,10 +121,10 @@ fetch('/api/heatmap_data').then(r=>r.json()).then(data => {
         let maxCount = Math.max(...data.matrix.map(m => m.count), 1);
         let table = '<table style="width:100%;font-size:0.75rem;border-collapse:collapse">';
         table += '<tr><td></td>';
-        hours.forEach(h => table += '<td style="text-align:center;color:#888;padding:4px;font-size:0.65rem">'+h+'</td>');
+        hours.forEach(h => table += '<td style="text-align:center;color:var(--text-secondary);padding:4px;font-size:0.65rem">'+h+'</td>');
         table += '</tr>';
         days.forEach((day, di) => {
-            table += '<tr><td style="color:#D4AF37;padding:6px;white-space:nowrap;font-weight:600">'+day+'</td>';
+            table += '<tr><td style="color:var(--gold);padding:6px;white-space:nowrap;font-weight:600">'+day+'</td>';
             hours.forEach(h => {
                 let cell = data.matrix.find(m => m.day === di && m.time === h);
                 let cnt = cell ? cell.count : 0;
@@ -138,17 +138,17 @@ fetch('/api/heatmap_data').then(r=>r.json()).then(data => {
         table += '</table>';
         document.getElementById('heatmapMatrix').innerHTML = table;
     } else {
-        document.getElementById('heatmapMatrix').innerHTML = '<p style="color:#888;text-align:center">Pas de données horaires</p>';
+        document.getElementById('heatmapMatrix').innerHTML = '<p style="color:var(--text-secondary);text-align:center">Pas de données horaires</p>';
     }
 
     // Busiest days
     let bd = '';
     data.busiest_days.forEach((d, i) => {
         bd += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
-            '<span style="color:#D4AF37;font-weight:600">#'+(i+1)+' '+d.date+'</span>' +
+            '<span style="color:var(--gold);font-weight:600">#'+(i+1)+' '+d.date+'</span>' +
             '<span style="background:#D4AF37;color:#000;padding:2px 10px;border-radius:10px;font-weight:700;font-size:0.8rem">'+d.count+'</span></div>';
     });
-    document.getElementById('busiestDays').innerHTML = bd || '<p style="color:#888">Aucune donnée</p>';
+    document.getElementById('busiestDays').innerHTML = bd || '<p style="color:var(--text-secondary)">Aucune donnée</p>';
 });
 </script>
 {% endblock %}

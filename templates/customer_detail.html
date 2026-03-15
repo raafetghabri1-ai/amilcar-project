@@ -1,113 +1,122 @@
 {% extends "base.html" %}
 {% block title %} - Détails Client{% endblock %}
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <p class="page-title mb-0">{{ customer[1] }}
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap" style="gap:10px">
+        <div class="d-flex align-items-center gap-3">
+            <p class="page-title mb-0">{{ customer[1] }}</p>
             {% if clv.tier != '—' %}
-            <span style="display:inline-block;font-size:0.55rem;letter-spacing:2px;padding:3px 10px;border-radius:4px;margin-left:10px;vertical-align:middle;
-            {% if clv.tier == 'OR' %}background:#D4AF37;color:#0d0d1a{% elif clv.tier == 'ARGENT' %}background:#C0C0C0;color:#0d0d1a{% else %}background:#CD7F32;color:white{% endif %}">🏆 {{ clv.tier }}</span>
+            <span class="{% if clv.tier == 'OR' %}badge-converted{% elif clv.tier == 'ARGENT' %}badge-info{% else %}badge-partial{% endif %}" style="font-size:0.55rem;letter-spacing:1.5px">★ {{ clv.tier }}</span>
             {% endif %}
-        </p>
-        <div class="d-flex gap-2">
-            <a href="/communication_log/{{ customer[0] }}" class="btn" style="border:1px solid #1B6B93;color:#1B6B93;font-size:0.72rem;padding:6px 12px">📞 COMMUNICATIONS</a>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/communication_log/{{ customer[0] }}" class="btn-ghost btn-sm">◎ Communications</a>
             <form method="POST" action="/generate_portal_link/{{ customer[0] }}" class="d-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn" style="border:1px solid #2d6a4f;color:#2d6a4f;font-size:0.72rem;padding:6px 12px">🔗 LIEN PORTAIL</button>
+                <button type="submit" class="btn-ghost btn-sm">⇄ Lien Portail</button>
             </form>
-            <a href="/edit_customer/{{ customer[0] }}" class="btn btn-gold">✎ MODIFIER</a>
-            <a href="/customer_analytics/{{ customer[0] }}" class="btn" style="border:1px solid #D4AF37;color:#D4AF37;font-size:0.72rem;padding:6px 12px">📊 ANALYTICS</a>
-            <a href="/staff_notes?type=customer&id={{ customer[0] }}" class="btn" style="border:1px solid #1B6B93;color:#1B6B93;font-size:0.72rem;padding:6px 12px">💬 NOTES</a>
+            <a href="/customer_analytics/{{ customer[0] }}" class="btn-outline-gold btn-sm">◫ Analytics</a>
+            <a href="/staff_notes?type=customer&id={{ customer[0] }}" class="btn-ghost btn-sm">▤ Notes</a>
+            <a href="/edit_customer/{{ customer[0] }}" class="btn-gold btn-sm">✎ Modifier</a>
         </div>
     </div>
 
     <!-- CLV Stats -->
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6">
-            <div class="card p-3 text-center">
-                <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">TOTAL DÉPENSÉ</p>
-                <p style="color:#D4AF37;font-size:1.4rem;font-weight:900;margin:5px 0">{{ clv.total_spent|round|int }} DT</p>
+            <div class="stat-card">
+                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Total Dépensé</p>
+                <h2>{{ clv.total_spent|round|int }} DT</h2>
             </div>
         </div>
         <div class="col-md-3 col-6">
-            <div class="card p-3 text-center">
-                <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">VISITES</p>
-                <p style="color:#D4AF37;font-size:1.4rem;font-weight:900;margin:5px 0">{{ clv.visits }}</p>
+            <div class="stat-card">
+                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Visites</p>
+                <h2>{{ clv.visits }}</h2>
             </div>
         </div>
         <div class="col-md-3 col-6">
-            <div class="card p-3 text-center">
-                <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">NOTE MOYENNE</p>
-                <p style="margin:5px 0">
+            <div class="stat-card">
+                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Note Moyenne</p>
+                <p style="margin:8px 0 0">
                     {% for i in range(1, 6) %}
-                    <span style="color:{% if i <= clv.avg_rating %}#D4AF37{% else %}#333{% endif %};font-size:1rem">★</span>
+                    <span style="color:{% if i <= clv.avg_rating %}var(--gold){% else %}var(--text-dim){% endif %};font-size:1rem">★</span>
                     {% endfor %}
-                    <span style="color:#888;font-size:0.65rem;margin-left:5px">({{ clv.rating_count }})</span>
+                    <span style="color:var(--text-muted);font-size:0.62rem;margin-left:4px">({{ clv.rating_count }})</span>
                 </p>
             </div>
         </div>
         <div class="col-md-3 col-6">
-            <div class="card p-3 text-center">
-                <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">PREMIÈRE VISITE</p>
-                <p style="color:#f0f0f0;font-size:0.85rem;font-weight:600;margin:5px 0">{{ clv.first_visit }}</p>
+            <div class="stat-card">
+                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Première Visite</p>
+                <p style="font-size:0.88rem;font-weight:600;margin:8px 0 0">{{ clv.first_visit }}</p>
             </div>
         </div>
     </div>
 
     <div class="card p-3 mb-4">
-        <p style="color:#888;font-size:0.75rem;letter-spacing:2px">TÉLÉPHONE</p>
-        <p style="color:#D4AF37;letter-spacing:1px">{{ customer[2] }}</p>
+        <p class="form-label" style="margin-bottom:4px">Téléphone</p>
+        <p style="color:var(--gold);letter-spacing:0.5px;font-weight:600;margin:0">{{ customer[2] }}</p>
         {% if customer|length > 4 and customer[4] %}
-        <p style="color:#888;font-size:0.75rem;letter-spacing:2px;margin-top:10px">EMAIL</p>
-        <p style="color:#D4AF37;letter-spacing:1px">{{ customer[4] }}</p>
+        <p class="form-label" style="margin-top:12px;margin-bottom:4px">Email</p>
+        <p style="color:var(--gold);letter-spacing:0.5px;margin:0">{{ customer[4] }}</p>
         {% endif %}
     </div>
     {% if customer[3] %}
     <div class="card p-3 mb-4">
-        <p style="color:#888;font-size:0.75rem;letter-spacing:2px">NOTES</p>
-        <p style="color:#ccc;font-size:0.9rem;white-space:pre-wrap">{{ customer[3] }}</p>
+        <p class="form-label" style="margin-bottom:4px">Notes</p>
+        <p style="color:var(--text-secondary);font-size:0.88rem;white-space:pre-wrap;margin:0">{{ customer[3] }}</p>
     </div>
     {% endif %}
+
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <p class="section-title mb-0">VOITURES</p>
-        <a href="/add_car" class="btn btn-gold" style="font-size:0.75rem;padding:6px 14px">+ AJOUTER VOITURE</a>
+        <p class="section-title mb-0" style="border:none">Voitures</p>
+        <a href="/add_car" class="btn-gold btn-sm">+ Ajouter Voiture</a>
     </div>
-    <table class="table mb-4">
-        <thead><tr><th>MARQUE</th><th>MODÈLE</th><th>IMMATRICULATION</th><th>ANNÉE</th><th>COULEUR</th><th>ACTION</th></tr></thead>
+    <div class="table-responsive mb-4">
+    <table class="table">
+        <thead><tr><th>Marque</th><th>Modèle</th><th>Immatriculation</th><th>Année</th><th>Couleur</th><th>Action</th></tr></thead>
         <tbody>
         {% for car in cars %}
         <tr>
-            <td><a href="/car/{{ car[0] }}" style="color:#D4AF37;text-decoration:none">{{ car[2] }}</a></td>
-            <td><a href="/car/{{ car[0] }}" style="color:#D4AF37;text-decoration:none">{{ car[3] }}</a></td>
+            <td><a href="/car/{{ car[0] }}" style="color:var(--gold);text-decoration:none;font-weight:600">{{ car[2] }}</a></td>
+            <td><a href="/car/{{ car[0] }}" style="color:var(--gold);text-decoration:none">{{ car[3] }}</a></td>
             <td>{{ car[4] }}</td>
             <td>{{ car[5] if car|length > 5 and car[5] else '—' }}</td>
             <td>{{ car[6] if car|length > 6 and car[6] else '—' }}</td>
             <td>
+                <div class="d-flex gap-1">
                 <a href="/edit_car/{{ car[0] }}" class="action-edit">✎</a>
-                <form method="POST" action="/delete_car/{{ car[0] }}" class="form-action-inline" onsubmit="return confirm('SUPPRIMER cette voiture ?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn-action-delete">✗</button>
+                <form method="POST" action="/delete_car/{{ car[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer cette voiture ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-action-delete">✕</button>
                 </form>
+                </div>
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
-    <p class="section-title">HISTORIQUE DES RENDEZ-VOUS</p>
+    </div>
+
+    <p class="section-title">Historique des Rendez-vous</p>
+    <div class="table-responsive">
     <table class="table">
-        <thead><tr><th>#</th><th>DATE</th><th>SERVICE</th><th>STATUT</th></tr></thead>
+        <thead><tr><th>#</th><th>Date</th><th>Service</th><th>Statut</th></tr></thead>
         <tbody>
         {% for a in appointments %}
         <tr>
-            <td>{{ a[0] }}</td>
+            <td style="color:var(--text-muted)">{{ a[0] }}</td>
             <td>{{ a[2] }}</td>
             <td>{{ a[3] }}</td>
             <td>
-            {% if a[4] == 'pending' %}<span class="badge-pending">EN ATTENTE</span>
-            {% elif a[4] == 'completed' %}<span class="badge-completed">TERMINÉ</span>
-            {% else %}<span style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem">ANNULÉ</span>{% endif %}
+            {% if a[4] == 'pending' %}<span class="badge-pending">En attente</span>
+            {% elif a[4] == 'completed' %}<span class="badge-completed">Terminé</span>
+            {% elif a[4] == 'in_progress' %}<span class="badge-progress">En cours</span>
+            {% else %}<span class="badge-cancelled">Annulé</span>{% endif %}
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
 {% endblock %}

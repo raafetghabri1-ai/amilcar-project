@@ -4,13 +4,13 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h3 class="page-title mb-0">📋 Checklist de Contrôle</h3>
-        <span style="color:#888;font-size:0.8rem">RDV #{{ appt[0] }} — {{ appt[-1] }} — {{ appt[3] }}</span>
+        <span style="color:var(--text-secondary);font-size:0.8rem">RDV #{{ appt[0] }} — {{ appt[-1] }} — {{ appt[3] }}</span>
     </div>
-    <a href="/appointments" class="btn btn-sm" style="border:1px solid #333;color:#888">← Retour</a>
+    <a href="/appointments" class="btn btn-sm" style="border:1px solid var(--border-color);color:var(--text-secondary)">← Retour</a>
 </div>
 
 {% if existing and existing[6] == 'completed' %}
-<div class="alert" style="background:#1a3a2a;color:#2d6a4f;border:1px solid #2d6a4f;font-size:0.85rem">
+<div class="alert" style="background:#1a3a2a;color:var(--green);border:1px solid #2d6a4f;font-size:0.85rem">
     ✅ Contrôle effectué par <strong>{{ existing[3] }}</strong> le {{ existing[7][:10] }}
 </div>
 {% endif %}
@@ -20,7 +20,7 @@
 
     {% for category, category_items in items %}
     <div class="card p-3 mb-3">
-        <h6 style="color:#D4AF37;margin-bottom:15px">{{ category }}</h6>
+        <h6 style="color:var(--gold);margin-bottom:15px">{{ category }}</h6>
         <div class="row g-2">
             {% for item in category_items %}
             {% set key = (category ~ '_' ~ item)|replace(' ', '_')|replace('.', '') %}
@@ -38,7 +38,7 @@
                             <input type="radio" name="status_{{ key }}" value="bad" {{ 'checked' if checklist.get(key, {}).get('status') == 'bad' }} style="display:none"> ❌
                         </label>
                     </div>
-                    <input type="text" name="note_{{ key }}" value="{{ checklist.get(key, {}).get('note', '') }}" placeholder="Note..." class="form-control form-control-sm" style="background:#111;color:#ccc;border-color:#333;font-size:0.7rem;max-width:150px">
+                    <input type="text" name="note_{{ key }}" value="{{ checklist.get(key, {}).get('note', '') }}" placeholder="Note..." class="form-control form-control-sm" style="background:var(--bg-card-solid);color:var(--text-primary);border-color:var(--border-color);font-size:0.7rem;max-width:150px">
                 </div>
             </div>
             {% endfor %}
@@ -47,11 +47,11 @@
     {% endfor %}
 
     <div class="card p-3 mb-3">
-        <h6 style="color:#D4AF37;margin-bottom:10px">📝 Notes Générales</h6>
-        <textarea name="notes" class="form-control" rows="3" style="background:#1a1a1a;color:#ccc;border-color:#333">{{ notes }}</textarea>
+        <h6 style="color:var(--gold);margin-bottom:10px">📝 Notes Générales</h6>
+        <textarea name="notes" class="form-control" rows="3" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">{{ notes }}</textarea>
     </div>
 
-    <button class="btn btn-gold w-100 mb-3">💾 Enregistrer le Contrôle</button>
+    <button class="btn-gold w-100 mb-3">💾 Enregistrer le Contrôle</button>
 </form>
 
 <style>

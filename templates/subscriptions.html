@@ -11,20 +11,20 @@
 
 <!-- Add Subscription -->
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouveau Contrat / Abonnement</h6>
+    <h6 style="color:var(--gold);margin-bottom:15px">➕ Nouveau Contrat / Abonnement</h6>
     <form method="POST" action="/subscriptions/add">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="row g-2">
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Client</label>
-                <select name="customer_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Client</label>
+                <select name="customer_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     <option value="">--</option>
                     {% for c in customers %}<option value="{{ c[0] }}">{{ c[1] }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Nom du plan</label>
-                <select name="plan_name" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Nom du plan</label>
+                <select name="plan_name" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     <option value="Pack Mensuel">Pack Mensuel</option>
                     <option value="Pack Trimestriel">Pack Trimestriel</option>
                     <option value="Pack Annuel">Pack Annuel</option>
@@ -33,27 +33,27 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Services inclus</label>
-                <input type="text" name="services_included" class="form-control form-control-sm" placeholder="Lavage, Céramique..." style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Services inclus</label>
+                <input type="text" name="services_included" class="form-control form-control-sm" placeholder="Lavage, Céramique..." style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             </div>
             <div class="col-md-1">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Séances</label>
-                <input type="number" name="total_sessions" value="12" min="1" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Séances</label>
+                <input type="number" name="total_sessions" value="12" min="1" class="form-control form-control-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             </div>
             <div class="col-md-1">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Prix (DH)</label>
-                <input type="number" step="0.01" name="price" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Prix (DH)</label>
+                <input type="number" step="0.01" name="price" class="form-control form-control-sm" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Début</label>
-                <input type="date" name="start_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Début</label>
+                <input type="date" name="start_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             </div>
             <div class="col-md-2">
-                <label class="form-label" style="font-size:0.7rem;color:#888">Fin</label>
-                <input type="date" name="end_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Fin</label>
+                <input type="date" name="end_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             </div>
         </div>
-        <button class="btn btn-gold btn-sm mt-2">+ Créer l'Abonnement</button>
+        <button class="btn-gold btn-sm mt-2">+ Créer l'Abonnement</button>
     </form>
 </div>
 
@@ -67,13 +67,13 @@
             <tbody>
             {% for s in subs %}
             <tr>
-                <td style="color:#D4AF37">{{ s[0] }}</td>
-                <td><strong>{{ s[11] }}</strong><br><span style="color:#888;font-size:0.65rem">{{ s[12] }}</span></td>
-                <td style="color:#D4AF37">{{ s[2] }}</td>
+                <td style="color:var(--gold)">{{ s[0] }}</td>
+                <td><strong>{{ s[11] }}</strong><br><span style="color:var(--text-secondary);font-size:0.65rem">{{ s[12] }}</span></td>
+                <td style="color:var(--gold)">{{ s[2] }}</td>
                 <td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">{{ s[3] }}</td>
                 <td>
                     <div style="display:flex;align-items:center;gap:4px">
-                        <span style="color:#2d6a4f;font-weight:700">{{ s[5] }}</span><span style="color:#888">/{{ s[4] }}</span>
+                        <span style="color:var(--green);font-weight:700">{{ s[5] }}</span><span style="color:var(--text-secondary)">/{{ s[4] }}</span>
                     </div>
                     {% set pct = (s[5] / s[4] * 100) if s[4] > 0 else 0 %}
                     <div style="background:#1a1a1a;border-radius:4px;height:4px;width:80px;margin-top:3px">
@@ -81,7 +81,7 @@
                     </div>
                 </td>
                 <td style="font-weight:600">{{ "%.0f"|format(s[6]) }} DH</td>
-                <td style="font-size:0.65rem;color:#888">{{ s[7] }}<br>→ {{ s[8] }}</td>
+                <td style="font-size:0.65rem;color:var(--text-secondary)">{{ s[7] }}<br>→ {{ s[8] }}</td>
                 <td>
                     {% if s[9] == 'active' %}<span class="badge bg-success" style="font-size:0.6rem">✅ Actif</span>
                     {% elif s[9] == 'completed' %}<span class="badge bg-primary" style="font-size:0.6rem">🏁 Terminé</span>
@@ -100,7 +100,7 @@
                 </td>
             </tr>
             {% endfor %}
-            {% if not subs %}<tr><td colspan="9" style="text-align:center;color:#666">Aucun abonnement</td></tr>{% endif %}
+            {% if not subs %}<tr><td colspan="9" style="text-align:center;color:var(--text-muted)">Aucun abonnement</td></tr>{% endif %}
             </tbody>
         </table>
     </div>

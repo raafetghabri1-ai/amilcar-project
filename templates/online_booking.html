@@ -10,12 +10,12 @@
         body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#333;padding:30px 15px}
         .container{max-width:600px;margin:0 auto}
         .brand{font-family:'Playfair Display',serif;color:#B8860B;font-size:2rem;text-align:center;margin-bottom:5px}
-        .tagline{text-align:center;color:#888;font-size:0.8rem;letter-spacing:3px;margin-bottom:30px}
+        .tagline{text-align:center;color:var(--text-secondary);font-size:0.8rem;letter-spacing:3px;margin-bottom:30px}
         .booking-card{background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.08);padding:35px}
         .booking-card h5{color:#B8860B;font-weight:700;margin-bottom:20px}
         .form-control,.form-select{border:2px solid #eee;border-radius:10px;padding:10px 14px}
-        .form-control:focus,.form-select:focus{border-color:#D4AF37;box-shadow:0 0 0 3px rgba(212,175,55,0.15)}
-        .form-label{font-weight:500;color:#555;font-size:0.85rem}
+        .form-control:focus,.form-select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,0.15)}
+        .form-label{font-weight:500;color:var(--text-muted);font-size:0.85rem}
         .btn-gold{background:linear-gradient(135deg,#D4AF37,#B8860B);border:none;color:#fff;font-weight:600;padding:12px;border-radius:10px;width:100%;font-size:1rem}
         .btn-gold:hover{color:#fff;transform:translateY(-2px)}
         .required::after{content:" *";color:#dc3545}
@@ -84,7 +84,7 @@
                         <textarea name="notes" class="form-control" rows="2" placeholder="Informations supplémentaires..."></textarea>
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-gold">📅 Réserver Maintenant</button>
+                        <button type="submit" class="btn-gold">📅 Réserver Maintenant</button>
                     </div>
                 </div>
             </form>

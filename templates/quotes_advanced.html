@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="page-title mb-0">📋 Gestion des Devis</h3>
-    <a href="/request_quote" class="btn btn-gold btn-sm">+ Nouveau Devis</a>
+    <a href="/request_quote" class="btn-gold btn-sm">+ Nouveau Devis</a>
 </div>
 
 <div class="card p-3">
@@ -15,12 +15,12 @@
             <tbody>
             {% for q in quotes %}
             <tr>
-                <td style="color:#D4AF37;font-weight:700">{{ q[0] }}</td>
+                <td style="color:var(--gold);font-weight:700">{{ q[0] }}</td>
                 <td><strong>{{ q[1] }}</strong></td>
-                <td style="color:#888;font-size:0.8rem">{{ q[2] }}</td>
+                <td style="color:var(--text-secondary);font-size:0.8rem">{{ q[2] }}</td>
                 <td>{{ q[3] or '-' }}</td>
                 <td style="font-weight:600">{{ "%.2f"|format(q[6] or 0) }} DH</td>
-                <td style="color:#888;font-size:0.75rem">
+                <td style="color:var(--text-secondary);font-size:0.75rem">
                     {% if q|length > 9 and q[9] %}{{ q[9] }}{% else %}-{% endif %}
                 </td>
                 <td>
@@ -54,7 +54,7 @@
                 </td>
             </tr>
             {% endfor %}
-            {% if not quotes %}<tr><td colspan="8" style="text-align:center;color:#666">Aucun devis</td></tr>{% endif %}
+            {% if not quotes %}<tr><td colspan="8" style="text-align:center;color:var(--text-muted)">Aucun devis</td></tr>{% endif %}
             </tbody>
         </table>
     </div>

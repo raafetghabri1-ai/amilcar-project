@@ -2,12 +2,15 @@
 {% block title %} - Tableau de Bord{% endblock %}
 {% block hero_extra %}<p class="sub">SOIN AUTOMOBILE &mdash; MAHRES, SFAX</p>{% endblock %}
 {% block content %}
-    <!-- Welcome + Quick Actions -->
+    <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="page-title mb-0">Tableau de Bord</h3>
+        <div>
+            <h3 class="page-title mb-0">Tableau de Bord</h3>
+            <p class="page-subtitle mb-0">Vue d'ensemble de votre activité</p>
+        </div>
         <div class="d-flex gap-2">
-            <a href="/add_customer" class="btn btn-gold" style="font-size:0.72rem;padding:8px 14px">+ CLIENT</a>
-            <a href="/add_appointment" class="btn btn-gold" style="font-size:0.72rem;padding:8px 14px">+ RDV</a>
+            <a href="/add_customer" class="btn-outline-gold btn-sm">+ Client</a>
+            <a href="/add_appointment" class="btn-gold btn-sm">+ Rendez-vous</a>
         </div>
     </div>
 
@@ -15,60 +18,62 @@
     <div class="row g-3 mb-4">
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
+                <span class="stat-icon">◉</span>
                 <h2>{{ stats.customers }}</h2>
-                <p>CLIENTS</p>
+                <p>Clients</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
+                <span class="stat-icon">▦</span>
                 <h2>{{ stats.appointments }}</h2>
-                <p>RENDEZ-VOUS</p>
+                <p>Rendez-vous</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2>{{ stats.revenue }}</h2>
-                <p>REVENUS (DT)</p>
+                <p>Revenus (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2 style="color:#C41E3A;-webkit-text-fill-color:#C41E3A">{{ stats.expenses }}</h2>
-                <p>DÉPENSES (DT)</p>
+                <h2 style="color:var(--red)">{{ stats.expenses }}</h2>
+                <p>Dépenses (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="-webkit-text-fill-color:unset;background:none">{{ stats.profit }}</h2>
-                <p>BÉNÉFICE NET</p>
+                <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="background:none;-webkit-text-fill-color:unset">{{ stats.profit }}</h2>
+                <p>Bénéfice Net</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2>{{ stats.quotes }}</h2>
-                <p>DEVIS EN ATTENTE</p>
+                <p>Devis en Attente</p>
             </div>
         </div>
     </div>
 
-    <!-- Quick Info -->
+    <!-- Quick Stats -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid #D4AF37">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">AUJOURD'HUI</p>
-                <p style="color:#D4AF37;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ stats.today_appointments }} <span style="font-size:0.75rem;color:#888;font-weight:400">rendez-vous</span> — {{ stats.today_revenue }} DT</p>
+            <div class="quick-stat">
+                <p class="quick-stat-label">Aujourd'hui</p>
+                <p class="quick-stat-value">{{ stats.today_appointments }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rdv</span> — {{ stats.today_revenue }} DT</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid #C41E3A">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">FACTURES IMPAYÉES</p>
-                <p style="color:#C41E3A;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ stats.unpaid_total }} DT</p>
+            <div class="quick-stat red">
+                <p class="quick-stat-label">Factures Impayées</p>
+                <p class="quick-stat-value">{{ stats.unpaid_total }} DT</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid #2d6a4f">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">DEMAIN</p>
-                <p style="color:#2d6a4f;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ tomorrow_appointments|length }} <span style="font-size:0.75rem;color:#888;font-weight:400">rendez-vous</span></p>
+            <div class="quick-stat green">
+                <p class="quick-stat-label">Demain</p>
+                <p class="quick-stat-value">{{ tomorrow_appointments|length }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rendez-vous</span></p>
             </div>
         </div>
     </div>
@@ -76,42 +81,41 @@
     <!-- Insights -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid #8B6914">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">MEILLEUR CLIENT</p>
-                <p style="color:#D4AF37;font-size:1rem;font-weight:700;margin:5px 0 0">{{ stats.top_customer }}</p>
-                <p style="color:#888;font-size:0.75rem;margin:2px 0 0">{{ stats.top_customer_amount }} DT</p>
+            <div class="insight-card">
+                <p class="insight-label">Meilleur Client</p>
+                <p class="insight-value" style="color:var(--gold)">{{ stats.top_customer }}</p>
+                <p class="insight-sub">{{ stats.top_customer_amount }} DT</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid #1B6B93">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">VOITURE LA PLUS FRÉQUENTE</p>
-                <p style="color:#1B6B93;font-size:1rem;font-weight:700;margin:5px 0 0">{{ stats.most_visited_car }}</p>
-                <p style="color:#888;font-size:0.75rem;margin:2px 0 0">{{ stats.most_visited_count }} visites</p>
+            <div class="insight-card">
+                <p class="insight-label">Voiture la Plus Fréquente</p>
+                <p class="insight-value" style="color:var(--blue)">{{ stats.most_visited_car }}</p>
+                <p class="insight-sub">{{ stats.most_visited_count }} visites</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3" style="border-left:3px solid {% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %}">
-                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">TAUX DE PAIEMENT</p>
-                <div style="margin:6px 0 0;display:flex;align-items:center;gap:12px">
-                    <span style="color:{% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %};font-size:1.3rem;font-weight:800">{{ stats.pay_rate }}%</span>
-                    <div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
-                        <div style="width:{{ stats.pay_rate }}%;height:100%;background:{% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %};border-radius:3px;transition:width 1s ease"></div>
+            <div class="insight-card">
+                <p class="insight-label">Taux de Paiement</p>
+                <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+                    <span class="{% if stats.pay_rate >= 70 %}text-profit{% elif stats.pay_rate >= 40 %}text-gold{% else %}text-loss{% endif %}" style="font-size:1.4rem;font-weight:800">{{ stats.pay_rate }}%</span>
+                    <div class="progress-bar-wrap" style="flex:1">
+                        <div class="progress-bar-fill {% if stats.pay_rate >= 70 %}green{% elif stats.pay_rate < 40 %}red{% endif %}" style="width:{{ stats.pay_rate }}%"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tomorrow's appointments -->
+    <!-- Tomorrow's Appointments -->
     {% if tomorrow_appointments %}
-    <div class="card p-4 mb-4" style="border:1px solid rgba(212,175,55,0.15)">
-        <div class="d-flex align-items-center gap-2 mb-3">
-            <span style="font-size:1.1rem">📅</span>
-            <span style="color:var(--gold);font-weight:700;font-size:0.95rem">RENDEZ-VOUS DE DEMAIN ({{ tomorrow_appointments|length }})</span>
+    <div class="card p-4 mb-4">
+        <div class="chart-title">
+            <span>▦</span> Rendez-vous de Demain ({{ tomorrow_appointments|length }})
         </div>
         <div class="table-responsive">
-            <table class="table" style="margin:0">
-                <thead><tr><th>CLIENT</th><th>VOITURE</th><th>SERVICE</th></tr></thead>
+            <table class="table">
+                <thead><tr><th>Client</th><th>Voiture</th><th>Service</th></tr></thead>
                 <tbody>
                 {% for a in tomorrow_appointments %}
                 <tr>
@@ -126,15 +130,13 @@
     </div>
     {% endif %}
 
-    <!-- Pending appointments -->
+    <!-- Pending Appointments -->
     {% if pending_appointments %}
     <div class="pending-alert">
-        <p class="pending-alert-title">⚠ RENDEZ-VOUS EN ATTENTE ({{ pending_appointments|length }})</p>
-        <div class="table-responsive">
-            <table class="table" style="margin:0;">
-                <thead>
-                    <tr><th>CLIENT</th><th>VOITURE</th><th>DATE</th><th>SERVICE</th></tr>
-                </thead>
+        <p class="pending-alert-title">⚠ Rendez-vous en Attente ({{ pending_appointments|length }})</p>
+        <div class="table-responsive" style="border:none">
+            <table class="table">
+                <thead><tr><th>Client</th><th>Voiture</th><th>Date</th><th>Service</th></tr></thead>
                 <tbody>
                 {% for a in pending_appointments %}
                 <tr>
@@ -145,45 +147,38 @@
                 </tr>
                 {% endfor %}
                 </tbody>
-        </table>
+            </table>
+        </div>
     </div>
     {% endif %}
 
     <!-- Quick Actions -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
-            <a href="/add_customer" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVEAU CLIENT</a>
-        </div>
-        <div class="col-md-3 col-6">
-            <a href="/add_appointment" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVEAU RDV</a>
-        </div>
-        <div class="col-md-3 col-6">
-            <a href="/add_invoice" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVELLE FACTURE</a>
-        </div>
-        <div class="col-md-3 col-6">
-            <a href="/quotes" class="btn btn-gold w-100" style="font-size:0.75rem">VOIR LES DEVIS</a>
-        </div>
+        <div class="col-md-3 col-6"><a href="/add_customer" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouveau Client</a></div>
+        <div class="col-md-3 col-6"><a href="/add_appointment" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouveau RDV</a></div>
+        <div class="col-md-3 col-6"><a href="/add_invoice" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouvelle Facture</a></div>
+        <div class="col-md-3 col-6"><a href="/quotes" class="btn-ghost w-100 d-flex justify-content-center">Voir les Devis</a></div>
     </div>
 
     <!-- Charts -->
     <div class="row g-3 mb-4">
         <div class="col-lg-4">
-            <div class="card p-3">
-                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">📊 REVENUS CETTE SEMAINE</p>
+            <div class="chart-card">
+                <div class="chart-title"><span>◫</span> Revenus cette Semaine</div>
                 <canvas id="weeklyChart" height="180"></canvas>
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="card p-3">
-                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">📈 COMPARAISON 12 MOIS</p>
+            <div class="chart-card">
+                <div class="chart-title"><span>↗</span> Comparaison 12 Mois</div>
                 <canvas id="monthlyCompChart" height="180"></canvas>
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="card p-3" id="forecastCard">
-                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">🔮 PRÉVISIONS FIN DE MOIS</p>
+            <div class="chart-card" id="forecastCard">
+                <div class="chart-title"><span>◈</span> Prévisions Fin de Mois</div>
                 <div id="forecastData" style="text-align:center;padding:10px 0">
-                    <p style="color:#888;font-size:0.8rem">Chargement...</p>
+                    <p style="color:var(--text-muted);font-size:0.8rem">Chargement...</p>
                 </div>
             </div>
         </div>
@@ -191,20 +186,20 @@
 
     <div class="row g-3">
         <div class="col-lg-6">
-            <div class="card p-3">
-                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">REVENUS vs DÉPENSES — 6 MOIS</p>
+            <div class="chart-card">
+                <div class="chart-title">Revenus vs Dépenses — 6 Mois</div>
                 <canvas id="revenueChart" height="200"></canvas>
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="card p-3">
-                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">SERVICES</p>
+            <div class="chart-card">
+                <div class="chart-title">Services</div>
                 <canvas id="servicesChart" height="200"></canvas>
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="card p-3">
-                <p style="color:#C41E3A;font-weight:700;font-size:0.8rem;margin-bottom:12px">DÉPENSES PAR CATÉGORIE</p>
+            <div class="chart-card">
+                <div class="chart-title" style="color:var(--red)">Dépenses par Catégorie</div>
                 <canvas id="expensesChart" height="200"></canvas>
             </div>
         </div>
@@ -214,44 +209,48 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 var chartFont = {family:'Inter',size:10};
-var gridColor = 'rgba(255,255,255,0.04)';
+var gridColor = 'rgba(255,255,255,0.03)';
+var goldAlpha = 'rgba(212,175,55,0.55)';
+var redAlpha = 'rgba(229,62,62,0.35)';
+var greenAlpha = 'rgba(56,161,105,0.35)';
+var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#555570';
 
 // Weekly Revenue
 fetch('/api/weekly_revenue').then(r=>r.json()).then(data=>{
     new Chart(document.getElementById('weeklyChart'),{
         type:'bar',
         data:{labels:data.map(d=>d.day),datasets:[
-            {label:'Revenus (DT)',data:data.map(d=>d.revenue),backgroundColor:'rgba(212,175,55,0.6)',borderColor:'#D4AF37',borderWidth:1,borderRadius:4},
-            {label:'RDV',data:data.map(d=>d.appointments),type:'line',borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,yAxisID:'y1'}
+            {label:'Revenus (DT)',data:data.map(d=>d.revenue),backgroundColor:goldAlpha,borderColor:'#D4AF37',borderWidth:1,borderRadius:6},
+            {label:'RDV',data:data.map(d=>d.appointments),type:'line',borderColor:'#38A169',backgroundColor:'rgba(56,161,105,0.08)',tension:0.4,yAxisID:'y1',pointRadius:3,pointBackgroundColor:'#38A169'}
         ]},
-        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
-            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#C41E3A'},grid:{display:false}}}}
+        options:{responsive:true,plugins:{legend:{labels:{color:textMuted,font:chartFont,boxWidth:10,padding:12}}},
+            scales:{x:{ticks:{color:textMuted,font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37',font:chartFont},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#38A169',font:chartFont},grid:{display:false}}}}
     });
 });
 
-// Monthly Comparison (12 months)
+// Monthly Comparison
 fetch('/api/monthly_comparison').then(r=>r.json()).then(data=>{
     new Chart(document.getElementById('monthlyCompChart'),{
         type:'line',
         data:{labels:data.map(d=>d.label),datasets:[
-            {label:'Revenus',data:data.map(d=>d.revenue),borderColor:'#D4AF37',backgroundColor:'rgba(212,175,55,0.1)',tension:0.3,fill:true},
-            {label:'Dépenses',data:data.map(d=>d.expenses),borderColor:'#C41E3A',backgroundColor:'rgba(196,30,58,0.1)',tension:0.3,fill:true},
-            {label:'Bénéfice',data:data.map(d=>d.profit),borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,fill:true}
+            {label:'Revenus',data:data.map(d=>d.revenue),borderColor:'#D4AF37',backgroundColor:'rgba(212,175,55,0.06)',tension:0.4,fill:true,pointRadius:2,pointBackgroundColor:'#D4AF37'},
+            {label:'Dépenses',data:data.map(d=>d.expenses),borderColor:'#E53E3E',backgroundColor:'rgba(229,62,62,0.06)',tension:0.4,fill:true,pointRadius:2,pointBackgroundColor:'#E53E3E'},
+            {label:'Bénéfice',data:data.map(d=>d.profit),borderColor:'#38A169',backgroundColor:'rgba(56,161,105,0.06)',tension:0.4,fill:true,pointRadius:2,pointBackgroundColor:'#38A169'}
         ]},
-        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
-            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}}}}
+        options:{responsive:true,plugins:{legend:{labels:{color:textMuted,font:chartFont,boxWidth:10,padding:12}}},
+            scales:{x:{ticks:{color:textMuted,font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37',font:chartFont},grid:{color:gridColor}}}}
     });
 });
 
 // Profit Forecast
 fetch('/api/profit_forecast').then(r=>r.json()).then(data=>{
     var fc = document.getElementById('forecastData');
-    var profitColor = data.forecast_profit >= 0 ? '#2d6a4f' : '#C41E3A';
-    fc.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">'
-        +'<div><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">REVENUS PRÉVUS</p><p style="color:#D4AF37;font-size:1.2rem;font-weight:800;margin:4px 0">'+data.forecast_revenue+' DT</p></div>'
-        +'<div><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">DÉPENSES PRÉVUES</p><p style="color:#C41E3A;font-size:1.2rem;font-weight:800;margin:4px 0">'+data.forecast_expenses+' DT</p></div>'
-        +'<div style="grid-column:span 2"><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">BÉNÉFICE ESTIMÉ</p><p style="color:'+profitColor+';font-size:1.5rem;font-weight:900;margin:4px 0">'+data.forecast_profit+' DT</p></div>'
-        +'<div style="grid-column:span 2"><p style="color:#888;font-size:0.65rem;margin:0">Moy. journalière: <b style=color:#D4AF37>'+data.avg_daily_revenue+' DT</b> | Jours restants: <b>'+data.days_remaining+'</b></p></div>'
+    var profitColor = data.forecast_profit >= 0 ? 'var(--green)' : 'var(--red)';
+    fc.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center">'
+        +'<div><p class="insight-label" style="margin:0">REVENUS PRÉVUS</p><p style="color:var(--gold);font-size:1.15rem;font-weight:800;margin:6px 0">'+data.forecast_revenue+' DT</p></div>'
+        +'<div><p class="insight-label" style="margin:0">DÉPENSES PRÉVUES</p><p style="color:var(--red);font-size:1.15rem;font-weight:800;margin:6px 0">'+data.forecast_expenses+' DT</p></div>'
+        +'<div style="grid-column:span 2"><p class="insight-label" style="margin:0">BÉNÉFICE ESTIMÉ</p><p style="color:'+profitColor+';font-size:1.5rem;font-weight:900;margin:6px 0">'+data.forecast_profit+' DT</p></div>'
+        +'<div style="grid-column:span 2"><p style="color:var(--text-muted);font-size:0.65rem;margin:0">Moy. journalière: <b style="color:var(--gold)">'+data.avg_daily_revenue+' DT</b> · Jours restants: <b>'+data.days_remaining+'</b></p></div>'
         +'</div>';
 });
 
@@ -260,25 +259,25 @@ fetch('/api/chart_data').then(r=>r.json()).then(data=>{
     new Chart(document.getElementById('revenueChart'),{
         type:'bar',
         data:{labels:data.months,datasets:[
-            {label:'Revenus (DT)',data:data.revenue,backgroundColor:'rgba(212,175,55,0.6)',borderColor:'#D4AF37',borderWidth:1,borderRadius:4},
-            {label:'Dépenses (DT)',data:data.expenses,backgroundColor:'rgba(196,30,58,0.4)',borderColor:'#C41E3A',borderWidth:1,borderRadius:4},
-            {label:'Rendez-vous',data:data.appointments,type:'line',borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,yAxisID:'y1'}
+            {label:'Revenus (DT)',data:data.revenue,backgroundColor:goldAlpha,borderColor:'#D4AF37',borderWidth:1,borderRadius:6},
+            {label:'Dépenses (DT)',data:data.expenses,backgroundColor:redAlpha,borderColor:'#E53E3E',borderWidth:1,borderRadius:6},
+            {label:'Rendez-vous',data:data.appointments,type:'line',borderColor:'#38A169',backgroundColor:'rgba(56,161,105,0.08)',tension:0.4,yAxisID:'y1',pointRadius:3,pointBackgroundColor:'#38A169'}
         ]},
-        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
-            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#C41E3A'},grid:{display:false}}}}
+        options:{responsive:true,plugins:{legend:{labels:{color:textMuted,font:chartFont,boxWidth:10,padding:12}}},
+            scales:{x:{ticks:{color:textMuted,font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37',font:chartFont},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#38A169',font:chartFont},grid:{display:false}}}}
     });
     if(data.services.labels.length>0){
         new Chart(document.getElementById('servicesChart'),{
             type:'doughnut',
-            data:{labels:data.services.labels,datasets:[{data:data.services.data,backgroundColor:['#D4AF37','#C41E3A','#2d6a4f','#B8B8B8','#8B6914','#555']}]},
-            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#9a9ab0',font:chartFont,padding:10}}}}
+            data:{labels:data.services.labels,datasets:[{data:data.services.data,backgroundColor:['#D4AF37','#E53E3E','#38A169','#3B82F6','#805AD5','#DD6B20'],borderWidth:0,borderRadius:3}]},
+            options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:textMuted,font:chartFont,padding:8,boxWidth:8}}}}
         });
     }
     if(data.expense_categories && data.expense_categories.labels.length>0){
         new Chart(document.getElementById('expensesChart'),{
             type:'doughnut',
-            data:{labels:data.expense_categories.labels,datasets:[{data:data.expense_categories.data,backgroundColor:['#C41E3A','#8B0000','#B22222','#DC143C','#FF4444','#CC3333']}]},
-            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#9a9ab0',font:chartFont,padding:10}}}}
+            data:{labels:data.expense_categories.labels,datasets:[{data:data.expense_categories.data,backgroundColor:['#E53E3E','#DD6B20','#805AD5','#3B82F6','#0EA5E9','#38A169'],borderWidth:0,borderRadius:3}]},
+            options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:textMuted,font:chartFont,padding:8,boxWidth:8}}}}
         });
     }
 });

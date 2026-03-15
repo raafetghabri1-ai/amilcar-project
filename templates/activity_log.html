@@ -8,14 +8,14 @@
         {% for log in logs %}
         <tr>
             <td>{{ log[0] }}</td>
-            <td><span style="color:#D4AF37">{{ log[1] }}</span></td>
+            <td><span style="color:var(--gold)">{{ log[1] }}</span></td>
             <td>{{ log[2] }}</td>
-            <td style="color:#888;font-size:0.85rem">{{ log[3] or '—' }}</td>
-            <td style="color:#555;font-size:0.8rem">{{ log[4] }}</td>
+            <td style="color:var(--text-secondary);font-size:0.85rem">{{ log[3] or '—' }}</td>
+            <td style="color:var(--text-muted);font-size:0.8rem">{{ log[4] }}</td>
         </tr>
         {% endfor %}
         {% if not logs %}
-        <tr><td colspan="5" style="text-align:center;color:#555;padding:30px">NO ACTIVITY YET</td></tr>
+        <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">NO ACTIVITY YET</td></tr>
         {% endif %}
         </tbody>
     </table>

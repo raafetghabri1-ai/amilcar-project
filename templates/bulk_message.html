@@ -12,7 +12,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-3">
                     <label class="form-label">🎯 Cible</label>
-                    <select name="target" id="targetSelect" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333" onchange="toggleTier()">
+                    <select name="target" id="targetSelect" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)" onchange="toggleTier()">
                         <option value="all">Tous les clients</option>
                         <option value="active">Clients actifs (90 jours)</option>
                         <option value="inactive">Clients inactifs (+90 jours)</option>
@@ -21,22 +21,22 @@
                 </div>
                 <div class="mb-3" id="tierDiv" style="display:none">
                     <label class="form-label">🏆 Niveau</label>
-                    <select name="tier" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <select name="tier" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                         {% for t in tiers %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
                     </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">📝 Message</label>
-                    <textarea name="message" class="form-control" rows="5" required placeholder="Bonjour {name}, ..." style="background:#1a1a1a;color:#ccc;border-color:#333"></textarea>
-                    <small style="color:#666;font-size:0.7rem">Variables: {name} = nom du client, {shop} = nom boutique</small>
+                    <textarea name="message" class="form-control" rows="5" required placeholder="Bonjour {name}, ..." style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)"></textarea>
+                    <small style="color:var(--text-muted);font-size:0.7rem">Variables: {name} = nom du client, {shop} = nom boutique</small>
                 </div>
-                <button class="btn btn-gold w-100">📱 Préparer les Messages</button>
+                <button class="btn-gold w-100">📱 Préparer les Messages</button>
             </form>
         </div>
     </div>
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">💡 Modèles Rapides</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">💡 Modèles Rapides</h6>
             <div class="d-grid gap-2">
                 <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('promo')">🎉 Promotion</button>
                 <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('reminder')">🔔 Rappel</button>

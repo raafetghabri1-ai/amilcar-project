@@ -8,15 +8,15 @@
 <div class="row g-3 mb-4">
     <div class="col-md-5">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouveau Coupon</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">➕ Nouveau Coupon</h6>
             <form method="POST" action="/coupons/add">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="row g-2 mb-2">
                     <div class="col-6">
-                        <input type="text" name="code" class="form-control form-control-sm" placeholder="CODE (ex: PROMO20)" required style="background:#1a1a1a;color:#ccc;border-color:#333;text-transform:uppercase">
+                        <input type="text" name="code" class="form-control form-control-sm" placeholder="CODE (ex: PROMO20)" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color);text-transform:uppercase">
                     </div>
                     <div class="col-6">
-                        <select name="discount_type" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <select name="discount_type" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                             <option value="percent">Pourcentage %</option>
                             <option value="fixed">Montant fixe (DT)</option>
                         </select>
@@ -24,18 +24,18 @@
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-4">
-                        <input type="number" name="discount_value" class="form-control form-control-sm" placeholder="Valeur" min="1" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <input type="number" name="discount_value" class="form-control form-control-sm" placeholder="Valeur" min="1" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                     <div class="col-4">
-                        <input type="number" name="max_uses" class="form-control form-control-sm" placeholder="Nb max" value="50" min="1" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <input type="number" name="max_uses" class="form-control form-control-sm" placeholder="Nb max" value="50" min="1" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                     <div class="col-4">
-                        <input type="number" name="min_amount" class="form-control form-control-sm" placeholder="Min DT" value="0" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <input type="number" name="min_amount" class="form-control form-control-sm" placeholder="Min DT" value="0" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     </div>
                 </div>
                 <div class="mb-2">
-                    <input type="date" name="expires_at" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
-                    <small style="color:#666;font-size:0.65rem">Date d'expiration (optionnel)</small>
+                    <input type="date" name="expires_at" class="form-control form-control-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
+                    <small style="color:var(--text-muted);font-size:0.65rem">Date d'expiration (optionnel)</small>
                 </div>
                 <button class="btn btn-sm btn-gold w-100">✅ Créer le Coupon</button>
             </form>
@@ -43,17 +43,17 @@
     </div>
     <div class="col-md-7">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📋 Coupons Existants</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📋 Coupons Existants</h6>
             <div class="table-responsive">
                 <table class="table table-dark table-sm table-hover">
                     <thead><tr><th>Code</th><th>Remise</th><th>Utilisé</th><th>Expire</th><th>Statut</th><th>Actions</th></tr></thead>
                     <tbody>
                     {% for c in coupons %}
                     <tr>
-                        <td><strong style="color:#D4AF37;letter-spacing:1px">{{ c[1] }}</strong></td>
+                        <td><strong style="color:var(--gold);letter-spacing:1px">{{ c[1] }}</strong></td>
                         <td>{% if c[2] == 'percent' %}{{ c[3] }}%{% else %}{{ c[3] }} DT{% endif %}</td>
                         <td>{{ c[5] }} / {{ c[4] }}</td>
-                        <td style="color:#888;font-size:0.75rem">{{ c[6] or '∞' }}</td>
+                        <td style="color:var(--text-secondary);font-size:0.75rem">{{ c[6] or '∞' }}</td>
                         <td>{% if c[7] %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-secondary">Inactif</span>{% endif %}</td>
                         <td>
                             <form method="POST" action="/coupons/toggle/{{ c[0] }}" class="d-inline">
@@ -67,7 +67,7 @@
                         </td>
                     </tr>
                     {% endfor %}
-                    {% if not coupons %}<tr><td colspan="6" style="text-align:center;color:#666">Aucun coupon</td></tr>{% endif %}
+                    {% if not coupons %}<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Aucun coupon</td></tr>{% endif %}
                     </tbody>
                 </table>
             </div>

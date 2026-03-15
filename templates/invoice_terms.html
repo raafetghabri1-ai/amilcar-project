@@ -10,21 +10,21 @@
     <div class="row g-3">
         <div class="col-md-6">
             <div class="card p-3">
-                <h6 style="color:#D4AF37;margin-bottom:15px">📋 Conditions Générales</h6>
-                <p style="color:#666;font-size:0.75rem;margin-bottom:10px">Ce texte apparaîtra en bas de chaque facture imprimée/PDF</p>
-                <textarea name="terms" class="form-control" rows="12" style="background:#1a1a1a;color:#ccc;border-color:#333;font-size:0.85rem">{{ terms or "CONDITIONS GÉNÉRALES DE VENTE\n\n1. Les services rendus sont facturés selon les tarifs en vigueur.\n2. Toute réclamation doit être effectuée dans les 48h suivant la prestation.\n3. AMILCAR ne peut être tenu responsable des objets laissés dans le véhicule.\n4. En cas de litige, seul le tribunal compétent de Sfax sera saisi.\n5. Le paiement est exigible à la réception de la facture.\n6. Tout retard de paiement entraînera des pénalités de retard.\n7. Les prix s'entendent TTC sauf mention contraire." }}</textarea>
+                <h6 style="color:var(--gold);margin-bottom:15px">📋 Conditions Générales</h6>
+                <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:10px">Ce texte apparaîtra en bas de chaque facture imprimée/PDF</p>
+                <textarea name="terms" class="form-control" rows="12" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color);font-size:0.85rem">{{ terms or "CONDITIONS GÉNÉRALES DE VENTE\n\n1. Les services rendus sont facturés selon les tarifs en vigueur.\n2. Toute réclamation doit être effectuée dans les 48h suivant la prestation.\n3. AMILCAR ne peut être tenu responsable des objets laissés dans le véhicule.\n4. En cas de litige, seul le tribunal compétent de Sfax sera saisi.\n5. Le paiement est exigible à la réception de la facture.\n6. Tout retard de paiement entraînera des pénalités de retard.\n7. Les prix s'entendent TTC sauf mention contraire." }}</textarea>
             </div>
         </div>
         <div class="col-md-6">
             <div class="card p-3">
-                <h6 style="color:#D4AF37;margin-bottom:15px">🛡️ Politique de Garantie</h6>
-                <p style="color:#666;font-size:0.75rem;margin-bottom:10px">Ce texte accompagne les informations de garantie</p>
-                <textarea name="warranty_text" class="form-control" rows="12" style="background:#1a1a1a;color:#ccc;border-color:#333;font-size:0.85rem">{{ warranty_text or "POLITIQUE DE GARANTIE AMILCAR\n\n• Lavage & Detailing: Garantie satisfaction 48h\n• Polissage: Garantie 30 jours (sous conditions)\n• Céramique: Garantie 6 mois à 2 ans selon le produit\n• Protection PPF: Garantie fabricant applicable\n\nConditions:\n- La garantie ne couvre pas l'usure normale\n- Le véhicule doit être entretenu régulièrement\n- Toute modification non autorisée annule la garantie\n- Présentation de la facture originale obligatoire" }}</textarea>
+                <h6 style="color:var(--gold);margin-bottom:15px">🛡️ Politique de Garantie</h6>
+                <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:10px">Ce texte accompagne les informations de garantie</p>
+                <textarea name="warranty_text" class="form-control" rows="12" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color);font-size:0.85rem">{{ warranty_text or "POLITIQUE DE GARANTIE AMILCAR\n\n• Lavage & Detailing: Garantie satisfaction 48h\n• Polissage: Garantie 30 jours (sous conditions)\n• Céramique: Garantie 6 mois à 2 ans selon le produit\n• Protection PPF: Garantie fabricant applicable\n\nConditions:\n- La garantie ne couvre pas l'usure normale\n- Le véhicule doit être entretenu régulièrement\n- Toute modification non autorisée annule la garantie\n- Présentation de la facture originale obligatoire" }}</textarea>
             </div>
         </div>
     </div>
     <div class="mt-3">
-        <button class="btn btn-gold w-100">💾 Enregistrer les Conditions</button>
+        <button class="btn-gold w-100">💾 Enregistrer les Conditions</button>
     </div>
 </form>
 {% endblock %}

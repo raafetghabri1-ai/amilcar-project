@@ -4,7 +4,7 @@
     <p class="page-title">SEARCH RESULTS {% if q %}— "{{ q }}" ({{ total }} results){% endif %}</p>
     <form method="GET" action="/search" class="d-flex gap-2 mb-4">
         <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Search clients, cars, appointments..." style="max-width:400px" autofocus>
-        <button type="submit" class="btn btn-gold">SEARCH</button>
+        <button type="submit" class="btn-gold">SEARCH</button>
     </form>
     {% if q and q|length >= 2 %}
     {% if results.customers %}
@@ -17,7 +17,7 @@
             <td>{{ c[0] }}</td>
             <td>{{ c[1] }}</td>
             <td>{{ c[2] }}</td>
-            <td><a href="/customer/{{ c[0] }}" class="btn btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
+            <td><a href="/customer/{{ c[0] }}" class="btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
         </tr>
         {% endfor %}
         </tbody>
@@ -34,7 +34,7 @@
             <td>{{ c[2] }}</td>
             <td>{{ c[3] }}</td>
             <td>{{ c[4] }}</td>
-            <td><a href="/car/{{ c[0] }}" class="btn btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
+            <td><a href="/car/{{ c[0] }}" class="btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
         </tr>
         {% endfor %}
         </tbody>
@@ -83,7 +83,7 @@
     </table>
     {% endif %}
     {% if total == 0 %}
-    <p style="color:#555;letter-spacing:2px;font-size:0.85rem;text-align:center;padding:40px 0">NO RESULTS FOUND</p>
+    <p style="color:var(--text-muted);letter-spacing:2px;font-size:0.85rem;text-align:center;padding:40px 0">NO RESULTS FOUND</p>
     {% endif %}
     {% endif %}
 {% endblock %}

@@ -2,123 +2,126 @@
 {% block title %} - Factures{% endblock %}
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <p class="page-title mb-0">FACTURES</p>
-        <a href="/add_invoice" class="btn btn-gold">+ NOUVELLE FACTURE</a>
+        <div>
+            <p class="page-title mb-0">Factures</p>
+            <p class="page-subtitle mb-0">Suivi de facturation et paiements</p>
+        </div>
+        <a href="/add_invoice" class="btn-gold">+ Nouvelle Facture</a>
     </div>
     <form method="GET" action="/invoices" class="d-flex gap-2 mb-4 align-items-end">
         <div>
-            <label class="form-label" style="font-size:0.65rem;color:#888;letter-spacing:1px">STATUT</label>
-            <select name="status" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';min-width:120px">
-                <option value="">TOUS</option>
-                <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>IMPAYÉ</option>
-                <option value="partial" {% if status_filter == 'partial' %}selected{% endif %}>PARTIEL</option>
-                <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>PAYÉ</option>
+            <label class="form-label">Statut</label>
+            <select name="status" class="form-control" style="min-width:130px">
+                <option value="">Tous</option>
+                <option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>Impayé</option>
+                <option value="partial" {% if status_filter == 'partial' %}selected{% endif %}>Partiel</option>
+                <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Payé</option>
             </select>
         </div>
-        <button type="submit" class="btn btn-gold">FILTRER</button>
+        <button type="submit" class="btn-gold btn-sm">Filtrer</button>
         {% if status_filter %}
-        <a href="/invoices" class="btn" style="border:1px solid #555;color:#888">EFFACER</a>
+        <a href="/invoices" class="btn-ghost btn-sm">Effacer</a>
         {% endif %}
     </form>
     <form id="bulkForm" method="POST" action="/bulk_pay_invoices">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="d-flex gap-2 mb-3 align-items-center" id="bulkBar" style="display:none !important">
-        <span style="color:#D4AF37;font-size:0.75rem;letter-spacing:1px" id="selectedCount">0 SÉLECTIONNÉ(S)</span>
-        <select name="payment_method" style="background:#0d0d0d;border:1px solid #D4AF37;color:#f0f0f0;font-size:0.65rem;padding:4px 8px;border-radius:4px;font-family:Cinzel">
+        <span style="color:var(--gold);font-size:0.75rem;letter-spacing:0.5px" id="selectedCount">0 sélectionné(s)</span>
+        <select name="payment_method" class="form-control" style="width:auto;padding:5px 10px;font-size:0.7rem">
             <option value="cash">Espèces</option>
             <option value="card">Carte</option>
             <option value="bank_transfer">Banque</option>
             <option value="check">Chèque</option>
         </select>
-        <button type="submit" class="btn btn-gold" style="font-size:0.7rem;padding:5px 12px">PAYER SÉLECTION</button>
+        <button type="submit" class="btn-gold btn-sm">Payer Sélection</button>
     </div>
+    <div class="table-responsive">
     <table class="table">
-        <thead><tr><th><input type="checkbox" id="selectAll" style="accent-color:#D4AF37"></th><th>#</th><th>CLIENT</th><th>SERVICE</th><th>DATE</th><th>MONTANT</th><th>REMISE</th><th>PAYÉ</th><th>STATUT</th><th>PAIEMENT</th><th>ACTION</th></tr></thead>
+        <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll" class="form-check-input" style="width:14px;height:14px"></th><th>#</th><th>Client</th><th>Service</th><th>Date</th><th>Montant</th><th>Remise</th><th>Payé</th><th>Statut</th><th>Paiement</th><th>Action</th></tr></thead>
         <tbody>
         {% for inv in invoices %}
         <tr>
             <td>
             {% if inv[3] != "paid" %}
-            <input type="checkbox" name="invoice_ids" value="{{ inv[0] }}" class="inv-check" style="accent-color:#D4AF37">
+            <input type="checkbox" name="invoice_ids" value="{{ inv[0] }}" class="inv-check form-check-input" style="width:14px;height:14px">
             {% endif %}
             </td>
-            <td>{{ inv[0] }}</td>
-            <td>{{ inv[6] }}</td>
+            <td style="color:var(--text-muted)">{{ inv[0] }}</td>
+            <td style="font-weight:600">{{ inv[6] }}</td>
             <td>{{ inv[5] }}</td>
             <td>{{ inv[4] }}</td>
             <td class="amount">{{ inv[2] }} DT</td>
             <td>
             {% if inv[9] and inv[10] > 0 %}
-            <span style="color:#2d6a4f;font-size:0.75rem">{% if inv[9] == 'percent' %}-{{ inv[10] }}%{% else %}-{{ inv[10] }} DT{% endif %}</span>
-            {% else %}—{% endif %}
+            <span style="color:var(--green);font-size:0.75rem">{% if inv[9] == 'percent' %}-{{ inv[10] }}%{% else %}-{{ inv[10] }} DT{% endif %}</span>
+            {% else %}<span style="color:var(--text-dim)">—</span>{% endif %}
             </td>
             <td>
             {% if inv[8] and inv[8] > 0 and inv[3] != 'paid' %}
-            <span style="color:#D4AF37;font-size:0.8rem">{{ inv[8] }} DT</span>
+            <span style="color:var(--gold);font-size:0.8rem;font-weight:600">{{ inv[8] }} DT</span>
             {% elif inv[3] == 'paid' %}
-            <span style="color:#2d6a4f;font-size:0.8rem">{{ inv[2] }} DT</span>
-            {% else %}—{% endif %}
+            <span style="color:var(--green);font-size:0.8rem;font-weight:600">{{ inv[2] }} DT</span>
+            {% else %}<span style="color:var(--text-dim)">—</span>{% endif %}
             </td>
             <td>
             {% if inv[3] == "unpaid" %}
-            <span class="badge-unpaid">IMPAYÉ</span>
+            <span class="badge-unpaid">Impayé</span>
             {% elif inv[3] == "partial" %}
-            <span style="background:#B8860B;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;letter-spacing:1px">PARTIEL</span>
+            <span class="badge-partial">Partiel</span>
             {% else %}
-            <span class="badge-paid">PAYÉ</span>
+            <span class="badge-paid">Payé</span>
             {% endif %}
             </td>
             <td>
             {% if inv[7] %}
-            <span style="background:#1a1a2e;padding:3px 8px;border-radius:4px;font-size:0.65rem;color:#D4AF37;letter-spacing:1px">{{ inv[7]|upper }}</span>
-            {% else %}—{% endif %}
+            <span class="badge-payment-method">{{ inv[7]|upper }}</span>
+            {% else %}<span style="color:var(--text-dim)">—</span>{% endif %}
             </td>
             <td>
+            <div class="d-flex gap-1 align-items-center flex-wrap">
             {% if inv[3] != "paid" %}
-            <form method="POST" action="/pay_invoice/{{ inv[0] }}" class="form-action-inline d-flex gap-1">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <input type="number" name="pay_amount" placeholder="Montant" step="0.01" min="0.01" style="width:70px;background:#0d0d0d;border:1px solid #D4AF37;color:#f0f0f0;font-size:0.6rem;padding:3px 4px;border-radius:4px;font-family:Cinzel">
-                <select name="payment_method" style="background:#0d0d0d;border:1px solid #D4AF37;color:#f0f0f0;font-size:0.65rem;padding:3px 6px;border-radius:4px;font-family:Cinzel">
+            <form method="POST" action="/pay_invoice/{{ inv[0] }}" class="form-action-inline d-flex gap-1 align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="number" name="pay_amount" placeholder="Montant" step="0.01" min="0.01" class="form-control" style="width:70px;padding:4px 6px;font-size:0.68rem">
+                <select name="payment_method" class="form-control" style="width:auto;padding:4px 6px;font-size:0.68rem">
                     <option value="cash">Espèces</option>
                     <option value="card">Carte</option>
                     <option value="bank_transfer">Banque</option>
                     <option value="check">Chèque</option>
                 </select>
-                <button type="submit" class="btn btn-gold" style="font-size:0.65rem;padding:4px 8px;">PAYER</button>
+                <button type="submit" class="action-btn pay">Payer</button>
             </form>
             {% endif %}
-            <a href="/edit_invoice/{{ inv[0] }}" class="action-edit" style="margin:0 3px">✎</a>
-            <a href="/print_invoice/{{ inv[0] }}" style="background:#D4AF37;color:#0d0d0d;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none">🖨</a>
-            <a href="/payments/{{ inv[0] }}" style="background:#0d6efd;color:white;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none">💳</a>
-            <a href="/download_invoice/{{ inv[0] }}" style="background:#2d6a4f;color:white;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none">PDF</a>
+            <a href="/edit_invoice/{{ inv[0] }}" class="action-edit" title="Modifier">✎</a>
+            <a href="/print_invoice/{{ inv[0] }}" class="action-btn print" title="Imprimer">⎙</a>
+            <a href="/payments/{{ inv[0] }}" class="action-btn pay" title="Paiements">◈</a>
+            <a href="/download_invoice/{{ inv[0] }}" class="action-btn pdf" title="PDF">PDF</a>
             <form method="POST" action="/generate_invoice_qr/{{ inv[0] }}" class="form-action-inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn" style="background:#6B21A8;color:white;font-size:0.65rem;padding:3px 8px;border:none;border-radius:4px" title="Générer QR Code">QR</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="action-btn qr" title="QR Code">QR</button>
             </form>
             <form method="POST" action="/email_invoice/{{ inv[0] }}" class="form-action-inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn" style="background:#1B6B93;color:white;font-size:0.65rem;padding:3px 8px;border:none;border-radius:4px" title="Envoyer Facture">📧</button>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="action-btn email" title="Email">✉</button>
             </form>
-            {% if inv[3] != 'paid' %}<a href="/whatsapp_unpaid/{{ inv[0] }}" target="_blank" style="background:#25D366;color:white;padding:3px 8px;border-radius:4px;font-size:0.65rem;text-decoration:none" title="WhatsApp">📱</a>{% endif %}
-            <form method="POST" action="/delete_invoice/{{ inv[0] }}" class="form-action-inline" onsubmit="return confirm('SUPPRIMER ?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn-action-delete">✗</button>
+            {% if inv[3] != 'paid' %}<a href="/whatsapp_unpaid/{{ inv[0] }}" target="_blank" class="action-btn wa" title="WhatsApp">WA</a>{% endif %}
+            <form method="POST" action="/delete_invoice/{{ inv[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer ?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-action-delete">✕</button>
             </form>
+            </div>
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
     </form>
     {% if total_pages > 1 %}
-    <nav class="d-flex justify-content-center mt-4">
-        <ul class="pagination" style="gap:5px">
-            {% for p in range(1, total_pages + 1) %}
-            <li>
-                <a href="/invoices?status={{ status_filter }}&page={{ p }}" class="btn {% if p == page %}btn-gold{% else %}btn-page{% endif %}">{{ p }}</a>
-            </li>
-            {% endfor %}
-        </ul>
+    <nav class="d-flex justify-content-center mt-4" style="gap:6px">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="/invoices?status={{ status_filter }}&page={{ p }}" class="btn-page {% if p == page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
     </nav>
     {% endif %}
 {% endblock %}
@@ -129,12 +132,8 @@ const bulkBar = document.getElementById('bulkBar');
 const selectedCount = document.getElementById('selectedCount');
 function updateBulk() {
     const checked = document.querySelectorAll('.inv-check:checked').length;
-    if (checked > 0) {
-        bulkBar.style.cssText = 'display:flex !important';
-    } else {
-        bulkBar.style.cssText = 'display:none !important';
-    }
-    selectedCount.textContent = checked + ' SÉLECTIONNÉ(S)';
+    bulkBar.style.cssText = checked > 0 ? 'display:flex !important' : 'display:none !important';
+    selectedCount.textContent = checked + ' sélectionné(s)';
 }
 if (selectAll) {
     selectAll.addEventListener('change', function() {

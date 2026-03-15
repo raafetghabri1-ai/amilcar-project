@@ -23,26 +23,26 @@
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📅 Dates Clés</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📅 Dates Clés</h6>
             <div style="font-size:0.85rem">
-                <p><span style="color:#888">Première visite:</span> <strong>{{ first_visit or '—' }}</strong></p>
-                <p><span style="color:#888">Dernière visite:</span> <strong>{{ last_visit or '—' }}</strong></p>
-                <p><span style="color:#888">Prochaine visite estimée:</span>
-                    <strong style="color:#D4AF37">{{ predicted_next or '—' }}</strong></p>
-                <p><span style="color:#888">Dépense moyenne:</span>
+                <p><span style="color:var(--text-secondary)">Première visite:</span> <strong>{{ first_visit or '—' }}</strong></p>
+                <p><span style="color:var(--text-secondary)">Dernière visite:</span> <strong>{{ last_visit or '—' }}</strong></p>
+                <p><span style="color:var(--text-secondary)">Prochaine visite estimée:</span>
+                    <strong style="color:var(--gold)">{{ predicted_next or '—' }}</strong></p>
+                <p><span style="color:var(--text-secondary)">Dépense moyenne:</span>
                     <strong>{{ (total_spent / visit_count)|round(0) if visit_count else 0 }} DT</strong></p>
             </div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">🔝 Services Préférés</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">🔝 Services Préférés</h6>
             <canvas id="servicesChart" height="200"></canvas>
         </div>
     </div>
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">💰 Dépenses Mensuelles</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">💰 Dépenses Mensuelles</h6>
             <canvas id="spendingChart" height="200"></canvas>
         </div>
     </div>
@@ -50,16 +50,16 @@
 
 <!-- Recent Appointments -->
 <div class="card p-3">
-    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Dernières Visites</h6>
+    <h6 style="color:var(--gold);margin-bottom:15px">📋 Dernières Visites</h6>
     <div class="table-responsive">
         <table class="table table-dark table-sm">
             <thead><tr><th>Date</th><th>Service</th><th>Véhicule</th><th>Statut</th></tr></thead>
             <tbody>
             {% for a in appointments %}
             <tr>
-                <td style="color:#888">{{ a[1] }}</td>
+                <td style="color:var(--text-secondary)">{{ a[1] }}</td>
                 <td>{{ a[2] }}</td>
-                <td style="color:#888;font-size:0.8rem">{{ a[4] }} {{ a[5] }} ({{ a[6] }})</td>
+                <td style="color:var(--text-secondary);font-size:0.8rem">{{ a[4] }} {{ a[5] }} ({{ a[6] }})</td>
                 <td>{% if a[3] == 'completed' %}<span class="badge bg-success">Terminé</span>
                     {% elif a[3] == 'pending' %}<span class="badge bg-warning text-dark">En attente</span>
                     {% elif a[3] == 'in_progress' %}<span class="badge bg-primary">En cours</span>

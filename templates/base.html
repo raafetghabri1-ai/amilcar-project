@@ -13,54 +13,59 @@
     {% block head %}{% endblock %}
     <style>
     /* ─── Sidebar Layout ─── */
-    .sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg-navbar);border-right:1px solid var(--border-color);overflow-y:auto;z-index:1100;transition:transform .3s ease;display:flex;flex-direction:column}
-    .sidebar::-webkit-scrollbar{width:4px}.sidebar::-webkit-scrollbar-thumb{background:var(--gold);border-radius:4px}
-    .sidebar-brand{padding:18px 20px 10px;text-align:center;border-bottom:1px solid var(--border-subtle)}
-    .sidebar-brand img{height:40px;margin-bottom:4px}
-    .sidebar-brand h2{font-family:var(--font-display);color:var(--gold);font-size:1.3rem;margin:0;letter-spacing:3px}
-    .sidebar-brand small{color:var(--text-muted);font-size:.55rem;letter-spacing:2px}
-    .sidebar-search{padding:10px 14px}
-    .sidebar-search input{width:100%;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--text-primary);padding:7px 12px;border-radius:var(--radius-sm);font-size:.78rem}
-    .sidebar-search input:focus{outline:none;border-color:var(--gold)}
-    .sidebar-section{padding:4px 0}
-    .sidebar-section-title{color:var(--text-muted);font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:10px 20px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+    .sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg-navbar);border-right:1px solid var(--border-color);overflow-y:auto;z-index:1100;transition:transform .3s var(--ease);display:flex;flex-direction:column;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .sidebar::-webkit-scrollbar{width:3px}.sidebar::-webkit-scrollbar-thumb{background:rgba(212,175,55,0.3);border-radius:3px}
+    .sidebar-brand{padding:20px 20px 14px;text-align:center;border-bottom:1px solid var(--border-subtle);position:relative}
+    .sidebar-brand::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+    .sidebar-brand img{height:38px;margin-bottom:6px;filter:drop-shadow(0 2px 8px rgba(212,175,55,0.15))}
+    .sidebar-brand h2{font-family:var(--font-display);color:var(--gold);font-size:1.25rem;margin:0;letter-spacing:4px;font-weight:700}
+    .sidebar-brand small{color:var(--text-dim);font-size:.5rem;letter-spacing:2.5px;display:block;margin-top:2px}
+    .sidebar-search{padding:12px 14px}
+    .sidebar-search input{width:100%;background:var(--bg-input);border:1.5px solid var(--border-subtle);color:var(--text-primary);padding:8px 12px 8px 32px;border-radius:var(--radius-sm);font-size:.76rem;transition:all .3s var(--ease)}
+    .sidebar-search input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+    .sidebar-search{position:relative}
+    .sidebar-search::before{content:'⌕';position:absolute;left:24px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:.85rem;pointer-events:none}
+    .sidebar-section{padding:2px 0}
+    .sidebar-section-title{color:var(--text-dim);font-size:.55rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:10px 20px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;transition:color .2s var(--ease)}
     .sidebar-section-title:hover{color:var(--gold)}
-    .sidebar-section-title .chevron{transition:transform .2s;font-size:.5rem}
+    .sidebar-section-title .chevron{transition:transform .25s var(--ease);font-size:.45rem;opacity:.5}
     .sidebar-section-title.collapsed .chevron{transform:rotate(-90deg)}
     .sidebar-links{list-style:none;padding:0;margin:0}
     .sidebar-links.collapsed{display:none}
-    .sidebar-links li a{display:flex;align-items:center;gap:8px;padding:7px 20px;color:var(--text-secondary);text-decoration:none;font-size:.75rem;font-weight:500;letter-spacing:.5px;transition:all .2s;border-left:3px solid transparent}
-    .sidebar-links li a:hover{color:var(--gold);background:rgba(212,175,55,.06);border-left-color:var(--gold)}
-    .sidebar-links li a.active{color:var(--gold);background:rgba(212,175,55,.08);border-left-color:var(--gold);font-weight:600}
-    .sidebar-links li a .icon{width:18px;text-align:center;font-size:.85rem}
-    .sidebar-links li a .badge-notif{background:var(--red);color:#fff;font-size:.55rem;padding:1px 6px;border-radius:10px;margin-left:auto}
-    .sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--border-subtle);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-    .sidebar-footer .sf-user{color:var(--gold);font-size:.7rem;font-weight:600;letter-spacing:1px;flex:1}
-    .sidebar-footer .sf-role{color:var(--red);font-size:.5rem;font-weight:700;background:rgba(196,30,58,.1);padding:1px 6px;border-radius:8px}
-    .sidebar-footer a{color:var(--text-muted);font-size:.75rem;text-decoration:none;padding:3px 5px;border-radius:var(--radius-sm)}
-    .sidebar-footer a:hover{color:var(--gold)}
-    .sidebar-lang{display:flex;gap:4px;width:100%;margin-top:4px}
-    .sidebar-lang a{font-size:.65rem;padding:2px 8px;border-radius:4px}
-    .sidebar-lang a.active-lang{color:var(--gold) !important;font-weight:700}
+    .sidebar-links li a{display:flex;align-items:center;gap:10px;padding:7px 16px 7px 20px;color:var(--text-secondary);text-decoration:none;font-size:.74rem;font-weight:500;letter-spacing:.3px;transition:all .2s var(--ease);border-left:2px solid transparent;margin:0 0 1px}
+    .sidebar-links li a:hover{color:var(--gold);background:var(--bg-hover);border-left-color:rgba(212,175,55,0.3)}
+    .sidebar-links li a.active{color:var(--gold);background:var(--bg-active);border-left-color:var(--gold);font-weight:600}
+    .sidebar-links li a .icon{width:18px;text-align:center;font-size:.82rem;flex-shrink:0;opacity:.8}
+    .sidebar-links li a:hover .icon{opacity:1}
+    .sidebar-links li a .badge-notif{background:var(--red);color:#fff;font-size:.5rem;padding:1px 6px;border-radius:10px;margin-left:auto;font-weight:700;box-shadow:0 0 0 2px var(--bg-navbar)}
+    .sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border-subtle);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    .sidebar-footer .sf-user{color:var(--gold);font-size:.68rem;font-weight:700;letter-spacing:1.5px;flex:1}
+    .sidebar-footer .sf-role{color:var(--red);font-size:.48rem;font-weight:700;background:var(--red-soft);padding:2px 8px;border-radius:var(--radius-full);letter-spacing:.5px}
+    .sidebar-footer a{color:var(--text-muted);font-size:.75rem;text-decoration:none;padding:4px 6px;border-radius:var(--radius-xs);transition:all .2s var(--ease)}
+    .sidebar-footer a:hover{color:var(--gold);background:var(--bg-hover)}
+    .sidebar-lang{display:flex;gap:4px;width:100%;margin-top:6px}
+    .sidebar-lang a{font-size:.64rem;padding:3px 10px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);transition:all .2s var(--ease)}
+    .sidebar-lang a:hover{border-color:var(--border-hover)}
+    .sidebar-lang a.active-lang{color:var(--gold) !important;font-weight:700;border-color:var(--gold);background:var(--gold-dim)}
     /* Main content shifted */
-    .layout-main{margin-left:260px;min-height:100vh;transition:margin .3s ease}
+    .layout-main{margin-left:260px;min-height:100vh;transition:margin .3s var(--ease)}
     /* Mobile topbar */
-    .topbar-mobile{display:none;position:fixed;top:0;left:0;right:0;height:50px;background:var(--bg-navbar);border-bottom:1px solid var(--border-color);z-index:1050;align-items:center;padding:0 16px}
-    .topbar-mobile .burger{background:none;border:none;color:var(--gold);font-size:1.5rem;cursor:pointer}
-    .topbar-mobile .tb-brand{color:var(--gold);font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-left:12px}
-    .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1090}
+    .topbar-mobile{display:none;position:fixed;top:0;left:0;right:0;height:52px;background:var(--bg-navbar);border-bottom:1px solid var(--border-color);z-index:1050;align-items:center;padding:0 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .topbar-mobile .burger{background:none;border:none;color:var(--gold);font-size:1.3rem;cursor:pointer;padding:6px;border-radius:var(--radius-xs);transition:background .2s}
+    .topbar-mobile .burger:hover{background:var(--bg-hover)}
+    .topbar-mobile .tb-brand{color:var(--gold);font-family:var(--font-display);font-size:1rem;letter-spacing:4px;margin-left:12px;font-weight:700}
+    .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:1090}
     @media(max-width:991px){
         .sidebar{transform:translateX(-100%)}
         .sidebar.open{transform:translateX(0)}
         .sidebar-overlay.open{display:block}
-        .layout-main{margin-left:0;padding-top:55px}
+        .layout-main{margin-left:0;padding-top:58px}
         .topbar-mobile{display:flex}
     }
-    /* Hide old hero on sidebar layout pages */
-    .hero{display:none}
-    .sidebar-search-results{position:absolute;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);width:calc(100% - 28px);margin:0 14px;z-index:9999;display:none;max-height:200px;overflow-y:auto}
-    .sidebar-search-results a{display:block;padding:6px 12px;color:var(--text-primary);text-decoration:none;font-size:.75rem;border-bottom:1px solid var(--border-subtle)}
-    .sidebar-search-results a:hover{background:rgba(212,175,55,.08)}
+    .sidebar-search-results{position:absolute;background:var(--bg-card-solid);border:1px solid var(--border-color);border-radius:var(--radius-sm);width:calc(100% - 28px);margin:0 14px;z-index:9999;display:none;max-height:220px;overflow-y:auto;box-shadow:var(--shadow-lg)}
+    .sidebar-search-results a{display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-primary);text-decoration:none;font-size:.74rem;border-bottom:1px solid var(--border-subtle);transition:background .15s var(--ease)}
+    .sidebar-search-results a:hover{background:var(--bg-hover)}
+    .sidebar-search-results a:last-child{border-bottom:none}
     </style>
 </head>
 <body>
@@ -68,7 +73,7 @@
     <div class="topbar-mobile">
         <button class="burger" onclick="toggleSidebar()">☰</button>
         <span class="tb-brand">AMILCAR</span>
-        <a href="/notifications" style="margin-left:auto;color:var(--text-secondary);text-decoration:none;position:relative">🔔{% if notif_count %}<span style="position:absolute;top:-4px;right:-8px;background:var(--red);color:#fff;font-size:.5rem;padding:1px 4px;border-radius:8px">{{ notif_count }}</span>{% endif %}</a>
+        <a href="/notifications" style="margin-left:auto;color:var(--text-secondary);text-decoration:none;position:relative;padding:6px">🔔{% if notif_count %}<span class="notif-badge">{{ notif_count }}</span>{% endif %}</a>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -79,242 +84,239 @@
             <h2>AMILCAR</h2>
             <small>WHERE CARS BECOME ART</small>
         </div>
-        <div class="sidebar-search" style="position:relative">
+        <div class="sidebar-search">
             <form action="/search" method="GET">
-                <input type="text" name="q" id="searchInput" placeholder="🔍 Rechercher..." autocomplete="off">
+                <input type="text" name="q" id="searchInput" placeholder="Rechercher..." autocomplete="off">
             </form>
             <div class="sidebar-search-results" id="searchResults"></div>
         </div>
 
         <!-- PRINCIPAL -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PRINCIPAL <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PRINCIPAL <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/"><span class="icon">🏠</span> Accueil</a></li>
-                {% if session.get('role') == 'admin' %}<li><a href="/custom_dashboard"><span class="icon">📊</span> Mon Dashboard</a></li>{% endif %}
-                <li><a href="/daily"><span class="icon">📋</span> Aujourd'hui</a></li>
-                <li><a href="/notifications"><span class="icon">🔔</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
-                <li><a href="/live_board"><span class="icon">📺</span> Atelier Live</a></li>
+                <li><a href="/"><span class="icon">⌂</span> Accueil</a></li>
+                {% if session.get('role') == 'admin' %}<li><a href="/custom_dashboard"><span class="icon">◫</span> Mon Dashboard</a></li>{% endif %}
+                <li><a href="/daily"><span class="icon">◉</span> Aujourd'hui</a></li>
+                <li><a href="/notifications"><span class="icon">◎</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
+                <li><a href="/live_board"><span class="icon">▶</span> Atelier Live</a></li>
                 <li><a href="/live_tracking"><span class="icon">⚡</span> Suivi Temps Réel</a></li>
-                <li><a href="/pos"><span class="icon">💳</span> Caisse POS</a></li>
+                <li><a href="/pos"><span class="icon">▣</span> Caisse POS</a></li>
             </ul>
         </div>
 
         <!-- CAR & MOTO CARE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">CAR & MOTO CARE <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">CAR & MOTO CARE <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                {% if session.get('role') == 'admin' %}<li><a href="/care_dashboard"><span class="icon">📊</span> Dashboard Care</a></li>{% endif %}
-                <li><a href="/gallery_global"><span class="icon">📸</span> Galerie Avant/Après</a></li>
-                <li><a href="/treatments"><span class="icon">🛡️</span> Traitements</a></li>
-                <li><a href="/detailing_packs"><span class="icon">📦</span> Packs Detailing</a></li>
-                <li><a href="/wash_subscriptions"><span class="icon">🔄</span> Abonnements</a></li>
-                <li><a href="/client_reviews"><span class="icon">⭐</span> Avis Clients</a></li>
-                <li><a href="/service_checklists"><span class="icon">📋</span> Checklists</a></li>
+                {% if session.get('role') == 'admin' %}<li><a href="/care_dashboard"><span class="icon">◫</span> Dashboard Care</a></li>{% endif %}
+                <li><a href="/gallery_global"><span class="icon">◧</span> Galerie Avant/Après</a></li>
+                <li><a href="/treatments"><span class="icon">◆</span> Traitements</a></li>
+                <li><a href="/detailing_packs"><span class="icon">▦</span> Packs Detailing</a></li>
+                <li><a href="/wash_subscriptions"><span class="icon">↻</span> Abonnements</a></li>
+                <li><a href="/client_reviews"><span class="icon">★</span> Avis Clients</a></li>
+                <li><a href="/service_checklists"><span class="icon">☑</span> Checklists</a></li>
                 {% if session.get('role') == 'admin' %}
-                <li><a href="/product_usage"><span class="icon">🧴</span> Produits</a></li>
-                <li><a href="/upsell_rules"><span class="icon">💡</span> Upsell</a></li>
-                <li><a href="/smart_reminders"><span class="icon">🔔</span> Rappels</a></li>
-                <li><a href="/protection_renewals"><span class="icon">🛡️</span> Renouvellements</a></li>
-                <li><a href="/product_trends"><span class="icon">📈</span> Tendances Produits</a></li>
-                <li><a href="/profitability_vehicle_type"><span class="icon">🚗</span> Rentabilité Type</a></li>
-                <li><a href="/pack_configurations"><span class="icon">📦</span> Configs Packs</a></li>
-                <li><a href="/portfolio" target="_blank"><span class="icon">🖼️</span> Portfolio</a></li>
-                <li><a href="/booking_online" target="_blank"><span class="icon">🌐</span> Réservation Online</a></li>
-                <li><a href="/pack_configurator" target="_blank"><span class="icon">🎨</span> Configurateur</a></li>
+                <li><a href="/product_usage"><span class="icon">◈</span> Produits</a></li>
+                <li><a href="/upsell_rules"><span class="icon">↗</span> Upsell</a></li>
+                <li><a href="/smart_reminders"><span class="icon">◎</span> Rappels</a></li>
+                <li><a href="/protection_renewals"><span class="icon">◆</span> Renouvellements</a></li>
+                <li><a href="/product_trends"><span class="icon">↗</span> Tendances Produits</a></li>
+                <li><a href="/profitability_vehicle_type"><span class="icon">▤</span> Rentabilité Type</a></li>
+                <li><a href="/pack_configurations"><span class="icon">▦</span> Configs Packs</a></li>
+                <li><a href="/portfolio" target="_blank"><span class="icon">◧</span> Portfolio</a></li>
+                <li><a href="/booking_online" target="_blank"><span class="icon">⊕</span> Réservation Online</a></li>
+                <li><a href="/pack_configurator" target="_blank"><span class="icon">◈</span> Configurateur</a></li>
                 {% endif %}
             </ul>
         </div>
 
         <!-- CLIENTS & CRM -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">CLIENTS & CRM <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">CLIENTS & CRM <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/customers"><span class="icon">👥</span> Clients</a></li>
-                <li><a href="/crm_followups"><span class="icon">🔄</span> Suivi CRM</a></li>
+                <li><a href="/customers"><span class="icon">◉</span> Clients</a></li>
+                <li><a href="/crm_followups"><span class="icon">↻</span> Suivi CRM</a></li>
                 {% if session.get('role') == 'admin' %}
-                <li><a href="/referrals"><span class="icon">🤝</span> Parrainage</a></li>
-                <li><a href="/fleet_companies"><span class="icon">🏢</span> Flottes</a></li>
-                <li><a href="/loyalty"><span class="icon">🎁</span> Fidélité</a></li>
-                <li><a href="/rewards"><span class="icon">🏆</span> Points</a></li>
-                <li><a href="/subscriptions"><span class="icon">🧾</span> Abonnements</a></li>
-                <li><a href="/rfm_analysis"><span class="icon">📊</span> Analyse RFM</a></li>
-                <li><a href="/marketing_campaigns"><span class="icon">📧</span> Campagnes</a></li>
-                <li><a href="/vip_program"><span class="icon">👑</span> Programme VIP</a></li>
-                <li><a href="/churn_prediction"><span class="icon">🔮</span> Churn</a></li>
+                <li><a href="/referrals"><span class="icon">⇄</span> Parrainage</a></li>
+                <li><a href="/fleet_companies"><span class="icon">▣</span> Flottes</a></li>
+                <li><a href="/loyalty"><span class="icon">◆</span> Fidélité</a></li>
+                <li><a href="/rewards"><span class="icon">★</span> Points</a></li>
+                <li><a href="/subscriptions"><span class="icon">▤</span> Abonnements</a></li>
+                <li><a href="/rfm_analysis"><span class="icon">◫</span> Analyse RFM</a></li>
+                <li><a href="/marketing_campaigns"><span class="icon">◎</span> Campagnes</a></li>
+                <li><a href="/vip_program"><span class="icon">♛</span> Programme VIP</a></li>
+                <li><a href="/churn_prediction"><span class="icon">◈</span> Churn</a></li>
                 {% endif %}
             </ul>
         </div>
 
-        <!-- RENDEZ-VOUS & PLANNING -->
+        <!-- PLANNING -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PLANNING <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PLANNING <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/appointments"><span class="icon">📅</span> Rendez-vous</a></li>
-                <li><a href="/calendar"><span class="icon">📆</span> Calendrier</a></li>
-                <li><a href="/queue"><span class="icon">⏳</span> File d'attente</a></li>
+                <li><a href="/appointments"><span class="icon">▦</span> Rendez-vous</a></li>
+                <li><a href="/calendar"><span class="icon">◫</span> Calendrier</a></li>
+                <li><a href="/queue"><span class="icon">≡</span> File d'attente</a></li>
                 {% if session.get('role') == 'admin' %}
-                <li><a href="/heatmap"><span class="icon">🗺️</span> Heatmap</a></li>
-                <li><a href="/maintenance_reminders"><span class="icon">🔧</span> Rappels</a></li>
-                <li><a href="/maintenance_plans"><span class="icon">🔄</span> Plans entretien</a></li>
-                <li><a href="/bays"><span class="icon">🏗️</span> Baies service</a></li>
-                <li><a href="/vin_decode"><span class="icon">🔍</span> VIN Decoder</a></li>
-                <li><a href="/capacity"><span class="icon">📊</span> Capacité</a></li>
+                <li><a href="/heatmap"><span class="icon">◧</span> Heatmap</a></li>
+                <li><a href="/maintenance_reminders"><span class="icon">◎</span> Rappels</a></li>
+                <li><a href="/maintenance_plans"><span class="icon">↻</span> Plans entretien</a></li>
+                <li><a href="/bays"><span class="icon">▣</span> Baies service</a></li>
+                <li><a href="/vin_decode"><span class="icon">⊕</span> VIN Decoder</a></li>
+                <li><a href="/capacity"><span class="icon">◫</span> Capacité</a></li>
                 {% endif %}
             </ul>
         </div>
 
         {% if session.get('role') == 'admin' %}
-        <!-- INTELLIGENCE & REVENUS -->
+        <!-- INTELLIGENCE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">INTELLIGENCE <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">INTELLIGENCE <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/whatsapp_hub"><span class="icon">💬</span> WhatsApp Hub</a></li>
-                <li><a href="/nps_dashboard"><span class="icon">📊</span> NPS Satisfaction</a></li>
-                <li><a href="/employee_gamification"><span class="icon">🏆</span> Gamification</a></li>
-                <li><a href="/efficiency_report"><span class="icon">⏱️</span> Efficacité</a></li>
-                <li><a href="/stock_forecast"><span class="icon">📦</span> Prévision Stock</a></li>
-                <li><a href="/monthly_goals_view"><span class="icon">🎯</span> Objectifs Mensuels</a></li>
-                <li><a href="/loyalty_gamified"><span class="icon">🎮</span> Fidélité Gamifiée</a></li>
-                <li><a href="/client_app" target="_blank"><span class="icon">📱</span> Espace Client</a></li>
-                <li><a href="/business_health"><span class="icon">❤️</span> Santé Business</a></li>
-                <li><a href="/channel_inbox"><span class="icon">📨</span> Inbox Multi-Canal</a></li>
-                <li><a href="/campaign_analytics"><span class="icon">📈</span> Analytique Campagnes</a></li>
-                <li><a href="/revenue_heatmap"><span class="icon">🗓️</span> Revenue Heatmap</a></li>
-                <li><a href="/commission_tracker"><span class="icon">💵</span> Commissions</a></li>
+                <li><a href="/whatsapp_hub"><span class="icon">◎</span> WhatsApp Hub</a></li>
+                <li><a href="/nps_dashboard"><span class="icon">◫</span> NPS Satisfaction</a></li>
+                <li><a href="/employee_gamification"><span class="icon">★</span> Gamification</a></li>
+                <li><a href="/efficiency_report"><span class="icon">◈</span> Efficacité</a></li>
+                <li><a href="/stock_forecast"><span class="icon">▦</span> Prévision Stock</a></li>
+                <li><a href="/monthly_goals_view"><span class="icon">◉</span> Objectifs Mensuels</a></li>
+                <li><a href="/loyalty_gamified"><span class="icon">◆</span> Fidélité Gamifiée</a></li>
+                <li><a href="/client_app" target="_blank"><span class="icon">▤</span> Espace Client</a></li>
+                <li><a href="/business_health"><span class="icon">♡</span> Santé Business</a></li>
+                <li><a href="/channel_inbox"><span class="icon">▣</span> Inbox Multi-Canal</a></li>
+                <li><a href="/campaign_analytics"><span class="icon">↗</span> Analytique Campagnes</a></li>
+                <li><a href="/revenue_heatmap"><span class="icon">◧</span> Revenue Heatmap</a></li>
+                <li><a href="/commission_tracker"><span class="icon">◈</span> Commissions</a></li>
                 <li><a href="/flash_sales_manager"><span class="icon">⚡</span> Ventes Flash</a></li>
-                <li><a href="/smart_scheduling"><span class="icon">🤖</span> Planning Intelligent</a></li>
-                <li><a href="/import_center"><span class="icon">📥</span> Import Données</a></li>
-                <li><a href="/report_builder"><span class="icon">📋</span> Générateur Rapports</a></li>
-                <li><a href="/revenue_forecast"><span class="icon">📉</span> Prévisions Revenus</a></li>
-                <li><a href="/customer_segments"><span class="icon">👥</span> Segments Clients</a></li>
-                <li><a href="/damage_claims"><span class="icon">⚠️</span> Réclamations</a></li>
-                <li><a href="/appointment_waitlist"><span class="icon">⏳</span> Liste d'Attente</a></li>
-                <li><a href="/service_cost_calculator"><span class="icon">🧮</span> Coûts Services</a></li>
-                <li><a href="/cost_calculator"><span class="icon">💰</span> Marge Produits</a></li>
-                <li><a href="/knowledge_base"><span class="icon">📚</span> Base Connaissances</a></li>
+                <li><a href="/smart_scheduling"><span class="icon">◫</span> Planning Intelligent</a></li>
+                <li><a href="/import_center"><span class="icon">↓</span> Import Données</a></li>
+                <li><a href="/report_builder"><span class="icon">▤</span> Générateur Rapports</a></li>
+                <li><a href="/revenue_forecast"><span class="icon">↗</span> Prévisions Revenus</a></li>
+                <li><a href="/customer_segments"><span class="icon">◉</span> Segments Clients</a></li>
+                <li><a href="/damage_claims"><span class="icon">◎</span> Réclamations</a></li>
+                <li><a href="/appointment_waitlist"><span class="icon">≡</span> Liste d'Attente</a></li>
+                <li><a href="/service_cost_calculator"><span class="icon">◈</span> Coûts Services</a></li>
+                <li><a href="/cost_calculator"><span class="icon">◆</span> Marge Produits</a></li>
+                <li><a href="/knowledge_base"><span class="icon">▦</span> Base Connaissances</a></li>
             </ul>
         </div>
-
         {% endif %}
 
         <!-- FACTURATION -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/invoices"><span class="icon">📄</span> Factures</a></li>
-                <li><a href="/quotes"><span class="icon">📋</span> Devis</a></li>
+                <li><a href="/invoices"><span class="icon">▤</span> Factures</a></li>
+                <li><a href="/quotes"><span class="icon">▦</span> Devis</a></li>
                 {% if session.get('role') == 'admin' %}
-                <li><a href="/quotes_advanced"><span class="icon">📋</span> Devis+</a></li>
-                <li><a href="/expenses"><span class="icon">💸</span> Dépenses</a></li>
-                <li><a href="/warranties"><span class="icon">🛡️</span> Garanties</a></li>
-                <li><a href="/accounting"><span class="icon">🧾</span> Comptabilité</a></li>
-                <li><a href="/contracts"><span class="icon">📋</span> Contrats</a></li>
-                <li><a href="/invoice_terms"><span class="icon">📄</span> CGV</a></li>
-                <li><a href="/coupons"><span class="icon">🏷️</span> Coupons</a></li>
-                <li><a href="/dynamic_pricing_pro"><span class="icon">💲</span> Tarifs Dynamiques</a></li>
+                <li><a href="/quotes_advanced"><span class="icon">▦</span> Devis+</a></li>
+                <li><a href="/expenses"><span class="icon">↓</span> Dépenses</a></li>
+                <li><a href="/warranties"><span class="icon">◆</span> Garanties</a></li>
+                <li><a href="/accounting"><span class="icon">▣</span> Comptabilité</a></li>
+                <li><a href="/contracts"><span class="icon">▤</span> Contrats</a></li>
+                <li><a href="/invoice_terms"><span class="icon">◫</span> CGV</a></li>
+                <li><a href="/coupons"><span class="icon">◈</span> Coupons</a></li>
+                <li><a href="/dynamic_pricing_pro"><span class="icon">◉</span> Tarifs Dynamiques</a></li>
                 {% endif %}
             </ul>
         </div>
 
         {% if session.get('role') == 'admin' %}
-        <!-- STOCK & ACHATS -->
+        <!-- STOCK -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">STOCK & ACHATS <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">STOCK & ACHATS <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/inventory"><span class="icon">📦</span> Inventaire</a></li>
-                <li><a href="/inventory_dashboard"><span class="icon">📊</span> Stock+</a></li>
-                <li><a href="/suppliers"><span class="icon">🏭</span> Fournisseurs</a></li>
-                <li><a href="/auto_purchase_orders"><span class="icon">🔄</span> Commandes Auto</a></li>
+                <li><a href="/inventory"><span class="icon">▦</span> Inventaire</a></li>
+                <li><a href="/inventory_dashboard"><span class="icon">◫</span> Stock+</a></li>
+                <li><a href="/suppliers"><span class="icon">▣</span> Fournisseurs</a></li>
+                <li><a href="/auto_purchase_orders"><span class="icon">↻</span> Commandes Auto</a></li>
             </ul>
         </div>
 
         <!-- RAPPORTS -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">RAPPORTS & KPI <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">RAPPORTS & KPI <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/reports"><span class="icon">📑</span> Rapports</a></li>
-                <li><a href="/kpi"><span class="icon">🎯</span> KPI</a></li>
-                <li><a href="/monthly"><span class="icon">📈</span> Mensuel</a></li>
-                <li><a href="/service_profitability"><span class="icon">💰</span> Rentabilité</a></li>
-                <li><a href="/vehicle_history"><span class="icon">📋</span> Historique véhicule</a></li>
-                <li><a href="/export_data"><span class="icon">📥</span> Export données</a></li>
-                <li><a href="/pnl_dashboard"><span class="icon">💵</span> P&L</a></li>
-                <li><a href="/ar_aging"><span class="icon">📊</span> Créances</a></li>
-                <li><a href="/cashflow"><span class="icon">💰</span> Cash Flow</a></li>
-                <li><a href="/branch_benchmark"><span class="icon">📊</span> Benchmark</a></li>
-                <li><a href="/monthly_comparison"><span class="icon">📈</span> Comparaison</a></li>
-                <li><a href="/quality_dashboard"><span class="icon">✅</span> Qualité</a></li>
-                <li><a href="/ceo_dashboard"><span class="icon">📊</span> CEO</a></li>
-                <li><a href="/end_of_day"><span class="icon">📊</span> Bilan Journée</a></li>
-                <li><a href="/tech_summary"><span class="icon">👷</span> Bilan Techniciens</a></li>
-                <li><a href="/advanced_report"><span class="icon">📊</span> Rapport+</a></li>
-                <li><a href="/profitability"><span class="icon">💰</span> Rentabilité</a></li>
-                <li><a href="/retention_analysis"><span class="icon">📊</span> Rétention</a></li>
-                <li><a href="/scheduled_reports"><span class="icon">📊</span> Auto-Rapports</a></li>
+                <li><a href="/reports"><span class="icon">▤</span> Rapports</a></li>
+                <li><a href="/kpi"><span class="icon">◉</span> KPI</a></li>
+                <li><a href="/monthly"><span class="icon">↗</span> Mensuel</a></li>
+                <li><a href="/service_profitability"><span class="icon">◆</span> Rentabilité</a></li>
+                <li><a href="/vehicle_history"><span class="icon">▦</span> Historique véhicule</a></li>
+                <li><a href="/export_data"><span class="icon">↓</span> Export données</a></li>
+                <li><a href="/pnl_dashboard"><span class="icon">◫</span> P&L</a></li>
+                <li><a href="/ar_aging"><span class="icon">◈</span> Créances</a></li>
+                <li><a href="/cashflow"><span class="icon">◆</span> Cash Flow</a></li>
+                <li><a href="/branch_benchmark"><span class="icon">▣</span> Benchmark</a></li>
+                <li><a href="/monthly_comparison"><span class="icon">↗</span> Comparaison</a></li>
+                <li><a href="/quality_dashboard"><span class="icon">★</span> Qualité</a></li>
+                <li><a href="/ceo_dashboard"><span class="icon">◫</span> CEO</a></li>
+                <li><a href="/end_of_day"><span class="icon">◎</span> Bilan Journée</a></li>
+                <li><a href="/tech_summary"><span class="icon">◉</span> Bilan Techniciens</a></li>
+                <li><a href="/advanced_report"><span class="icon">▤</span> Rapport+</a></li>
+                <li><a href="/profitability"><span class="icon">◆</span> Rentabilité</a></li>
+                <li><a href="/retention_analysis"><span class="icon">◈</span> Rétention</a></li>
+                <li><a href="/scheduled_reports"><span class="icon">◫</span> Auto-Rapports</a></li>
             </ul>
         </div>
-        {% endif %}
 
-        {% if session.get('role') == 'admin' %}
         <!-- ÉQUIPE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">ÉQUIPE <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">ÉQUIPE <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/users"><span class="icon">👤</span> Utilisateurs</a></li>
-                <li><a href="/employee_shifts"><span class="icon">👷</span> Planning équipe</a></li>
-                <li><a href="/staff_notes"><span class="icon">💬</span> Notes internes</a></li>
-                <li><a href="/employee_targets"><span class="icon">🎯</span> Objectifs</a></li>
-                <li><a href="/tech_mobile"><span class="icon">📱</span> Vue Technicien</a></li>
-                <li><a href="/technician_performance"><span class="icon">🏆</span> Performance</a></li>
-                <li><a href="/time_tracking"><span class="icon">⏱️</span> Temps</a></li>
-                <li><a href="/manage_roles"><span class="icon">🔐</span> Rôles</a></li>
-                <li><a href="/team_chat"><span class="icon">💬</span> Chat</a></li>
-                <li><a href="/tickets"><span class="icon">🎫</span> Tickets</a></li>
-                <li><a href="/employee_attendance"><span class="icon">📊</span> Présence</a></li>
-                <li><a href="/supplier_performance"><span class="icon">🚚</span> Perf. Fournisseurs</a></li>
-                <li><a href="/multi_currency"><span class="icon">💱</span> Multi-Devises</a></li>
+                <li><a href="/users"><span class="icon">◉</span> Utilisateurs</a></li>
+                <li><a href="/employee_shifts"><span class="icon">▦</span> Planning équipe</a></li>
+                <li><a href="/staff_notes"><span class="icon">▤</span> Notes internes</a></li>
+                <li><a href="/employee_targets"><span class="icon">◉</span> Objectifs</a></li>
+                <li><a href="/tech_mobile"><span class="icon">▣</span> Vue Technicien</a></li>
+                <li><a href="/technician_performance"><span class="icon">★</span> Performance</a></li>
+                <li><a href="/time_tracking"><span class="icon">◎</span> Temps</a></li>
+                <li><a href="/manage_roles"><span class="icon">◆</span> Rôles</a></li>
+                <li><a href="/team_chat"><span class="icon">◈</span> Chat</a></li>
+                <li><a href="/tickets"><span class="icon">▤</span> Tickets</a></li>
+                <li><a href="/employee_attendance"><span class="icon">◫</span> Présence</a></li>
+                <li><a href="/supplier_performance"><span class="icon">↗</span> Perf. Fournisseurs</a></li>
+                <li><a href="/multi_currency"><span class="icon">◈</span> Multi-Devises</a></li>
             </ul>
         </div>
 
         <!-- PARAMÈTRES -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PARAMÈTRES <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PARAMÈTRES <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/settings"><span class="icon">⚙</span> Général</a></li>
-                <li><a href="/services"><span class="icon">🔧</span> Services</a></li>
-                <li><a href="/packages"><span class="icon">📦</span> Packs</a></li>
-                <li><a href="/service_inventory"><span class="icon">🔗</span> Liaison</a></li>
-                <li><a href="/email_settings"><span class="icon">📧</span> Email</a></li>
-                <li><a href="/sms_settings"><span class="icon">📱</span> SMS</a></li>
-                <li><a href="/whatsapp_settings"><span class="icon">📱</span> WhatsApp API</a></li>
-                <li><a href="/push_settings"><span class="icon">🔔</span> Push</a></li>
-                <li><a href="/smart_alerts"><span class="icon">🔔</span> Alertes</a></li>
-                <li><a href="/bookings_admin"><span class="icon">🌐</span> Réservations</a></li>
-                <li><a href="/surveys"><span class="icon">📋</span> Enquêtes</a></li>
-                <li><a href="/mileage_tracking"><span class="icon">🔧</span> KM</a></li>
-                <li><a href="/bulk_message"><span class="icon">💬</span> Messages Bulk</a></li>
-                <li><a href="/activity_log"><span class="icon">📝</span> Journal</a></li>
-                <li><a href="/backup"><span class="icon">💾</span> Sauvegarde</a></li>
-                <li><a href="/seasonal_campaigns"><span class="icon">📅</span> Saisons</a></li>
-                <li><a href="/api_settings"><span class="icon">🔗</span> API & Webhooks</a></li>
-                <li><a href="/insurance"><span class="icon">🏥</span> Assurances</a></li>
-                <li><a href="/branches"><span class="icon">🏢</span> Succursales</a></li>
-                <li><a href="/notifications_center_view"><span class="icon">🔔</span> Notifications</a></li>
-                <li><a href="/audit_trail"><span class="icon">🔐</span> Audit</a></li>
+                <li><a href="/settings"><span class="icon">◉</span> Général</a></li>
+                <li><a href="/services"><span class="icon">◆</span> Services</a></li>
+                <li><a href="/packages"><span class="icon">▦</span> Packs</a></li>
+                <li><a href="/service_inventory"><span class="icon">⇄</span> Liaison</a></li>
+                <li><a href="/email_settings"><span class="icon">◎</span> Email</a></li>
+                <li><a href="/sms_settings"><span class="icon">▣</span> SMS</a></li>
+                <li><a href="/whatsapp_settings"><span class="icon">◈</span> WhatsApp API</a></li>
+                <li><a href="/push_settings"><span class="icon">◎</span> Push</a></li>
+                <li><a href="/smart_alerts"><span class="icon">◎</span> Alertes</a></li>
+                <li><a href="/bookings_admin"><span class="icon">⊕</span> Réservations</a></li>
+                <li><a href="/surveys"><span class="icon">▤</span> Enquêtes</a></li>
+                <li><a href="/mileage_tracking"><span class="icon">◆</span> KM</a></li>
+                <li><a href="/bulk_message"><span class="icon">◈</span> Messages Bulk</a></li>
+                <li><a href="/activity_log"><span class="icon">▤</span> Journal</a></li>
+                <li><a href="/backup"><span class="icon">◫</span> Sauvegarde</a></li>
+                <li><a href="/seasonal_campaigns"><span class="icon">◧</span> Saisons</a></li>
+                <li><a href="/api_settings"><span class="icon">⇄</span> API & Webhooks</a></li>
+                <li><a href="/insurance"><span class="icon">◆</span> Assurances</a></li>
+                <li><a href="/branches"><span class="icon">▣</span> Succursales</a></li>
+                <li><a href="/notifications_center_view"><span class="icon">◎</span> Notifications</a></li>
+                <li><a href="/audit_trail"><span class="icon">◆</span> Audit</a></li>
             </ul>
         </div>
         {% endif %}
 
         <!-- ACCÈS RAPIDE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▼</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
-                <li><a href="/mobile"><span class="icon">📱</span> Vue Mobile</a></li>
-                <li><a href="/tv_display" target="_blank"><span class="icon">📺</span> Écran Salle</a></li>
-                <li><a href="/subscription_cards"><span class="icon">🎫</span> Cartes Abonnements</a></li>
+                <li><a href="/mobile"><span class="icon">▣</span> Vue Mobile</a></li>
+                <li><a href="/tv_display" target="_blank"><span class="icon">▶</span> Écran Salle</a></li>
+                <li><a href="/subscription_cards"><span class="icon">▤</span> Cartes Abonnements</a></li>
                 {% if session.get('role') == 'admin' %}
-                <li><a href="/espace-client" target="_blank"><span class="icon">👤</span> Portail Client</a></li>
+                <li><a href="/espace-client" target="_blank"><span class="icon">◉</span> Portail Client</a></li>
                 {% endif %}
             </ul>
         </div>
@@ -324,7 +326,7 @@
             <span class="sf-user">{{ session.get('username', '')|upper }}</span>
             {% if session.get('role') == 'admin' %}<span class="sf-role">ADMIN</span>{% endif %}
             <a href="/change_password" title="Mot de passe">🔑</a>
-            <a onclick="toggleTheme()" style="cursor:pointer" id="themeBtn">🌙</a>
+            <a onclick="toggleTheme()" style="cursor:pointer" id="themeBtn" title="Thème">🌙</a>
             <a href="/logout" style="color:var(--red)" title="Déconnexion">⏻</a>
             <div class="sidebar-lang">
                 <a href="/set_language/fr" class="{{ 'active-lang' if current_lang=='fr' else '' }}" style="color:var(--text-muted)">FR</a>
@@ -356,7 +358,7 @@
         var t = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', t);
         var btn = document.getElementById('themeBtn');
-        if (btn) btn.textContent = t === 'light' ? '🌞' : '🌙';
+        if (btn) btn.textContent = t === 'light' ? '☀' : '🌙';
     })();
     function toggleTheme() {
         var c = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -364,7 +366,7 @@
         document.documentElement.setAttribute('data-theme', n);
         localStorage.setItem('theme', n);
         var btn = document.getElementById('themeBtn');
-        if (btn) btn.textContent = n === 'light' ? '🌞' : '🌙';
+        if (btn) btn.textContent = n === 'light' ? '☀' : '🌙';
     }
     /* Active nav */
     (function(){
@@ -414,7 +416,7 @@
                     if (!data.length) { box.style.display = 'none'; return; }
                     var html = '';
                     data.forEach(function(r){
-                        var icon = r.type === 'client' ? '👤' : '🚗';
+                        var icon = r.type === 'client' ? '◉' : '▤';
                         html += '<a href="'+r.url+'">'+icon+' '+r.label+' <small style="color:var(--text-muted)">'+r.sub+'</small></a>';
                     });
                     box.innerHTML = html;

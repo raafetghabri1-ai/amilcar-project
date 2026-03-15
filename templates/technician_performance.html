@@ -6,35 +6,35 @@
         {% for p in performance %}
         <div class="col-md-4 mb-3">
             <div class="card p-3">
-                <h5 style="color:#D4AF37;letter-spacing:2px;margin-bottom:2px">{{ p.full_name or p.username }}</h5>
-                {% if p.full_name %}<p style="color:#888;font-size:0.7rem;letter-spacing:1px;margin-bottom:10px">@{{ p.username }}</p>{% endif %}
+                <h5 style="color:var(--gold);letter-spacing:2px;margin-bottom:2px">{{ p.full_name or p.username }}</h5>
+                {% if p.full_name %}<p style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:1px;margin-bottom:10px">@{{ p.username }}</p>{% endif %}
                 <div class="d-flex justify-content-between mb-2">
-                    <span style="color:#888;font-size:0.75rem">TOTAL JOBS</span>
+                    <span style="color:var(--text-secondary);font-size:0.75rem">TOTAL JOBS</span>
                     <span style="color:#f0f0f0;font-weight:bold">{{ p.total }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span style="color:#888;font-size:0.75rem">COMPLETED</span>
-                    <span style="color:#2d6a4f;font-weight:bold">{{ p.completed }}</span>
+                    <span style="color:var(--text-secondary);font-size:0.75rem">COMPLETED</span>
+                    <span style="color:var(--green);font-weight:bold">{{ p.completed }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span style="color:#888;font-size:0.75rem">IN PROGRESS</span>
+                    <span style="color:var(--text-secondary);font-size:0.75rem">IN PROGRESS</span>
                     <span style="color:#1B6B93;font-weight:bold">{{ p.in_progress }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                    <span style="color:#888;font-size:0.75rem">REVENUE</span>
-                    <span style="color:#D4AF37;font-weight:bold">{{ "%.2f"|format(p.revenue) }} DT</span>
+                    <span style="color:var(--text-secondary);font-size:0.75rem">REVENUE</span>
+                    <span style="color:var(--gold);font-weight:bold">{{ "%.2f"|format(p.revenue) }} DT</span>
                 </div>
                 {% if p.total > 0 %}
-                <div style="background:#1a1a2e;border-radius:4px;height:8px;margin-top:8px">
+                <div style="background:var(--bg-input);border-radius:4px;height:8px;margin-top:8px">
                     <div style="background:#2d6a4f;border-radius:4px;height:8px;width:{{ (p.completed / p.total * 100)|int }}%"></div>
                 </div>
-                <p style="color:#555;font-size:0.65rem;text-align:right;margin-top:3px">{{ (p.completed / p.total * 100)|int }}% completion</p>
+                <p style="color:var(--text-muted);font-size:0.65rem;text-align:right;margin-top:3px">{{ (p.completed / p.total * 100)|int }}% completion</p>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     {% if not performance %}
-    <p style="color:#555;text-align:center;letter-spacing:2px">No technicians found</p>
+    <p style="color:var(--text-muted);text-align:center;letter-spacing:2px">No technicians found</p>
     {% endif %}
 {% endblock %}

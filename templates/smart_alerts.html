@@ -24,21 +24,21 @@
         </div>
         <div style="flex:1">
             <strong style="color:#eee;font-size:0.85rem">{{ a[2] }}</strong>
-            <p style="color:#888;font-size:0.75rem;margin:3px 0 0">{{ a[3] }}</p>
-            <span style="color:#555;font-size:0.6rem">{{ a[7][:16] }}</span>
+            <p style="color:var(--text-secondary);font-size:0.75rem;margin:3px 0 0">{{ a[3] }}</p>
+            <span style="color:var(--text-muted);font-size:0.6rem">{{ a[7][:16] }}</span>
         </div>
         <div>
             {% if a[5] == 0 %}
             <form method="POST" action="/smart_alerts/read/{{ a[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button class="btn btn-sm btn-outline-success" style="font-size:0.5rem;padding:2px 5px">✓</button></form>
             {% else %}
-            <span style="color:#555;font-size:0.6rem">Lu</span>
+            <span style="color:var(--text-muted);font-size:0.6rem">Lu</span>
             {% endif %}
         </div>
     </div>
     {% endfor %}
     {% if not alerts %}
-    <div style="text-align:center;padding:40px;color:#555">
+    <div style="text-align:center;padding:40px;color:var(--text-muted)">
         <div style="font-size:3rem;margin-bottom:10px">✅</div>
         <p>Aucune alerte — Tout va bien !</p>
     </div>

@@ -9,38 +9,38 @@
 <div class="row g-3 mb-4">
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;letter-spacing:1px;margin:0">GLOBALE</p>
-            <h4 style="color:#D4AF37;margin:3px 0">{{ avg_overall }}/5</h4>
+            <p style="color:var(--text-secondary);font-size:0.55rem;letter-spacing:1px;margin:0">GLOBALE</p>
+            <h4 style="color:var(--gold);margin:3px 0">{{ avg_overall }}/5</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;margin:0">QUALITÉ</p>
-            <h5 style="color:#2d6a4f;margin:3px 0">{{ avg_quality }}</h5>
+            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">QUALITÉ</p>
+            <h5 style="color:var(--green);margin:3px 0">{{ avg_quality }}</h5>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;margin:0">RAPIDITÉ</p>
-            <h5 style="color:#2d6a4f;margin:3px 0">{{ avg_speed }}</h5>
+            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">RAPIDITÉ</p>
+            <h5 style="color:var(--green);margin:3px 0">{{ avg_speed }}</h5>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;margin:0">ACCUEIL</p>
-            <h5 style="color:#2d6a4f;margin:3px 0">{{ avg_reception }}</h5>
+            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">ACCUEIL</p>
+            <h5 style="color:var(--green);margin:3px 0">{{ avg_reception }}</h5>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;margin:0">PROPRETÉ</p>
-            <h5 style="color:#2d6a4f;margin:3px 0">{{ avg_cleanliness }}</h5>
+            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">PROPRETÉ</p>
+            <h5 style="color:var(--green);margin:3px 0">{{ avg_cleanliness }}</h5>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:#888;font-size:0.55rem;margin:0">RAPPORT Q/P</p>
-            <h5 style="color:#2d6a4f;margin:3px 0">{{ avg_value }}</h5>
+            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">RAPPORT Q/P</p>
+            <h5 style="color:var(--green);margin:3px 0">{{ avg_value }}</h5>
         </div>
     </div>
 </div>
@@ -60,20 +60,20 @@
             <tbody>
             {% for s in surveys %}
             <tr>
-                <td style="color:#D4AF37">{{ s[0] }}</td>
+                <td style="color:var(--gold)">{{ s[0] }}</td>
                 <td><strong>{{ s[14] }}</strong></td>
                 <td>{{ s[15] }}</td>
-                <td style="font-size:0.75rem;color:#888">{{ s[16] }}</td>
+                <td style="font-size:0.75rem;color:var(--text-secondary)">{{ s[16] }}</td>
                 {% if s[11] %}
-                <td style="color:#D4AF37">{{ s[4] }}</td>
-                <td style="color:#D4AF37">{{ s[5] }}</td>
-                <td style="color:#D4AF37">{{ s[6] }}</td>
-                <td style="color:#D4AF37">{{ s[7] }}</td>
-                <td style="color:#D4AF37">{{ s[8] }}</td>
+                <td style="color:var(--gold)">{{ s[4] }}</td>
+                <td style="color:var(--gold)">{{ s[5] }}</td>
+                <td style="color:var(--gold)">{{ s[6] }}</td>
+                <td style="color:var(--gold)">{{ s[7] }}</td>
+                <td style="color:var(--gold)">{{ s[8] }}</td>
                 <td style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ s[9] or '-' }}</td>
                 <td><span class="badge bg-success" style="font-size:0.6rem">✅ Répondu</span></td>
                 {% else %}
-                <td colspan="6" style="color:#666;font-size:0.75rem">En attente de réponse...</td>
+                <td colspan="6" style="color:var(--text-muted);font-size:0.75rem">En attente de réponse...</td>
                 <td><span class="badge bg-warning text-dark" style="font-size:0.6rem">⏳</span></td>
                 {% endif %}
                 <td>
@@ -81,7 +81,7 @@
                 </td>
             </tr>
             {% endfor %}
-            {% if not surveys %}<tr><td colspan="12" style="text-align:center;color:#666">Aucune enquête créée</td></tr>{% endif %}
+            {% if not surveys %}<tr><td colspan="12" style="text-align:center;color:var(--text-muted)">Aucune enquête créée</td></tr>{% endif %}
             </tbody>
         </table>
     </div>

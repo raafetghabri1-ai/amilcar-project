@@ -16,6 +16,8 @@ import sqlite3
 
 customers_bp = Blueprint("customers_bp", __name__)
 
+LOYALTY_THRESHOLD = 5
+
 
 @customers_bp.route('/customers')
 @login_required

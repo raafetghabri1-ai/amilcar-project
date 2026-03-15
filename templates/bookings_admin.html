@@ -15,15 +15,15 @@
             <tbody>
             {% for b in bookings %}
             <tr>
-                <td style="color:#D4AF37;font-weight:700">{{ b[0] }}</td>
+                <td style="color:var(--gold);font-weight:700">{{ b[0] }}</td>
                 <td><strong>{{ b[1] }}</strong></td>
                 <td style="font-size:0.75rem">{{ b[2] }}</td>
-                <td style="font-size:0.75rem;color:#888">{{ b[3] or '-' }}</td>
-                <td style="font-size:0.75rem">{{ b[4] }} {{ b[5] }} <span style="color:#888">{{ b[6] }}</span></td>
+                <td style="font-size:0.75rem;color:var(--text-secondary)">{{ b[3] or '-' }}</td>
+                <td style="font-size:0.75rem">{{ b[4] }} {{ b[5] }} <span style="color:var(--text-secondary)">{{ b[6] }}</span></td>
                 <td>{{ b[7] }}</td>
-                <td style="color:#D4AF37">{{ b[8] }}</td>
+                <td style="color:var(--gold)">{{ b[8] }}</td>
                 <td>{{ b[9] or '-' }}</td>
-                <td style="font-size:0.7rem;color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis">{{ b[10] or '-' }}</td>
+                <td style="font-size:0.7rem;color:var(--text-secondary);max-width:100px;overflow:hidden;text-overflow:ellipsis">{{ b[10] or '-' }}</td>
                 <td>
                     {% if b[11] == 'confirmed' %}<span class="badge bg-success" style="font-size:0.6rem">✅ Confirmée</span>
                     {% elif b[11] == 'rejected' %}<span class="badge bg-danger" style="font-size:0.6rem">❌ Refusée</span>
@@ -41,7 +41,7 @@
                 </td>
             </tr>
             {% endfor %}
-            {% if not bookings %}<tr><td colspan="11" style="text-align:center;color:#666">Aucune réservation en ligne</td></tr>{% endif %}
+            {% if not bookings %}<tr><td colspan="11" style="text-align:center;color:var(--text-muted)">Aucune réservation en ligne</td></tr>{% endif %}
             </tbody>
         </table>
     </div>

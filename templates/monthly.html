@@ -4,8 +4,8 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <p class="page-title text-center mb-0">RAPPORT MENSUEL — {{ month_label }}</p>
         <div class="d-flex gap-2">
-            <a href="/export/monthly_pdf?month={{ current_month }}" class="btn btn-gold" style="font-size:0.75rem;padding:6px 14px">📄 PDF</a>
-            <a href="/export/monthly?month={{ current_month }}" class="btn btn-gold" style="font-size:0.75rem;padding:6px 14px">⤓ CSV</a>
+            <a href="/export/monthly_pdf?month={{ current_month }}" class="btn-gold" style="font-size:0.75rem;padding:6px 14px">📄 PDF</a>
+            <a href="/export/monthly?month={{ current_month }}" class="btn-gold" style="font-size:0.75rem;padding:6px 14px">⤓ CSV</a>
         </div>
     </div>
     <div class="month-nav">
@@ -33,7 +33,7 @@
         </div>
         <div class="col-md-2">
             <div class="stat-card">
-                <h2 style="color:#C41E3A">{{ stats.expenses }} DT</h2>
+                <h2 style="color:var(--red)">{{ stats.expenses }} DT</h2>
                 <p>DÉPENSES</p>
             </div>
         </div>
@@ -80,7 +80,7 @@
             <td>{{ inv[0] }}</td>
             <td>{{ inv[1] }}</td>
             <td>{{ inv[2] }}</td>
-            <td style="color:#D4AF37;font-weight:700">{{ inv[3] }} DT</td>
+            <td style="color:var(--gold);font-weight:700">{{ inv[3] }} DT</td>
             <td>
             {% if inv[4] == 'paid' %}<span class="badge-paid">PAYÉE</span>
             {% elif inv[4] == 'partial' %}<span style="background:linear-gradient(135deg,#B8860B,#8B6914);color:white;padding:4px 12px;border-radius:4px;font-size:0.65rem;font-weight:700">PARTIELLE</span>

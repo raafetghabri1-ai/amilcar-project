@@ -19,49 +19,93 @@
         .login-page::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 50%, rgba(212,175,55,0.03) 0%, transparent 50%),
-                        radial-gradient(circle at 70% 50%, rgba(196,30,58,0.03) 0%, transparent 50%);
-            animation: loginBg 15s ease-in-out infinite alternate;
+            width: 600px; height: 600px;
+            top: -200px; right: -200px;
+            background: radial-gradient(circle, rgba(212,175,55,0.04) 0%, transparent 70%);
+            border-radius: 50%;
         }
-        @keyframes loginBg {
-            from { transform: translate(0, 0); }
-            to { transform: translate(-5%, 3%); }
+        .login-page::after {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            bottom: -150px; left: -150px;
+            background: radial-gradient(circle, rgba(229,62,62,0.03) 0%, transparent 70%);
+            border-radius: 50%;
         }
         .login-card {
-            background: var(--bg-card-solid);
-            border: 1px solid var(--border-subtle);
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
             border-radius: 20px;
             padding: 48px 40px;
             width: 100%;
             max-width: 420px;
             position: relative;
             z-index: 1;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.35), var(--shadow-gold);
+            animation: scaleIn 0.5s var(--ease-out);
+        }
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 20%; right: 20%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            border-radius: 0 0 2px 2px;
+            opacity: 0.5;
         }
         .login-logo {
             display: block;
-            max-height: 80px;
-            margin: 0 auto 12px;
-            filter: drop-shadow(0 4px 12px rgba(212,175,55,0.2));
+            max-height: 70px;
+            margin: 0 auto 16px;
+            filter: drop-shadow(0 4px 16px rgba(212,175,55,0.2));
         }
         .login-title {
             color: var(--text-primary);
             font-family: var(--font-display);
             text-align: center;
-            font-size: 1.1rem;
-            letter-spacing: 3px;
-            margin-bottom: 6px;
+            font-size: 1.15rem;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+            font-weight: 700;
         }
         .login-subtitle {
             color: var(--text-muted);
             text-align: center;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            margin-bottom: 32px;
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+            margin-bottom: 36px;
+        }
+        .login-card .form-control {
+            padding: 12px 16px;
+            font-size: 0.88rem;
+        }
+        .login-card .form-label {
+            font-size: 0.68rem;
+        }
+        .login-card .btn-gold {
+            padding: 13px;
+            font-size: 0.88rem;
+            letter-spacing: 2px;
+        }
+        .pwd-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            user-select: none;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+        .pwd-toggle:hover { color: var(--gold); }
+        @media (max-width: 480px) {
+            .login-card { padding: 36px 24px; margin: 0 16px; }
         }
     </style>
 </head>
@@ -73,7 +117,7 @@
             <p class="login-subtitle">Bienvenue chez AMILCAR Auto Care</p>
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-            <div class="flash-messages" style="margin-bottom:16px">
+            <div class="flash-messages" style="margin-bottom:20px">
                 {% for category, message in messages %}
                 <div class="flash-{{ category }}">{{ message }}</div>
                 {% endfor %}
@@ -83,17 +127,17 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-3">
-                    <label class="form-label">NOM D'UTILISATEUR</label>
+                    <label class="form-label">Nom d'utilisateur</label>
                     <input type="text" name="username" class="form-control" required autofocus placeholder="Entrer votre identifiant">
                 </div>
                 <div class="mb-4">
-                    <label class="form-label">MOT DE PASSE</label>
+                    <label class="form-label">Mot de passe</label>
                     <div class="position-relative">
                         <input type="password" name="password" id="pwd" class="form-control" required style="padding-right:45px" placeholder="••••••••">
-                        <span onclick="togglePwd('pwd', this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:1.1rem;user-select:none">👁</span>
+                        <button type="button" class="pwd-toggle" onclick="togglePwd('pwd', this)">👁</button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-gold w-100" style="padding:12px;font-size:0.85rem">CONNEXION</button>
+                <button type="submit" class="btn-gold w-100">CONNEXION</button>
             </form>
         </div>
     </div>

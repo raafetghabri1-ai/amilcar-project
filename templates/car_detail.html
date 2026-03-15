@@ -3,30 +3,30 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <p class="page-title mb-0">{{ car[2] }} {{ car[3] }}</p>
-        <a href="/edit_car/{{ car[0] }}" class="btn btn-gold">✎ MODIFIER</a>
+        <a href="/edit_car/{{ car[0] }}" class="btn-gold">✎ MODIFIER</a>
     </div>
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card p-3">
-                <p style="color:#888;font-size:0.7rem;letter-spacing:2px">PLAQUE</p>
-                <p style="color:#D4AF37;font-size:1.1rem;letter-spacing:2px;margin:0">{{ car[4] }}</p>
+                <p style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:2px">PLAQUE</p>
+                <p style="color:var(--gold);font-size:1.1rem;letter-spacing:2px;margin:0">{{ car[4] }}</p>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card p-3">
-                <p style="color:#888;font-size:0.7rem;letter-spacing:2px">PROPRIÉTAIRE</p>
-                <p style="margin:0"><a href="/customer/{{ car[1] }}" style="color:#D4AF37;text-decoration:none">{{ car[5] }}</a> — {{ car[6] }}</p>
+                <p style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:2px">PROPRIÉTAIRE</p>
+                <p style="margin:0"><a href="/customer/{{ car[1] }}" style="color:var(--gold);text-decoration:none">{{ car[5] }}</a> — {{ car[6] }}</p>
             </div>
         </div>
         <div class="col-md-2">
             <div class="card p-3">
-                <p style="color:#888;font-size:0.7rem;letter-spacing:2px">ANNÉE</p>
+                <p style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:2px">ANNÉE</p>
                 <p style="color:#f0f0f0;font-size:1rem;margin:0">{{ car[7] if car|length > 7 and car[7] else '—' }}</p>
             </div>
         </div>
         <div class="col-md-2">
             <div class="card p-3">
-                <p style="color:#888;font-size:0.7rem;letter-spacing:2px">COULEUR</p>
+                <p style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:2px">COULEUR</p>
                 <p style="color:#f0f0f0;font-size:1rem;margin:0">{{ car[8] if car|length > 8 and car[8] else '—' }}</p>
             </div>
         </div>
@@ -47,20 +47,20 @@
             <div class="timeline-dot {% if a[3] == 'completed' %}dot-completed{% elif a[3] == 'cancelled' %}dot-cancelled{% elif a[3] == 'in_progress' %}dot-progress{% else %}dot-pending{% endif %}"></div>
             <div class="timeline-content">
                 <div class="d-flex justify-content-between align-items-center">
-                    <span style="color:#D4AF37;font-size:0.75rem;letter-spacing:2px">{{ a[1] }}</span>
+                    <span style="color:var(--gold);font-size:0.75rem;letter-spacing:2px">{{ a[1] }}</span>
                     {% if a[3] == 'pending' %}<span class="badge-pending">EN ATTENTE</span>
                     {% elif a[3] == 'completed' %}<span class="badge-completed">TERMINÉ</span>
                     {% elif a[3] == 'in_progress' %}<span style="background:linear-gradient(135deg,#1B6B93,#145A7B);color:white;padding:4px 12px;border-radius:4px;font-size:0.65rem;letter-spacing:1px;font-weight:700">EN COURS</span>
                     {% else %}<span class="badge-cancelled">ANNULÉ</span>{% endif %}
                 </div>
                 <p style="color:#e0e0e0;margin:5px 0 0;font-size:0.85rem">{{ a[2] }}</p>
-                <a href="/gallery/{{ a[0] }}" style="color:#888;font-size:0.65rem;text-decoration:none">📷 Voir photos</a>
+                <a href="/gallery/{{ a[0] }}" style="color:var(--text-secondary);font-size:0.65rem;text-decoration:none">📷 Voir photos</a>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p style="color:#555;font-size:0.85rem;letter-spacing:2px">AUCUN HISTORIQUE DE SERVICE</p>
+    <p style="color:var(--text-muted);font-size:0.85rem;letter-spacing:2px">AUCUN HISTORIQUE DE SERVICE</p>
     {% endif %}
 
     {% if invoices %}
@@ -73,7 +73,7 @@
             <td>{{ inv[0] }}</td>
             <td>{{ inv[1] }}</td>
             <td>{{ inv[2] }}</td>
-            <td style="color:#D4AF37;font-weight:700">{{ inv[3] }} DT</td>
+            <td style="color:var(--gold);font-weight:700">{{ inv[3] }} DT</td>
             <td>
             {% if inv[4] == 'paid' %}<span class="badge-paid">PAYÉE</span>
             {% elif inv[4] == 'partial' %}<span style="background:linear-gradient(135deg,#B8860B,#8B6914);color:white;padding:4px 12px;border-radius:4px;font-size:0.65rem;font-weight:700">PARTIELLE</span>

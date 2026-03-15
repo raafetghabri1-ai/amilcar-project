@@ -1,68 +1,69 @@
 {% extends "base.html" %}
-{% block title %} - Expenses{% endblock %}
+{% block title %} - Dépenses{% endblock %}
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <p class="page-title mb-0">EXPENSES</p>
         <div>
-            <a href="/export/expenses{% if month %}?month={{ month }}{% endif %}" class="btn" style="border:1px solid #D4AF37;color:#D4AF37;font-size:0.7rem;padding:6px 12px;margin-right:5px">⤓ CSV</a>
-            <a href="/add_expense" class="btn btn-gold">+ NEW EXPENSE</a>
+            <p class="page-title mb-0">Dépenses</p>
+            <p class="page-subtitle mb-0">Suivi des charges et frais</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/export/expenses{% if month %}?month={{ month }}{% endif %}" class="btn-outline-gold btn-sm">⤓ CSV</a>
+            <a href="/add_expense" class="btn-gold btn-sm">+ Nouvelle Dépense</a>
         </div>
     </div>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="stat-card">
-                <h2 style="color:#C41E3A">{{ total_amount }} DT</h2>
-                <p>TOTAL EXPENSES{% if month %} ({{ month }}){% endif %}</p>
+                <h2 style="color:var(--red)">{{ total_amount }} DT</h2>
+                <p>Total Dépenses{% if month %} ({{ month }}){% endif %}</p>
             </div>
         </div>
         <div class="col-md-8">
             <form method="GET" action="/expenses" class="d-flex gap-2 align-items-end h-100">
                 <div class="flex-grow-1">
-                    <label class="form-label" style="font-size:0.7rem;color:#888;letter-spacing:1px">FILTER BY MONTH</label>
-                    <input type="month" name="month" class="form-control" value="{{ month }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
+                    <label class="form-label">Filtrer par mois</label>
+                    <input type="month" name="month" class="form-control" value="{{ month }}">
                 </div>
-                <button type="submit" class="btn btn-gold">FILTER</button>
+                <button type="submit" class="btn-gold">Filtrer</button>
                 {% if month %}
-                <a href="/expenses" class="btn" style="border:1px solid #555;color:#888">CLEAR</a>
+                <a href="/expenses" class="btn-ghost">Effacer</a>
                 {% endif %}
             </form>
         </div>
     </div>
+    <div class="table-responsive">
     <table class="table">
         <thead>
-            <tr><th>#</th><th>DATE</th><th>CATEGORY</th><th>DESCRIPTION</th><th>AMOUNT</th><th>ACTION</th></tr>
+            <tr><th>#</th><th>Date</th><th>Catégorie</th><th>Description</th><th>Montant</th><th>Action</th></tr>
         </thead>
         <tbody>
         {% for e in expenses %}
         <tr>
             <td>{{ e[0] }}</td>
             <td>{{ e[1] }}</td>
-            <td><span style="background:#1a1a2e;padding:3px 10px;border-radius:4px;font-size:0.75rem;color:#D4AF37;letter-spacing:1px">{{ e[2] }}</span></td>
+            <td><span class="badge-info">{{ e[2] }}</span></td>
             <td>{{ e[3] or '—' }}</td>
-            <td style="color:#C41E3A;font-weight:700">{{ e[4] }} DT</td>
+            <td style="color:var(--red);font-weight:700">{{ e[4] }} DT</td>
             <td>
                 <a href="/edit_expense/{{ e[0] }}" class="action-edit" style="margin-right:4px">✎</a>
-                <form method="POST" action="/delete_expense/{{ e[0] }}" class="form-action-inline" onsubmit="return confirm('DELETE this expense?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn-action-delete">✗</button>
+                <form method="POST" action="/delete_expense/{{ e[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer cette dépense ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-action-delete">✕</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
         {% if not expenses %}
-        <tr><td colspan="6" style="text-align:center;color:#555;padding:30px">NO EXPENSES FOUND</td></tr>
+        <tr><td colspan="6" class="empty-state" style="padding:30px">Aucune dépense trouvée</td></tr>
         {% endif %}
         </tbody>
     </table>
+    </div>
     {% if total_pages > 1 %}
-    <nav class="d-flex justify-content-center mt-4">
-        <ul class="pagination" style="gap:5px">
-            {% for p in range(1, total_pages + 1) %}
-            <li>
-                <a href="/expenses?month={{ month }}&page={{ p }}" class="btn {% if p == page %}btn-gold{% else %}btn-page{% endif %}">{{ p }}</a>
-            </li>
-            {% endfor %}
-        </ul>
+    <nav class="d-flex justify-content-center mt-4" style="gap:6px">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="/expenses?month={{ month }}&page={{ p }}" class="btn-page {% if p == page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
     </nav>
     {% endif %}
 {% endblock %}

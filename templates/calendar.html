@@ -3,28 +3,29 @@
 {% block head %}
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
 <style>
-    .fc { background: #111; border-radius: 8px; padding: 10px; }
-    .fc .fc-toolbar-title { color: #D4AF37; font-family: 'Cinzel', serif; letter-spacing: 3px; font-size: 1.1rem; }
-    .fc .fc-button { background: #1a1a2e; border: 1px solid #D4AF37; color: #D4AF37; font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 1px; }
-    .fc .fc-button:hover { background: #D4AF37; color: #0d0d0d; }
-    .fc .fc-button-active { background: #D4AF37 !important; color: #0d0d0d !important; }
-    .fc .fc-daygrid-day { border-color: #222; }
-    .fc .fc-daygrid-day-number { color: #888; font-family: 'Cinzel', serif; font-size: 0.8rem; }
-    .fc .fc-col-header-cell-cushion { color: #D4AF37; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 2px; }
-    .fc .fc-daygrid-day.fc-day-today { background: rgba(212,175,55,0.08) !important; }
+    .fc { background: var(--bg-card-solid); border-radius: var(--radius); padding: 10px; }
+    .fc .fc-toolbar-title { color: var(--gold); font-family: var(--font-display); letter-spacing: 2px; font-size: 1.1rem; }
+    .fc .fc-button { background: var(--bg-input); border: 1px solid var(--border-color); color: var(--gold); font-family: var(--font-body); font-size: 0.7rem; letter-spacing: 1px; }
+    .fc .fc-button:hover { background: var(--gold); color: var(--bg-primary); }
+    .fc .fc-button-active { background: var(--gold) !important; color: var(--bg-primary) !important; }
+    .fc .fc-daygrid-day { border-color: var(--border-subtle); }
+    .fc .fc-daygrid-day-number { color: var(--text-secondary); font-family: var(--font-body); font-size: 0.8rem; }
+    .fc .fc-col-header-cell-cushion { color: var(--gold); font-family: var(--font-body); font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
+    .fc .fc-daygrid-day.fc-day-today { background: var(--gold-glow) !important; }
     .fc .fc-event { font-size: 0.7rem; padding: 2px 4px; border: none; border-radius: 3px; cursor: grab; }
-    .fc .fc-more-link { color: #D4AF37; font-size: 0.7rem; }
-    .fc th { border-color: #333; }
-    .fc td { border-color: #1a1a2e; }
-    .fc-toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-family: Cinzel; font-size: 0.8rem; z-index: 9999; animation: fadeIn 0.3s; }
-    .fc-toast-success { background: #2d6a4f; border: 1px solid #40916c; }
-    .fc-toast-error { background: #C41E3A; border: 1px solid #ff4444; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fc .fc-more-link { color: var(--gold); font-size: 0.7rem; }
+    .fc th { border-color: var(--border-color); }
+    .fc td { border-color: var(--border-subtle); }
+    .fc-toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: var(--radius-sm); color: white; font-family: var(--font-body); font-size: 0.8rem; z-index: 9999; animation: fadeInUp 0.3s var(--ease); }
+    .fc-toast-success { background: var(--green); }
+    .fc-toast-error { background: var(--red); }
 </style>
 {% endblock %}
 {% block content %}
-    <p class="page-title mb-4">CALENDRIER DES RENDEZ-VOUS</p>
-    <p style="color:#888;font-size:0.75rem;text-align:center;margin-bottom:15px">💡 Glissez-déposez un rendez-vous pour le reprogrammer</p>
+    <div class="mb-4">
+        <p class="page-title mb-1">Calendrier des Rendez-vous</p>
+        <p class="page-subtitle mb-0">Glissez-déposez un rendez-vous pour le reprogrammer</p>
+    </div>
     <div id="calendar"></div>
 {% endblock %}
 {% block scripts %}

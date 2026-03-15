@@ -22,10 +22,10 @@
     <div class="invoice-container">
         <div class="logo-text">AMILCAR</div>
         <div class="sub-text">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</div>
-        <hr style="border-color:#333">
+        <hr style="border-color:var(--border-color)">
 
         <div style="text-align:center;margin-bottom:20px">
-            <h5 style="color:#D4AF37">Facture #{{ inv[0] }}</h5>
+            <h5 style="color:var(--gold)">Facture #{{ inv[0] }}</h5>
             <span class="status-badge {% if inv[2] == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
                 {% if inv[2] == 'paid' %}✅ PAYÉE{% else %}⏳ EN ATTENTE{% endif %}
             </span>
@@ -39,7 +39,7 @@
         <div class="inv-row"><span class="inv-label">Mode de paiement</span><span class="inv-value">{{ inv[11] or '—' }}</span></div>
 
         {% if inv[12] and inv[13] > 0 %}
-        <div class="inv-row"><span class="inv-label">Remise ({{ inv[12] }})</span><span class="inv-value" style="color:#C41E3A">-{{ inv[13] }}</span></div>
+        <div class="inv-row"><span class="inv-label">Remise ({{ inv[12] }})</span><span class="inv-value" style="color:var(--red)">-{{ inv[13] }}</span></div>
         {% endif %}
 
         <div class="inv-row" style="border-top:2px solid #D4AF37;margin-top:10px;padding-top:15px">
@@ -51,7 +51,7 @@
         <div class="inv-row"><span class="inv-label">Montant Payé</span><span class="inv-value" style="color:#22c55e">{{ inv[10] }} DT</span></div>
         {% endif %}
 
-        <div style="text-align:center;margin-top:30px;color:#888;font-size:0.75rem">
+        <div style="text-align:center;margin-top:30px;color:var(--text-secondary);font-size:0.75rem">
             <p>{{ settings.get('shop_name', 'AMILCAR') }}</p>
             <p>{{ settings.get('shop_address', '') }}</p>
             <p>{{ settings.get('shop_phone', '') }}</p>

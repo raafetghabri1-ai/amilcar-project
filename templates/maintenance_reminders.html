@@ -2,13 +2,13 @@
 {% block title %} - Maintenance Reminders{% endblock %}
 {% block content %}
     <p class="page-title">🔧 MAINTENANCE REMINDERS</p>
-    <p style="color:#888;font-size:0.8rem;letter-spacing:1px;margin-bottom:20px">Cars that haven't been serviced in over 90 days are highlighted</p>
+    <p style="color:var(--text-secondary);font-size:0.8rem;letter-spacing:1px;margin-bottom:20px">Cars that haven't been serviced in over 90 days are highlighted</p>
     <table class="table">
         <thead><tr><th>CAR</th><th>PLATE</th><th>OWNER</th><th>PHONE</th><th>LAST SERVICE</th><th>DATE</th><th>DAYS AGO</th></tr></thead>
         <tbody>
         {% for r in reminders %}
         <tr style="{% if r.alert %}background:rgba(196,30,58,0.08);border-left:3px solid #C41E3A{% endif %}">
-            <td><a href="/car/{{ r.car_id }}" style="color:#D4AF37;text-decoration:none">{{ r.brand }} {{ r.model }}</a></td>
+            <td><a href="/car/{{ r.car_id }}" style="color:var(--gold);text-decoration:none">{{ r.brand }} {{ r.model }}</a></td>
             <td>{{ r.plate }}</td>
             <td>{{ r.owner }}</td>
             <td>{{ r.phone }}</td>
@@ -16,17 +16,17 @@
             <td>{{ r.last_date }}</td>
             <td>
             {% if r.days_ago > 90 %}
-            <span style="color:#C41E3A;font-weight:700">{{ r.days_ago }} days ⚠</span>
+            <span style="color:var(--red);font-weight:700">{{ r.days_ago }} days ⚠</span>
             {% elif r.days_ago == 999 %}
-            <span style="color:#C41E3A">Never</span>
+            <span style="color:var(--red)">Never</span>
             {% else %}
-            <span style="color:#2d6a4f">{{ r.days_ago }} days</span>
+            <span style="color:var(--green)">{{ r.days_ago }} days</span>
             {% endif %}
             </td>
         </tr>
         {% endfor %}
         {% if not reminders %}
-        <tr><td colspan="7" style="text-align:center;color:#555;padding:30px">NO CARS FOUND</td></tr>
+        <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px">NO CARS FOUND</td></tr>
         {% endif %}
         </tbody>
     </table>

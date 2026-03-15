@@ -3,41 +3,41 @@
 {% block content %}
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">NOUVEAU RENDEZ-VOUS</h4>
+            <div class="card p-4" style="animation:fadeInUp 0.4s var(--ease-out)">
+                <h4 class="page-title mb-4">Nouveau Rendez-vous</h4>
                 <form method="POST" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
-                        <label class="form-label">CLIENT</label>
+                        <label class="form-label">Client</label>
                         <select id="customer_select" class="form-control" onchange="filterCars()">
-                            <option value="">-- Sélectionner Client --</option>
+                            <option value="">— Sélectionner Client —</option>
                             {% for c in customers %}
                             <option value="{{ c[0] }}">{{ c[1] }} — {{ c[2] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">VOITURE</label>
+                        <label class="form-label">Voiture</label>
                         <select name="car_id" id="car_select" class="form-control" required>
-                            <option value="">-- Sélectionner Voiture --</option>
+                            <option value="">— Sélectionner Voiture —</option>
                             {% for car in cars %}
                             <option value="{{ car[0] }}" data-customer="{{ car[1] }}">{{ car[2] }} {{ car[3] }} — {{ car[4] }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">DATE</label>
+                        <label class="form-label">Date</label>
                         <input type="date" name="date" id="apptDate" class="form-control" required onchange="checkSlots()">
-                        <div id="slotsInfo" style="display:none;margin-top:5px"></div>
+                        <div id="slotsInfo" style="display:none;margin-top:6px"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">HEURE</label>
-                        <input type="time" name="time" id="apptTime" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333">
-                        <small style="color:#555;font-size:0.65rem">Optionnel — évite les doubles réservations</small>
-                        <div id="availableSlots" style="display:none;margin-top:5px;display:flex;flex-wrap:wrap;gap:4px"></div>
+                        <label class="form-label">Heure</label>
+                        <input type="time" name="time" id="apptTime" class="form-control">
+                        <small style="color:var(--text-dim);font-size:0.65rem">Optionnel — évite les doubles réservations</small>
+                        <div id="availableSlots" style="display:none;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">SERVICE</label>
+                        <label class="form-label">Service</label>
                         <select name="service" class="form-control" required>
                             {% for name, price in services %}
                             <option value="{{ name }}{% if price %} - {{ price }} DT{% endif %}">{{ name }}{% if price %} — {{ price }} DT{% endif %}</option>
@@ -45,7 +45,7 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">ASSIGNÉ À</label>
+                        <label class="form-label">Assigné à</label>
                         <select name="assigned_to" class="form-control">
                             <option value="">— Non Assigné —</option>
                             {% for t in technicians %}
@@ -54,12 +54,12 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">PHOTOS (AVANT)</label>
-                        <input type="file" name="photos_before" multiple accept="image/*" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333">
-                        <small style="color:#555;font-size:0.65rem">Optionnel — télécharger photos avant</small>
+                        <label class="form-label">Photos (avant)</label>
+                        <input type="file" name="photos_before" multiple accept="image/*" class="form-control">
+                        <small style="color:var(--text-dim);font-size:0.65rem">Optionnel — télécharger photos avant</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">RÉCURRENCE</label>
+                        <label class="form-label">Récurrence</label>
                         <select name="repeat" id="repeatSelect" class="form-control" onchange="toggleRepeatCount()">
                             <option value="">— Aucune —</option>
                             <option value="weekly">Hebdomadaire</option>
@@ -68,11 +68,11 @@
                         </select>
                     </div>
                     <div class="mb-3" id="repeatCountDiv" style="display:none">
-                        <label class="form-label">NOMBRE DE RÉPÉTITIONS</label>
+                        <label class="form-label">Nombre de Répétitions</label>
                         <input type="number" name="repeat_count" class="form-control" value="4" min="2" max="52">
-                        <small style="color:#555;font-size:0.65rem">Nombre total de rendez-vous à créer</small>
+                        <small style="color:var(--text-dim);font-size:0.65rem">Nombre total de rendez-vous à créer</small>
                     </div>
-                    <button type="submit" class="btn btn-gold w-100">AJOUTER RENDEZ-VOUS</button>
+                    <button type="submit" class="btn-gold w-100" style="padding:12px">Ajouter Rendez-vous</button>
                 </form>
             </div>
         </div>
@@ -98,29 +98,23 @@ function checkSlots() {
     fetch('/api/available_slots?date=' + date).then(r => r.json()).then(data => {
         var info = document.getElementById('slotsInfo');
         info.style.display = 'block';
-        if (data.full) {
-            info.innerHTML = '<span style="color:#C41E3A;font-size:0.75rem;font-weight:600">⚠️ Journée complète (' + data.total_booked + '/' + data.max_daily + ')</span>';
-        } else {
-            info.innerHTML = '<span style="color:#22c55e;font-size:0.75rem">✅ ' + data.total_booked + '/' + data.max_daily + ' réservés</span>';
+        if (data.available !== undefined) {
+            var color = data.available > 3 ? 'var(--green)' : data.available > 0 ? 'var(--orange)' : 'var(--red)';
+            info.innerHTML = '<span style="color:' + color + ';font-size:0.75rem;font-weight:600">' + data.available + ' créneaux disponibles</span>';
         }
         var slotsDiv = document.getElementById('availableSlots');
-        slotsDiv.style.display = 'flex';
-        slotsDiv.innerHTML = '';
-        data.slots.forEach(function(s) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = s.time;
-            btn.style.cssText = 'font-size:0.6rem;padding:2px 6px;border-radius:4px;border:1px solid #333;cursor:pointer;' +
-                (s.available ? 'background:#1a1a2e;color:#22c55e' : 'background:#333;color:#666;text-decoration:line-through;cursor:not-allowed');
-            if (s.available) {
-                btn.onclick = function() {
-                    document.getElementById('apptTime').value = s.time;
-                    slotsDiv.querySelectorAll('button').forEach(b => b.style.borderColor = '#333');
-                    btn.style.borderColor = '#D4AF37';
-                };
-            }
-            slotsDiv.appendChild(btn);
-        });
+        if (data.slots && data.slots.length > 0) {
+            slotsDiv.style.display = 'flex';
+            slotsDiv.innerHTML = '';
+            data.slots.forEach(function(slot) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = slot;
+                btn.className = 'btn-ghost btn-sm';
+                btn.onclick = function() { document.getElementById('apptTime').value = slot; };
+                slotsDiv.appendChild(btn);
+            });
+        }
     });
 }
 </script>

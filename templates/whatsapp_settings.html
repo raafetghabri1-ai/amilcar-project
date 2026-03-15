@@ -12,34 +12,34 @@
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.75rem;color:#888">URL API WhatsApp</label>
-                    <input type="url" name="wa_api_url" class="form-control form-control-sm" value="{{ settings.get('wa_api_url','') }}" placeholder="https://graph.facebook.com/v17.0/PHONE_ID/messages" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <label class="form-label" style="font-size:0.75rem;color:var(--text-secondary)">URL API WhatsApp</label>
+                    <input type="url" name="wa_api_url" class="form-control form-control-sm" value="{{ settings.get('wa_api_url','') }}" placeholder="https://graph.facebook.com/v17.0/PHONE_ID/messages" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.75rem;color:#888">Token d'accès</label>
-                    <input type="text" name="wa_api_token" class="form-control form-control-sm" value="{{ settings.get('wa_api_token','') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <label class="form-label" style="font-size:0.75rem;color:var(--text-secondary)">Token d'accès</label>
+                    <input type="text" name="wa_api_token" class="form-control form-control-sm" value="{{ settings.get('wa_api_token','') }}" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.75rem;color:#888">Phone Number ID</label>
-                    <input type="text" name="wa_phone_id" class="form-control form-control-sm" value="{{ settings.get('wa_phone_id','') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <label class="form-label" style="font-size:0.75rem;color:var(--text-secondary)">Phone Number ID</label>
+                    <input type="text" name="wa_phone_id" class="form-control form-control-sm" value="{{ settings.get('wa_phone_id','') }}" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                 </div>
-                <hr style="border-color:#333">
-                <h6 style="color:#888;font-size:0.8rem">📝 Templates de Messages</h6>
+                <hr style="border-color:var(--border-color)">
+                <h6 style="color:var(--text-secondary);font-size:0.8rem">📝 Templates de Messages</h6>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.7rem;color:#888">Rappel RDV</label>
-                    <textarea name="wa_template_reminder" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:#ccc;border-color:#333">{{ settings.get('wa_template_reminder', 'Bonjour {name}! Rappel: RDV demain à {time} pour {service}. AMILCAR 🚗') }}</textarea>
+                    <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Rappel RDV</label>
+                    <textarea name="wa_template_reminder" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">{{ settings.get('wa_template_reminder', 'Bonjour {name}! Rappel: RDV demain à {time} pour {service}. AMILCAR 🚗') }}</textarea>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.7rem;color:#888">Voiture prête</label>
-                    <textarea name="wa_template_ready" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:#ccc;border-color:#333">{{ settings.get('wa_template_ready', 'Bonjour {name}! Votre {car} est prête. Passez la récupérer. AMILCAR ✨') }}</textarea>
+                    <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Voiture prête</label>
+                    <textarea name="wa_template_ready" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">{{ settings.get('wa_template_ready', 'Bonjour {name}! Votre {car} est prête. Passez la récupérer. AMILCAR ✨') }}</textarea>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-size:0.7rem;color:#888">Facture</label>
-                    <textarea name="wa_template_invoice" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:#ccc;border-color:#333">{{ settings.get('wa_template_invoice', 'Bonjour {name}! Facture #{id}: {amount} DH. Merci! AMILCAR') }}</textarea>
+                    <label class="form-label" style="font-size:0.7rem;color:var(--text-secondary)">Facture</label>
+                    <textarea name="wa_template_invoice" class="form-control form-control-sm" rows="2" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">{{ settings.get('wa_template_invoice', 'Bonjour {name}! Facture #{id}: {amount} DH. Merci! AMILCAR') }}</textarea>
                 </div>
                 <button class="btn btn-sm w-100" style="background:#25D366;color:#fff;font-weight:600">💾 Enregistrer</button>
             </form>
-            <hr style="border-color:#333">
+            <hr style="border-color:var(--border-color)">
             <form method="POST" action="/whatsapp_batch_remind">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button class="btn btn-sm btn-outline-success w-100">📨 Rappels demain (batch)</button>
@@ -55,20 +55,20 @@
                     <tbody>
                     {% for log in logs %}
                     <tr>
-                        <td style="font-size:0.7rem;color:#888">{{ log[6][:16] }}</td>
+                        <td style="font-size:0.7rem;color:var(--text-secondary)">{{ log[6][:16] }}</td>
                         <td>Client #{{ log[1] }}</td>
                         <td><span class="badge" style="background:#25D366;font-size:0.55rem">{{ log[3] }}</span></td>
                         <td style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ log[4][:80] }}</td>
                     </tr>
                     {% endfor %}
-                    {% if not logs %}<tr><td colspan="4" style="text-align:center;color:#666">Aucun historique</td></tr>{% endif %}
+                    {% if not logs %}<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucun historique</td></tr>{% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
         <div class="card p-3 mt-3">
-            <h6 style="color:#888;font-size:0.85rem">💡 Guide de Configuration</h6>
-            <div style="color:#666;font-size:0.75rem;line-height:1.8">
+            <h6 style="color:var(--text-secondary);font-size:0.85rem">💡 Guide de Configuration</h6>
+            <div style="color:var(--text-muted);font-size:0.75rem;line-height:1.8">
                 <p>1. Créez un compte <strong>Meta Business</strong> sur business.facebook.com</p>
                 <p>2. Activez <strong>WhatsApp Business API</strong> dans l'espace développeur</p>
                 <p>3. Créez une application, récupérez le <strong>Phone Number ID</strong> et le <strong>Token</strong></p>

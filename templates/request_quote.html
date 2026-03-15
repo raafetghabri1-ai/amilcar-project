@@ -1,36 +1,26 @@
 {% extends "base.html" %}
-{% block title %} - Demande de Devis{% endblock %}
+{% block title %} - Demander un Devis{% endblock %}
 {% block content %}
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">DEMANDER UN DEVIS</h4>
-                <form method="POST" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <div class="mb-3">
-                        <label class="form-label">NOM</label>
-                        <input type="text" name="name" class="form-control" required minlength="2" maxlength="100">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">TÉLÉPHONE</label>
-                        <input type="tel" name="phone" class="form-control" required pattern="[0-9+\s\-]{4,20}" title="Entrez un numéro de téléphone valide">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">SERVICE</label>
-                        <select name="service" class="form-control">
-                            {% for name, price in services %}
-                            <option value="{{ name }}">{{ name }}{% if price %} (à partir de {{ price }} DT){% endif %}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">PHOTOS</label>
-                        <input type="file" name="photos" class="form-control" multiple accept="image/*" required>
-                        <p class="service-note">Téléchargez des photos de votre voiture — avant, arrière, côtés et zones endommagées</p>
-                    </div>
-                    <button type="submit" class="btn btn-gold w-100">ENVOYER LA DEMANDE</button>
-                </form>
-            </div>
+    <p class="page-title">Demander un Devis</p>
+    <form method="POST" enctype="multipart/form-data" style="max-width:600px;animation:fadeInUp 0.5s ease">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="mb-3">
+            <label class="form-label">Nom complet</label>
+            <input type="text" name="name" class="form-control" required>
         </div>
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Téléphone</label>
+            <input type="tel" name="phone" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Service souhaité</label>
+            <input type="text" name="service" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Photos</label>
+            <input type="file" name="photos" class="form-control" multiple accept="image/*">
+            <small style="color:var(--text-dim)">Plusieurs fichiers acceptés</small>
+        </div>
+        <button type="submit" class="btn-gold w-100" style="padding:12px">Envoyer la Demande</button>
+    </form>
 {% endblock %}

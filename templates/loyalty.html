@@ -1,90 +1,93 @@
 {% extends "base.html" %}
-{% block title %} - Loyalty Program{% endblock %}
+{% block title %} - Programme Fidélité{% endblock %}
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <p class="page-title mb-0">🎁 LOYALTY PROGRAM</p>
+        <div>
+            <p class="page-title mb-0">Programme Fidélité</p>
+            <p class="page-subtitle mb-0">Suivi des lavages et récompenses</p>
+        </div>
     </div>
-    <div class="card p-3 mb-4" style="border:1px solid #D4AF37">
-        <p style="color:#D4AF37;font-size:0.85rem;letter-spacing:2px;margin-bottom:8px">HOW IT WORKS</p>
-        <p style="color:#ccc;font-size:0.8rem;margin:0">Every <strong style="color:#D4AF37">{{ threshold }}</strong> washes → the <strong style="color:#2d6a4f">next one is FREE</strong>! Track customer washes below.</p>
+    <div class="card p-3 mb-4" style="border-left:3px solid var(--gold)">
+        <p class="section-title" style="font-size:0.85rem">Comment ça marche</p>
+        <p style="color:var(--text-secondary);font-size:0.8rem;margin:0">Chaque <strong style="color:var(--gold)">{{ threshold }}</strong> lavages → le <strong style="color:var(--green)">suivant est GRATUIT</strong> !</p>
     </div>
 
-    <!-- Add Wash -->
     <div class="card p-3 mb-4">
-        <p style="color:#D4AF37;font-size:0.75rem;letter-spacing:2px;margin-bottom:10px">RECORD A WASH</p>
+        <p class="section-title" style="font-size:0.75rem">Enregistrer un Lavage</p>
         <form method="POST" action="/loyalty/add_wash" class="d-flex gap-2 align-items-end flex-wrap">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div>
-                <label class="form-label" style="font-size:0.65rem;color:#888">CUSTOMER</label>
-                <select name="customer_id" class="form-control" required style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';min-width:200px">
-                    <option value="">-- Select --</option>
+                <label class="form-label">Client</label>
+                <select name="customer_id" class="form-control" required style="min-width:200px">
+                    <option value="">-- Sélectionner --</option>
                     {% for c in customers %}
                     <option value="{{ c[0] }}">{{ c[1] }} — {{ c[2] }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label class="form-label" style="font-size:0.65rem;color:#888">SERVICE</label>
-                <select name="service_type" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';min-width:180px">
+                <label class="form-label">Service</label>
+                <select name="service_type" class="form-control" style="min-width:180px">
                     <option value="Lavage Normal">Lavage Normal</option>
                     <option value="Detailing Intérieur">Detailing Intérieur</option>
                     <option value="Detailing Extérieur">Detailing Extérieur</option>
                     <option value="Detailing Complet">Detailing Complet</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-gold">+ ADD WASH</button>
+            <button type="submit" class="btn-gold">+ Ajouter</button>
         </form>
     </div>
 
-    <!-- Loyalty Table -->
+    <div class="table-responsive">
     <table class="table">
         <thead>
             <tr>
-                <th>CLIENT</th>
-                <th>PHONE</th>
-                <th>SERVICE</th>
-                <th>WASHES</th>
-                <th>PROGRESS</th>
-                <th>FREE AVAILABLE</th>
-                <th>ACTION</th>
+                <th>Client</th>
+                <th>Téléphone</th>
+                <th>Service</th>
+                <th>Lavages</th>
+                <th>Progrès</th>
+                <th>Gratuits</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
         {% for e in entries %}
         <tr>
-            <td><a href="/customer/{{ e.customer_id }}" style="color:#D4AF37;text-decoration:none">{{ e.name }}</a></td>
+            <td><a href="/customer/{{ e.customer_id }}" style="color:var(--gold);text-decoration:none">{{ e.name }}</a></td>
             <td>{{ e.phone }}</td>
             <td style="font-size:0.8rem">{{ e.service_type }}</td>
-            <td style="color:#D4AF37;font-weight:bold">{{ e.wash_count }}</td>
+            <td style="color:var(--gold);font-weight:700">{{ e.wash_count }}</td>
             <td>
                 <div class="d-flex align-items-center gap-2">
-                    <div style="background:#1a1a2e;border-radius:4px;height:10px;width:100px;border:1px solid #333">
-                        <div style="background:#D4AF37;border-radius:4px;height:10px;width:{{ (e.progress / threshold * 100)|int }}%"></div>
+                    <div class="progress-bar-wrap" style="width:100px">
+                        <div class="progress-bar-fill" style="width:{{ (e.progress / threshold * 100)|int }}%"></div>
                     </div>
-                    <span style="color:#888;font-size:0.7rem">{{ e.progress }}/{{ threshold }}</span>
+                    <span style="color:var(--text-secondary);font-size:0.7rem">{{ e.progress }}/{{ threshold }}</span>
                 </div>
             </td>
             <td>
                 {% if e.free_available > 0 %}
-                <span style="background:#2d6a4f;color:white;padding:4px 12px;border-radius:4px;font-size:0.75rem;font-weight:bold">{{ e.free_available }} FREE 🎉</span>
+                <span class="badge-completed">{{ e.free_available }} Gratuits</span>
                 {% else %}
-                <span style="color:#555;font-size:0.75rem">0</span>
+                <span style="color:var(--text-muted);font-size:0.75rem">0</span>
                 {% endif %}
             </td>
             <td>
                 {% if e.free_available > 0 %}
                 <form method="POST" action="/loyalty/use_free" class="form-action-inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="loyalty_id" value="{{ e.id }}">
-                    <button type="submit" class="btn" style="background:#2d6a4f;color:white;font-size:0.65rem;padding:4px 10px;border:none;border-radius:4px" onclick="return confirm('Use free wash?')">USE FREE</button>
+                    <button type="submit" class="btn-action-green" onclick="return confirm('Utiliser le lavage gratuit ?')">Utiliser</button>
                 </form>
                 {% endif %}
             </td>
         </tr>
         {% endfor %}
         {% if not entries %}
-        <tr><td colspan="7" style="text-align:center;color:#555;letter-spacing:2px">No loyalty records yet. Start adding washes!</td></tr>
+        <tr><td colspan="7" class="empty-state" style="padding:20px">Aucun enregistrement. Commencez à ajouter des lavages !</td></tr>
         {% endif %}
         </tbody>
     </table>
+    </div>
 {% endblock %}

@@ -26,7 +26,7 @@ body { background: #fff !important; color: #000 !important; font-size: 11px; }
 
 <div class="row g-3 mb-4">
     <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ data.revenue|round(0) }}</h2><p>REVENUS (DT)</p></div></div>
-    <div class="col-md-2 col-6"><div class="stat-card"><h2 style="color:#C41E3A;-webkit-text-fill-color:#C41E3A">{{ data.expenses|round(0) }}</h2><p>DÉPENSES (DT)</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2 style="color:var(--red);-webkit-text-fill-color:var(--red)">{{ data.expenses|round(0) }}</h2><p>DÉPENSES (DT)</p></div></div>
     <div class="col-md-2 col-6"><div class="stat-card"><h2 style="color:#22c55e;-webkit-text-fill-color:#22c55e">{{ data.profit|round(0) }}</h2><p>BÉNÉFICE (DT)</p></div></div>
     <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ data.appt_count }}</h2><p>RENDEZ-VOUS</p></div></div>
     <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ data.completion_rate }}%</h2><p>TAUX COMPLÉTION</p></div></div>
@@ -36,17 +36,17 @@ body { background: #fff !important; color: #000 !important; font-size: 11px; }
 <div class="row g-3 mb-4">
     <div class="col-md-8">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📈 Évolution des Revenus</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📈 Évolution des Revenus</h6>
             <canvas id="revChart" height="180"></canvas>
         </div>
     </div>
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">🔝 Top Services</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">🔝 Top Services</h6>
             {% for s in data.top_services %}
             <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
                 <span style="font-size:0.8rem">{{ s[0][:30] }}</span>
-                <span style="color:#D4AF37;font-weight:700;font-size:0.8rem">{{ s[1] }}x — {{ s[2]|round(0) }} DT</span>
+                <span style="color:var(--gold);font-weight:700;font-size:0.8rem">{{ s[1] }}x — {{ s[2]|round(0) }} DT</span>
             </div>
             {% endfor %}
         </div>
@@ -54,13 +54,13 @@ body { background: #fff !important; color: #000 !important; font-size: 11px; }
 </div>
 
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;margin-bottom:15px">👥 Top Clients</h6>
+    <h6 style="color:var(--gold);margin-bottom:15px">👥 Top Clients</h6>
     <div class="table-responsive">
         <table class="table table-dark table-sm">
             <thead><tr><th>#</th><th>Client</th><th class="text-end">Visites</th><th class="text-end">Dépensé (DT)</th></tr></thead>
             <tbody>
             {% for c in data.top_customers %}
-            <tr><td style="color:#D4AF37">{{ loop.index }}</td><td>{{ c[0] }}</td><td class="text-end">{{ c[1] }}</td><td class="text-end" style="color:#22c55e;font-weight:700">{{ c[2]|round(0) }}</td></tr>
+            <tr><td style="color:var(--gold)">{{ loop.index }}</td><td>{{ c[0] }}</td><td class="text-end">{{ c[1] }}</td><td class="text-end" style="color:#22c55e;font-weight:700">{{ c[2]|round(0) }}</td></tr>
             {% endfor %}
             </tbody>
         </table>

@@ -11,7 +11,7 @@
     <div class="col-md-4 col-lg-3">
         <div class="card p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <strong style="color:#D4AF37">{{ u[1] }}</strong>
+                <strong style="color:var(--gold)">{{ u[1] }}</strong>
                 {% if user_status[u[0]].action == 'clock_in' or user_status[u[0]].action == 'break_end' %}
                     <span class="badge bg-success">En service</span>
                 {% elif user_status[u[0]].action == 'break_start' %}
@@ -21,7 +21,7 @@
                 {% endif %}
             </div>
             {% if user_status[u[0]].time %}
-                <p style="color:#888;font-size:0.7rem;margin:0 0 8px">Dernière action: {{ user_status[u[0]].time }}</p>
+                <p style="color:var(--text-secondary);font-size:0.7rem;margin:0 0 8px">Dernière action: {{ user_status[u[0]].time }}</p>
             {% endif %}
             <div class="d-flex gap-1 flex-wrap">
                 <form method="POST" action="/clock_in_out" class="d-inline">
@@ -52,7 +52,7 @@
 
 <!-- Today's Log -->
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Journal d'aujourd'hui</h6>
+    <h6 style="color:var(--gold);margin-bottom:15px">📋 Journal d'aujourd'hui</h6>
     <div class="table-responsive">
         <table class="table table-dark table-sm">
             <thead><tr><th>Utilisateur</th><th>Action</th><th>Heure</th></tr></thead>
@@ -67,11 +67,11 @@
                     {% elif log[2] == 'break_end' %}<span class="badge bg-info">Reprise</span>
                     {% else %}<span class="badge bg-secondary">{{ log[2] }}</span>{% endif %}
                 </td>
-                <td style="color:#888;font-size:0.8rem">{{ log[3] }}</td>
+                <td style="color:var(--text-secondary);font-size:0.8rem">{{ log[3] }}</td>
             </tr>
             {% endfor %}
             {% if not today_logs %}
-            <tr><td colspan="3" style="text-align:center;color:#666">Aucun enregistrement aujourd'hui</td></tr>
+            <tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Aucun enregistrement aujourd'hui</td></tr>
             {% endif %}
             </tbody>
         </table>
@@ -81,14 +81,14 @@
 <!-- Weekly/Monthly Report -->
 <div class="card p-3 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 style="color:#D4AF37;margin:0">📊 Rapport des Heures</h6>
-        <select id="reportPeriod" class="form-select form-select-sm" style="width:auto;background:#1a1a1a;color:#ccc;border-color:#333">
+        <h6 style="color:var(--gold);margin:0">📊 Rapport des Heures</h6>
+        <select id="reportPeriod" class="form-select form-select-sm" style="width:auto;background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
             <option value="week">Cette semaine</option>
             <option value="month">Ce mois</option>
         </select>
     </div>
     <div id="reportContainer">
-        <p style="color:#888;text-align:center">Chargement...</p>
+        <p style="color:var(--text-secondary);text-align:center">Chargement...</p>
     </div>
 </div>
 {% endblock %}
@@ -98,7 +98,7 @@
 function loadReport(period) {
     fetch('/api/time_report?period=' + period).then(r => r.json()).then(data => {
         if (!data.length) {
-            document.getElementById('reportContainer').innerHTML = '<p style="color:#888;text-align:center">Aucune donnée</p>';
+            document.getElementById('reportContainer').innerHTML = '<p style="color:var(--text-secondary);text-align:center">Aucune donnée</p>';
             return;
         }
         let html = '<table class="table table-dark table-sm"><thead><tr><th>Employé</th><th>Heures</th><th>Actions</th></tr></thead><tbody>';
@@ -106,9 +106,9 @@ function loadReport(period) {
             let bar = '<div style="background:rgba(212,175,55,0.1);border-radius:4px;height:20px;width:100%;position:relative">' +
                 '<div style="background:#D4AF37;height:100%;border-radius:4px;width:'+Math.min(u.total_hours/8*100,100)+'%"></div>' +
                 '</div>';
-            html += '<tr><td><strong>' + u.username + '</strong>' + (u.full_name ? '<br><small style="color:#888">' + u.full_name + '</small>' : '') + '</td>' +
-                '<td><span style="color:#D4AF37;font-weight:700">' + u.total_hours + 'h</span>' + bar + '</td>' +
-                '<td style="color:#888">' + u.log_count + '</td></tr>';
+            html += '<tr><td><strong>' + u.username + '</strong>' + (u.full_name ? '<br><small style="color:var(--text-secondary)">' + u.full_name + '</small>' : '') + '</td>' +
+                '<td><span style="color:var(--gold);font-weight:700">' + u.total_hours + 'h</span>' + bar + '</td>' +
+                '<td style="color:var(--text-secondary)">' + u.log_count + '</td></tr>';
         });
         html += '</tbody></table>';
         document.getElementById('reportContainer').innerHTML = html;

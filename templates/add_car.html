@@ -3,12 +3,12 @@
 {% block content %}
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">AJOUTER UNE VOITURE</h4>
+            <div class="card p-4" style="animation:fadeInUp 0.4s var(--ease-out)">
+                <h4 class="page-title mb-4">Ajouter une Voiture</h4>
                 <form method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
-                        <label class="form-label">CLIENT</label>
+                        <label class="form-label">Client</label>
                         <select name="customer_id" class="form-control" required>
                             {% for c in customers %}
                             <option value="{{ c[0] }}">{{ c[1] }} — {{ c[2] }}</option>
@@ -16,28 +16,28 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">MARQUE</label>
+                        <label class="form-label">Marque</label>
                         <input type="text" name="brand" class="form-control" placeholder="Toyota, Peugeot..." required maxlength="50">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">MODÈLE</label>
+                        <label class="form-label">Modèle</label>
                         <input type="text" name="model" class="form-control" placeholder="Corolla, 206..." required maxlength="50">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">IMMATRICULATION</label>
+                        <label class="form-label">Immatriculation</label>
                         <input type="text" name="plate" class="form-control" placeholder="123 TUN 4567" required maxlength="20">
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">ANNÉE</label>
+                            <label class="form-label">Année</label>
                             <input type="text" name="year" class="form-control" placeholder="2024" maxlength="4">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">COULEUR</label>
+                            <label class="form-label">Couleur</label>
                             <input type="text" name="color" class="form-control" placeholder="Noir, Blanc..." maxlength="30">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-gold w-100">AJOUTER VOITURE</button>
+                    <button type="submit" class="btn-gold w-100" style="padding:12px">Ajouter Voiture</button>
                 </form>
             </div>
         </div>

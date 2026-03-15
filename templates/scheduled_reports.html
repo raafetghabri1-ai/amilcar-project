@@ -8,27 +8,27 @@
 <div class="row g-3">
     <div class="col-md-5">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">➕ Programmer un Rapport</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">➕ Programmer un Rapport</h6>
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-2">
-                    <label class="form-label" style="font-size:0.75rem;color:#888">Fréquence</label>
-                    <select name="report_type" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <label class="form-label" style="font-size:0.75rem;color:var(--text-secondary)">Fréquence</label>
+                    <select name="report_type" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                         <option value="weekly">📅 Hebdomadaire</option>
                         <option value="monthly">📆 Mensuel</option>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" style="font-size:0.75rem;color:#888">Email destinataire</label>
-                    <input type="email" name="email_to" class="form-control form-control-sm" required placeholder="directeur@amilcar.com" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <label class="form-label" style="font-size:0.75rem;color:var(--text-secondary)">Email destinataire</label>
+                    <input type="email" name="email_to" class="form-control form-control-sm" required placeholder="directeur@amilcar.com" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                 </div>
-                <button class="btn btn-gold btn-sm w-100">+ Programmer</button>
+                <button class="btn-gold btn-sm w-100">+ Programmer</button>
             </form>
         </div>
     </div>
     <div class="col-md-7">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📋 Rapports Programmés</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📋 Rapports Programmés</h6>
             <div class="table-responsive">
                 <table class="table table-dark table-sm">
                     <thead><tr><th>Type</th><th>Destinataire</th><th>Dernier envoi</th><th>Actions</th></tr></thead>
@@ -37,7 +37,7 @@
                     <tr>
                         <td>{% if r[1] == 'weekly' %}📅 Hebdomadaire{% else %}📆 Mensuel{% endif %}</td>
                         <td>{{ r[2] }}</td>
-                        <td style="font-size:0.75rem;color:#888">{{ r[3] or 'Jamais' }}</td>
+                        <td style="font-size:0.75rem;color:var(--text-secondary)">{{ r[3] or 'Jamais' }}</td>
                         <td>
                             <div class="d-flex gap-1">
                                 <form method="POST" action="/scheduled_reports/send_now/{{ r[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -48,7 +48,7 @@
                         </td>
                     </tr>
                     {% endfor %}
-                    {% if not reports %}<tr><td colspan="4" style="text-align:center;color:#666">Aucun rapport programmé</td></tr>{% endif %}
+                    {% if not reports %}<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucun rapport programmé</td></tr>{% endif %}
                     </tbody>
                 </table>
             </div>

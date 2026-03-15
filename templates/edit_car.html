@@ -4,7 +4,7 @@
     <div class="row justify-content-center">
         <div class="col-md-6">
             <div class="card p-4">
-                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">MODIFIER VOITURE</h4>
+                <h4 class="mb-4" >MODIFIER VOITURE</h4>
                 <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-3">
@@ -29,7 +29,7 @@
                             <input type="text" name="color" class="form-control" value="{{ car[6] if car|length > 6 else '' }}" maxlength="30">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-gold w-100">ENREGISTRER</button>
+                    <button type="submit" class="btn-gold w-100">ENREGISTRER</button>
                 </form>
             </div>
         </div>

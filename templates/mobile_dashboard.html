@@ -36,7 +36,7 @@
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px">
     <div class="mobile-stat"><div class="num" style="color:#22c55e">{{ completed_today }}</div><div class="lbl">TERMINÉS</div></div>
     <div class="mobile-stat"><div class="num">{{ today_revenue|round(0) }}</div><div class="lbl">REVENUS DT</div></div>
-    <div class="mobile-stat"><div class="num" style="color:#C41E3A">{{ unpaid }}</div><div class="lbl">IMPAYÉS</div></div>
+    <div class="mobile-stat"><div class="num" style="color:var(--red)">{{ unpaid }}</div><div class="lbl">IMPAYÉS</div></div>
 </div>
 
 <div class="quick-grid">

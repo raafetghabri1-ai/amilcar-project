@@ -8,10 +8,10 @@
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">📋 Rôles Disponibles</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">📋 Rôles Disponibles</h6>
             {% for role, perms in roles.items() %}
             <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-                <strong style="color:#D4AF37;text-transform:uppercase">{{ role }}</strong>
+                <strong style="color:var(--gold);text-transform:uppercase">{{ role }}</strong>
                 <div style="margin-top:5px">
                     {% for p in perms %}
                     <span class="badge bg-secondary" style="font-size:0.6rem;margin:1px">{{ p }}</span>
@@ -23,21 +23,21 @@
     </div>
     <div class="col-md-8">
         <div class="card p-3">
-            <h6 style="color:#D4AF37;margin-bottom:15px">👥 Utilisateurs</h6>
+            <h6 style="color:var(--gold);margin-bottom:15px">👥 Utilisateurs</h6>
             <div class="table-responsive">
                 <table class="table table-dark table-sm table-hover">
                     <thead><tr><th>ID</th><th>Utilisateur</th><th>Nom Complet</th><th>Rôle Actuel</th><th>Modifier</th></tr></thead>
                     <tbody>
                     {% for u in users %}
                     <tr>
-                        <td style="color:#D4AF37">{{ u[0] }}</td>
+                        <td style="color:var(--gold)">{{ u[0] }}</td>
                         <td><strong>{{ u[1] }}</strong></td>
-                        <td style="color:#888">{{ u[3] or '—' }}</td>
+                        <td style="color:var(--text-secondary)">{{ u[3] or '—' }}</td>
                         <td><span class="badge {% if u[2] == 'admin' %}bg-danger{% elif u[2] == 'manager' %}bg-warning text-dark{% elif u[2] == 'receptionist' %}bg-info{% elif u[2] == 'technician' %}bg-primary{% else %}bg-secondary{% endif %}">{{ u[2]|upper }}</span></td>
                         <td>
                             <form method="POST" action="/manage_roles/update/{{ u[0] }}" class="d-flex gap-2">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <select name="role" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333;width:auto;font-size:0.75rem">
+                                <select name="role" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color);width:auto;font-size:0.75rem">
                                     <option value="employee" {% if u[2] == 'employee' %}selected{% endif %}>Employé</option>
                                     <option value="technician" {% if u[2] == 'technician' %}selected{% endif %}>Technicien</option>
                                     <option value="receptionist" {% if u[2] == 'receptionist' %}selected{% endif %}>Réception</option>

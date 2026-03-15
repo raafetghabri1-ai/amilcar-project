@@ -3,24 +3,24 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <p class="page-title mb-0">📷 GALERIE — Rendez-vous #{{ appt[0] }}</p>
-        <a href="/appointments" class="btn" style="border:1px solid #555;color:#888;font-size:0.75rem">← RETOUR</a>
+        <a href="/appointments" class="btn" style="border:1px solid #555;color:var(--text-secondary);font-size:0.75rem">← RETOUR</a>
     </div>
     <div class="card p-3 mb-4">
         <div class="d-flex justify-content-between">
             <div>
-                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">CLIENT </span>
-                <p style="color:#D4AF37;margin:0">{{ appt[1] }}</p>
+                <span style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:1px">CLIENT </span>
+                <p style="color:var(--gold);margin:0">{{ appt[1] }}</p>
             </div>
             <div>
-                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">VOITURE</span>
-                <p style="color:#D4AF37;margin:0">{{ appt[2] }} {{ appt[3] }}</p>
+                <span style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:1px">VOITURE</span>
+                <p style="color:var(--gold);margin:0">{{ appt[2] }} {{ appt[3] }}</p>
             </div>
             <div>
-                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">SERVICE</span>
+                <span style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:1px">SERVICE</span>
                 <p style="color:#f0f0f0;margin:0">{{ appt[5] }}</p>
             </div>
             <div>
-                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">DATE</span>
+                <span style="color:var(--text-secondary);font-size:0.7rem;letter-spacing:1px">DATE</span>
                 <p style="color:#f0f0f0;margin:0">{{ appt[4] }}</p>
             </div>
         </div>
@@ -29,12 +29,12 @@
     <!-- BEFORE Photos -->
     <div class="card p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 style="color:#C41E3A;letter-spacing:3px;margin:0">AVANT</h5>
+            <h5 style="color:var(--red);letter-spacing:3px;margin:0">AVANT</h5>
             <form method="POST" action="/upload_photos/{{ appt[0] }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="photo_type" value="before">
-                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333;font-size:0.7rem;max-width:250px">
-                <button type="submit" class="btn btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
+                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:var(--bg-input);color:#f0f0f0;border:1px solid var(--border-color);font-size:0.7rem;max-width:250px">
+                <button type="submit" class="btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
             </form>
         </div>
         {% if before %}
@@ -54,19 +54,19 @@
             {% endfor %}
         </div>
         {% else %}
-        <p style="color:#555;text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
+        <p style="color:var(--text-muted);text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
         {% endif %}
     </div>
 
     <!-- AFTER Photos -->
     <div class="card p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 style="color:#2d6a4f;letter-spacing:3px;margin:0">APRÈS</h5>
+            <h5 style="color:var(--green);letter-spacing:3px;margin:0">APRÈS</h5>
             <form method="POST" action="/upload_photos/{{ appt[0] }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="photo_type" value="after">
-                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333;font-size:0.7rem;max-width:250px">
-                <button type="submit" class="btn btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
+                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:var(--bg-input);color:#f0f0f0;border:1px solid var(--border-color);font-size:0.7rem;max-width:250px">
+                <button type="submit" class="btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
             </form>
         </div>
         {% if after %}
@@ -86,13 +86,13 @@
             {% endfor %}
         </div>
         {% else %}
-        <p style="color:#555;text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
+        <p style="color:var(--text-muted);text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
         {% endif %}
     </div>
 
     {% if before and after %}
     <div class="card p-3">
-        <h5 style="color:#D4AF37;letter-spacing:3px;text-align:center;margin-bottom:15px">AVANT vs APRÈS — COMPARAISON INTERACTIVE</h5>
+        <h5 style="color:var(--gold);letter-spacing:3px;text-align:center;margin-bottom:15px">AVANT vs APRÈS — COMPARAISON INTERACTIVE</h5>
         <div style="position:relative;width:100%;max-width:700px;margin:0 auto;overflow:hidden;border-radius:8px;border:2px solid #D4AF37;aspect-ratio:4/3;user-select:none" id="slider-container">
             <img src="/static/uploads/{{ after[0] }}" style="width:100%;height:100%;object-fit:cover;display:block" alt="Après">
             <div id="slider-before" style="position:absolute;top:0;left:0;width:50%;height:100%;overflow:hidden">

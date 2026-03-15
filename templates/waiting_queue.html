@@ -8,37 +8,37 @@
 
 <!-- Add to Queue -->
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Ajouter à la File</h6>
+    <h6 style="color:var(--gold);margin-bottom:15px">➕ Ajouter à la File</h6>
     <form method="POST" action="/queue/add">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="row g-2">
             <div class="col-md-3">
-                <select name="customer_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <select name="customer_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     <option value="">-- Client --</option>
                     {% for c in customers %}<option value="{{ c[0] }}">{{ c[1] }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="car_id" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <select name="car_id" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     <option value="">-- Véhicule --</option>
                     {% for c in cars %}<option value="{{ c[0] }}">{{ c[1] }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="service" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <select name="service" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)">
                     <option value="">-- Service --</option>
                     {% for s in services %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-1">
-                <select name="priority" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Priorité">
+                <select name="priority" class="form-select form-select-sm" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)" title="Priorité">
                     <option value="0">Normal</option>
                     <option value="1">Urgent</option>
                     <option value="2">VIP</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <input type="number" name="estimated_wait" class="form-control form-control-sm" value="30" min="5" placeholder="Min" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Temps estimé (min)">
+                <input type="number" name="estimated_wait" class="form-control form-control-sm" value="30" min="5" placeholder="Min" style="background:#1a1a1a;color:var(--text-primary);border-color:var(--border-color)" title="Temps estimé (min)">
             </div>
             <div class="col-md-2">
                 <button class="btn btn-sm btn-gold w-100">+ Ajouter</button>
@@ -57,9 +57,9 @@
             <tbody>
             {% for q in queue %}
             <tr>
-                <td style="color:#D4AF37;font-weight:700">{{ loop.index }}</td>
+                <td style="color:var(--gold);font-weight:700">{{ loop.index }}</td>
                 <td><strong>{{ q[1] }}</strong></td>
-                <td style="color:#888;font-size:0.8rem">{{ q[2] }}</td>
+                <td style="color:var(--text-secondary);font-size:0.8rem">{{ q[2] }}</td>
                 <td style="font-size:0.8rem">{{ q[3] }}</td>
                 <td>{{ q[4] }}</td>
                 <td>
@@ -71,8 +71,8 @@
                     {% if q[6] == 'serving' %}<span class="badge bg-primary">En service</span>
                     {% else %}<span class="badge bg-warning text-dark">En attente</span>{% endif %}
                 </td>
-                <td style="color:#D4AF37;font-weight:600">~{{ q[7] }} min</td>
-                <td style="color:#888;font-size:0.7rem">{{ q[9][:16] }}</td>
+                <td style="color:var(--gold);font-weight:600">~{{ q[7] }} min</td>
+                <td style="color:var(--text-secondary);font-size:0.7rem">{{ q[9][:16] }}</td>
                 <td>
                     <div class="d-flex gap-1">
                         {% if q[6] == 'waiting' %}
@@ -89,7 +89,7 @@
                 </td>
             </tr>
             {% endfor %}
-            {% if not queue %}<tr><td colspan="10" style="text-align:center;color:#666">File d'attente vide</td></tr>{% endif %}
+            {% if not queue %}<tr><td colspan="10" style="text-align:center;color:var(--text-muted)">File d'attente vide</td></tr>{% endif %}
             </tbody>
         </table>
     </div>

@@ -13,7 +13,7 @@
     <!-- Pending -->
     <div class="col-md-4">
         <div class="card p-3">
-            <h5 style="color:#D4AF37;border-bottom:2px solid #D4AF37;padding-bottom:10px">
+            <h5 style="color:var(--gold);border-bottom:2px solid #D4AF37;padding-bottom:10px">
                 ⏳ EN ATTENTE <span class="badge bg-warning text-dark" id="countPending">0</span>
             </h5>
             <div id="colPending" class="board-column"></div>
@@ -84,17 +84,17 @@ function loadBoard() {
     fetch('/api/live_board').then(r=>r.json()).then(data => {
         let h = '';
         data.pending.forEach(i => h += renderCard(i, 'pending'));
-        document.getElementById('colPending').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('colPending').innerHTML = h || '<p style="color:var(--text-muted);text-align:center;padding:20px">Aucun</p>';
         document.getElementById('countPending').textContent = data.pending.length;
 
         h = '';
         data.in_progress.forEach(i => h += renderCard(i, 'in_progress'));
-        document.getElementById('colProgress').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('colProgress').innerHTML = h || '<p style="color:var(--text-muted);text-align:center;padding:20px">Aucun</p>';
         document.getElementById('countProgress').textContent = data.in_progress.length;
 
         h = '';
         data.completed.forEach(i => h += renderCard(i, 'completed'));
-        document.getElementById('colCompleted').innerHTML = h || '<p style="color:#666;text-align:center;padding:20px">Aucun</p>';
+        document.getElementById('colCompleted').innerHTML = h || '<p style="color:var(--text-muted);text-align:center;padding:20px">Aucun</p>';
         document.getElementById('countCompleted').textContent = data.completed.length;
 
         document.getElementById('lastRefresh').textContent = 'Mis à jour: ' + new Date().toLocaleTimeString('fr-FR');

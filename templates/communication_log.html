@@ -6,7 +6,7 @@
     <a href="/customer/{{ customer[0] }}" class="btn btn-outline-gold" style="font-size:0.72rem">← Retour</a>
 </div>
 <div class="card p-3 mb-4">
-    <h6 style="color:#D4AF37;font-size:0.7rem;letter-spacing:2px;margin-bottom:12px">NOUVELLE COMMUNICATION</h6>
+    <h6 style="color:var(--gold);font-size:0.7rem;letter-spacing:2px;margin-bottom:12px">NOUVELLE COMMUNICATION</h6>
     <form method="POST" action="/add_communication/{{ customer[0] }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row g-2">
@@ -27,7 +27,7 @@
                 <input type="text" name="message" class="form-control" placeholder="Détails / Notes">
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-gold w-100">Ajouter</button>
+                <button type="submit" class="btn-gold w-100">Ajouter</button>
             </div>
         </div>
     </form>
@@ -60,6 +60,6 @@
     </table>
 </div>
 {% else %}
-<div class="text-center py-4" style="color:#888">Aucune communication enregistrée</div>
+<div class="text-center py-4" style="color:var(--text-secondary)">Aucune communication enregistrée</div>
 {% endif %}
 {% endblock %}

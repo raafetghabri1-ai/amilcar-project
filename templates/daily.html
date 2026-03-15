@@ -1,52 +1,61 @@
 {% extends "base.html" %}
 {% block title %} - Rapport Journalier{% endblock %}
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <p class="date-display mb-0">{{ today }}</p>
-        <a href="/export/daily?date={{ today }}" class="btn btn-gold" style="font-size:0.75rem;padding:6px 14px">⤓ EXPORTER CSV</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <p class="date-display mb-0" style="text-align:left;margin:0">{{ today }}</p>
+            <p class="page-subtitle mb-0">Rapport journalier</p>
+        </div>
+        <a href="/export/daily?date={{ today }}" class="btn-outline-gold btn-sm">↓ Exporter CSV</a>
     </div>
-    <div class="row g-4 mb-4">
+    <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="stat-card">
                 <h2>{{ appointments|length }}</h2>
-                <p>RENDEZ-VOUS AUJOURD'HUI</p>
+                <p>Rendez-vous Aujourd'hui</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="stat-card">
                 <h2>{{ revenue }} DT</h2>
-                <p>REVENUS AUJOURD'HUI</p>
+                <p>Revenus Aujourd'hui</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="stat-card">
-                <h2 style="color:#C41E3A">{{ expenses_today }} DT</h2>
-                <p>DÉPENSES AUJOURD'HUI</p>
+                <h2 style="color:var(--red)">{{ expenses_today }} DT</h2>
+                <p>Dépenses Aujourd'hui</p>
             </div>
         </div>
     </div>
-    <p class="section-title">RENDEZ-VOUS DU JOUR</p>
+    <p class="section-title">Rendez-vous du Jour</p>
     {% if appointments %}
+    <div class="table-responsive">
     <table class="table">
-        <thead><tr><th>#</th><th>CLIENT</th><th>VOITURE</th><th>HEURE</th><th>SERVICE</th><th>STATUT</th></tr></thead>
+        <thead><tr><th>#</th><th>Client</th><th>Voiture</th><th>Heure</th><th>Service</th><th>Statut</th></tr></thead>
         <tbody>
         {% for a in appointments %}
         <tr>
-            <td>{{ a[0] }}</td>
-            <td>{{ a[1] }}</td>
+            <td style="color:var(--text-muted)">{{ a[0] }}</td>
+            <td style="font-weight:600">{{ a[1] }}</td>
             <td>{{ a[2] }} {{ a[3] }}</td>
-            <td>{% if a[7] %}<span style="color:#D4AF37">{{ a[7] }}</span>{% else %}—{% endif %}</td>
+            <td>{% if a[7] %}<span style="color:var(--gold)">{{ a[7] }}</span>{% else %}<span style="color:var(--text-dim)">—</span>{% endif %}</td>
             <td>{{ a[5] }}</td>
             <td>
-            {% if a[6] == 'pending' %}<span class="badge-pending">EN ATTENTE</span>
-            {% elif a[6] == 'completed' %}<span class="badge-completed">TERMINÉ</span>
-            {% else %}<span class="badge-cancelled">ANNULÉ</span>{% endif %}
+            {% if a[6] == 'pending' %}<span class="badge-pending">En attente</span>
+            {% elif a[6] == 'completed' %}<span class="badge-completed">Terminé</span>
+            {% elif a[6] == 'in_progress' %}<span class="badge-progress">En cours</span>
+            {% else %}<span class="badge-cancelled">Annulé</span>{% endif %}
             </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
-    <p style="color:#555;letter-spacing:2px;font-size:0.85rem">AUCUN RENDEZ-VOUS AUJOURD'HUI</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">▦</div>
+        <p class="empty-state-text">Aucun rendez-vous aujourd'hui</p>
+    </div>
     {% endif %}
 {% endblock %}
