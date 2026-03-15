@@ -69,6 +69,7 @@
             </form>
             {% endif %}
             <a href="/edit_appointment/{{ a[0] }}" class="action-edit" style="margin:0 4px">✎</a>
+            <a href="/inspection/{{ a[0] }}" style="color:#0d6efd;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Checklist">📋</a>
             <a href="/gallery/{{ a[0] }}" style="color:#888;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Photos">📷</a>
             {% if a[6] == 'completed' %}
             <a href="#" onclick="openRating({{ a[0] }})" style="color:#D4AF37;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Évaluer">★</a>

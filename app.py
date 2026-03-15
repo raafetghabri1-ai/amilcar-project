@@ -4992,6 +4992,535 @@ def inject_translations():
     lang = session.get('lang', 'fr')
     return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['fr']), 'current_lang': lang}
 
+# ─── Phase 8 Feature 1: Automated Weekly/Monthly Reports ───
+@app.route("/scheduled_reports", methods=["GET", "POST"])
+@login_required
+def scheduled_reports():
+    with get_db() as conn:
+        if request.method == "POST":
+            report_type = request.form.get('report_type', 'weekly')
+            email_to = request.form.get('email_to', '')
+            if email_to:
+                conn.execute("INSERT INTO scheduled_reports (report_type, email_to) VALUES (?,?)", (report_type, email_to))
+                conn.commit()
+                flash("Rapport programmé ajouté !", "success")
+            return redirect("/scheduled_reports")
+        reports = conn.execute("SELECT * FROM scheduled_reports ORDER BY created_at DESC").fetchall()
+    return render_template("scheduled_reports.html", reports=reports)
+
+@app.route("/scheduled_reports/delete/<int:rid>", methods=["POST"])
+@login_required
+def delete_scheduled_report(rid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM scheduled_reports WHERE id=?", (rid,))
+        conn.commit()
+    flash("Rapport supprimé", "success")
+    return redirect("/scheduled_reports")
+
+@app.route("/scheduled_reports/send_now/<int:rid>", methods=["POST"])
+@login_required
+def send_report_now(rid):
+    with get_db() as conn:
+        report = conn.execute("SELECT * FROM scheduled_reports WHERE id=?", (rid,)).fetchone()
+        if not report:
+            flash("Rapport introuvable", "danger")
+            return redirect("/scheduled_reports")
+        from datetime import date, timedelta
+        today = date.today()
+        if report[1] == 'weekly':
+            start = (today - timedelta(days=7)).isoformat()
+        else:
+            start = today.replace(day=1).isoformat()
+        rev = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE date >= ? AND status='Payée'", (start,)).fetchone()[0]
+        exp = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ?", (start,)).fetchone()[0]
+        appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE date >= ?", (start,)).fetchone()[0]
+        new_clients = conn.execute("SELECT COUNT(*) FROM customers WHERE created_at >= ?", (start,)).fetchone()[0]
+        period = "Semaine" if report[1] == 'weekly' else "Mois"
+        body = f"""<h2>AMILCAR — Rapport {period}</h2>
+        <p>Période: {start} → {today.isoformat()}</p>
+        <table style='border-collapse:collapse;width:100%'>
+        <tr><td style='padding:8px;border:1px solid #ddd'><strong>Revenu</strong></td><td style='padding:8px;border:1px solid #ddd;color:green'>{rev:.0f} DH</td></tr>
+        <tr><td style='padding:8px;border:1px solid #ddd'><strong>Dépenses</strong></td><td style='padding:8px;border:1px solid #ddd;color:red'>{exp:.0f} DH</td></tr>
+        <tr><td style='padding:8px;border:1px solid #ddd'><strong>Bénéfice</strong></td><td style='padding:8px;border:1px solid #ddd;color:goldenrod'>{rev-exp:.0f} DH</td></tr>
+        <tr><td style='padding:8px;border:1px solid #ddd'><strong>RDV</strong></td><td style='padding:8px;border:1px solid #ddd'>{appts}</td></tr>
+        <tr><td style='padding:8px;border:1px solid #ddd'><strong>Nouveaux Clients</strong></td><td style='padding:8px;border:1px solid #ddd'>{new_clients}</td></tr>
+        </table>"""
+        # Try sending email
+        smtp_server = conn.execute("SELECT value FROM settings WHERE key='smtp_server'").fetchone()
+        smtp_email = conn.execute("SELECT value FROM settings WHERE key='smtp_email'").fetchone()
+        smtp_pass = conn.execute("SELECT value FROM settings WHERE key='smtp_password'").fetchone()
+        smtp_port = conn.execute("SELECT value FROM settings WHERE key='smtp_port'").fetchone()
+        if smtp_server and smtp_email and smtp_pass:
+            try:
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
+                msg = MIMEMultipart()
+                msg['From'] = f"AMILCAR <{smtp_email[0]}>"
+                msg['To'] = report[2]
+                msg['Subject'] = f"AMILCAR — Rapport {period} ({today.isoformat()})"
+                msg.attach(MIMEText(body, 'html'))
+                with smtplib.SMTP(smtp_server[0], int(smtp_port[0] if smtp_port else 587)) as server:
+                    server.starttls()
+                    server.login(smtp_email[0], smtp_pass[0])
+                    server.send_message(msg)
+                conn.execute("UPDATE scheduled_reports SET last_sent=? WHERE id=?", (today.isoformat(), rid))
+                conn.execute("INSERT INTO email_log (to_email, subject, body, status) VALUES (?,?,?,?)",
+                            (report[2], f"Rapport {period}", body, 'sent'))
+                conn.commit()
+                flash("Rapport envoyé par email !", "success")
+            except Exception as e:
+                flash(f"Erreur d'envoi: {str(e)}", "danger")
+        else:
+            conn.execute("UPDATE scheduled_reports SET last_sent=? WHERE id=?", (today.isoformat(), rid))
+            conn.commit()
+            flash("Rapport généré (SMTP non configuré — configurez dans Email Settings)", "warning")
+    return redirect("/scheduled_reports")
+
+# ─── Phase 8 Feature 2: Smart Alerts System ───
+@app.route("/smart_alerts")
+@login_required
+def smart_alerts():
+    with get_db() as conn:
+        # Generate alerts
+        from datetime import date, timedelta
+        today = date.today()
+        today_str = today.isoformat()
+        # Low inventory alerts
+        low_items = conn.execute("SELECT id, name, quantity, min_quantity FROM inventory WHERE quantity <= min_quantity").fetchall()
+        for item in low_items:
+            existing = conn.execute("SELECT id FROM smart_alerts WHERE alert_type='low_stock' AND related_id=? AND is_read=0", (item[0],)).fetchone()
+            if not existing:
+                conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
+                    ('low_stock', f'Stock bas: {item[1]}', f'Quantité: {item[2]}/{item[3]}', 'warning', item[0]))
+        # Unpaid invoices > 7 days
+        old_unpaid = conn.execute("SELECT id, amount, date FROM invoices WHERE status IN ('unpaid','Non payée') AND date <= ?",
+            ((today - timedelta(days=7)).isoformat(),)).fetchall()
+        for inv in old_unpaid:
+            existing = conn.execute("SELECT id FROM smart_alerts WHERE alert_type='overdue_invoice' AND related_id=? AND is_read=0", (inv[0],)).fetchone()
+            if not existing:
+                conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
+                    ('overdue_invoice', f'Facture #{inv[0]} impayée', f'{inv[1]:.0f} DH depuis {inv[2]}', 'danger', inv[0]))
+        # VIP customers not returning (60+ days)
+        vip_gone = conn.execute("""
+            SELECT c.id, c.name, MAX(a.date) as last_visit FROM customers c
+            JOIN cars cr ON cr.customer_id = c.id
+            JOIN appointments a ON a.car_id = cr.id
+            GROUP BY c.id HAVING last_visit <= ?
+        """, ((today - timedelta(days=60)).isoformat(),)).fetchall()
+        for v in vip_gone[:10]:
+            existing = conn.execute("SELECT id FROM smart_alerts WHERE alert_type='vip_churn' AND related_id=? AND is_read=0", (v[0],)).fetchone()
+            if not existing:
+                conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
+                    ('vip_churn', f'Client absent: {v[1]}', f'Dernière visite: {v[2]}', 'info', v[0]))
+        # Warranty expiring soon (7 days)
+        exp_warranties = conn.execute("SELECT w.id, c.name, w.service, w.end_date FROM warranties w JOIN customers c ON w.customer_id=c.id WHERE w.status='active' AND w.end_date BETWEEN ? AND ?",
+            (today_str, (today + timedelta(days=7)).isoformat())).fetchall()
+        for w in exp_warranties:
+            existing = conn.execute("SELECT id FROM smart_alerts WHERE alert_type='warranty_expiring' AND related_id=? AND is_read=0", (w[0],)).fetchone()
+            if not existing:
+                conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
+                    ('warranty_expiring', f'Garantie expire: {w[1]}', f'{w[2]} — expire le {w[3]}', 'warning', w[0]))
+        conn.commit()
+        alerts = conn.execute("SELECT * FROM smart_alerts ORDER BY is_read ASC, created_at DESC LIMIT 100").fetchall()
+        unread = conn.execute("SELECT COUNT(*) FROM smart_alerts WHERE is_read=0").fetchone()[0]
+    return render_template("smart_alerts.html", alerts=alerts, unread=unread)
+
+@app.route("/smart_alerts/read/<int:aid>", methods=["POST"])
+@login_required
+def mark_alert_read(aid):
+    with get_db() as conn:
+        conn.execute("UPDATE smart_alerts SET is_read=1 WHERE id=?", (aid,))
+        conn.commit()
+    return redirect("/smart_alerts")
+
+@app.route("/smart_alerts/read_all", methods=["POST"])
+@login_required
+def mark_all_alerts_read():
+    with get_db() as conn:
+        conn.execute("UPDATE smart_alerts SET is_read=1")
+        conn.commit()
+    flash("Toutes les alertes marquées comme lues", "success")
+    return redirect("/smart_alerts")
+
+# ─── Phase 8 Feature 3: WhatsApp API Integration ───
+@app.route("/whatsapp_settings", methods=["GET", "POST"])
+@login_required
+def whatsapp_settings():
+    with get_db() as conn:
+        if request.method == "POST":
+            for key in ['wa_api_url', 'wa_api_token', 'wa_phone_id', 'wa_template_reminder', 'wa_template_ready', 'wa_template_invoice']:
+                val = request.form.get(key, '')
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
+            conn.commit()
+            flash("Paramètres WhatsApp enregistrés !", "success")
+            return redirect("/whatsapp_settings")
+        settings = {}
+        for row in conn.execute("SELECT key, value FROM settings WHERE key LIKE 'wa_%'").fetchall():
+            settings[row[0]] = row[1]
+        logs = conn.execute("SELECT * FROM communication_log WHERE type='WhatsApp' ORDER BY created_at DESC LIMIT 50").fetchall()
+    return render_template("whatsapp_settings.html", settings=settings, logs=logs)
+
+@app.route("/whatsapp_send/<int:customer_id>", methods=["POST"])
+@login_required
+def whatsapp_send(customer_id):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Client introuvable", "danger")
+            return redirect("/customers")
+        message = request.form.get('message', '')
+        template = request.form.get('template', '')
+        phone = customer[2].replace(' ', '').replace('+', '')
+        wa_url = conn.execute("SELECT value FROM settings WHERE key='wa_api_url'").fetchone()
+        wa_token = conn.execute("SELECT value FROM settings WHERE key='wa_api_token'").fetchone()
+        if wa_url and wa_token and wa_url[0] and wa_token[0]:
+            try:
+                import urllib.request, json
+                payload = json.dumps({"messaging_product": "whatsapp", "to": phone, "type": "text", "text": {"body": message}}).encode()
+                req = urllib.request.Request(wa_url[0], data=payload, headers={
+                    'Authorization': f'Bearer {wa_token[0]}', 'Content-Type': 'application/json'})
+                urllib.request.urlopen(req, timeout=10)
+                status = 'sent'
+                flash(f"WhatsApp envoyé à {customer[1]} !", "success")
+            except Exception as e:
+                status = 'failed'
+                flash(f"Erreur WhatsApp: {str(e)}", "danger")
+        else:
+            status = 'manual'
+            flash("API non configurée — utilisez le lien WhatsApp manuel", "warning")
+        conn.execute("INSERT INTO communication_log (customer_id, type, subject, message, sent_by) VALUES (?,?,?,?,?)",
+                     (customer_id, 'WhatsApp', template or 'Message', message, session.get('username', '')))
+        conn.commit()
+    return redirect(f"/customer/{customer_id}")
+
+@app.route("/whatsapp_batch_remind", methods=["POST"])
+@login_required
+def whatsapp_batch_remind():
+    with get_db() as conn:
+        from datetime import date, timedelta
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        appts = conn.execute("""
+            SELECT a.id, a.date, a.time, a.service, c.name, c.phone, c.id
+            FROM appointments a JOIN cars cr ON a.car_id=cr.id JOIN customers c ON cr.customer_id=c.id
+            WHERE a.date=? AND a.status IN ('pending','Confirmé')
+        """, (tomorrow,)).fetchall()
+        count = 0
+        for a in appts:
+            msg = f"Bonjour {a[4]} 👋\nRappel: votre RDV demain {a[1]} à {a[2]} pour *{a[3]}*.\nÀ bientôt chez AMILCAR! 🚗✨"
+            conn.execute("INSERT INTO communication_log (customer_id, type, subject, message, sent_by) VALUES (?,?,?,?,?)",
+                        (a[6], 'WhatsApp', 'Rappel RDV', msg, session.get('username', '')))
+            count += 1
+        conn.commit()
+    flash(f"{count} rappels WhatsApp préparés pour demain", "success")
+    return redirect("/appointments")
+
+# ─── Phase 8 Feature 4: Warranty Tracking ───
+@app.route("/warranties")
+@login_required
+def warranties_list():
+    with get_db() as conn:
+        from datetime import date
+        today_str = date.today().isoformat()
+        warranties = conn.execute("""
+            SELECT w.*, c.name, cr.brand, cr.model, cr.plate
+            FROM warranties w
+            JOIN customers c ON w.customer_id=c.id
+            JOIN cars cr ON w.car_id=cr.id
+            ORDER BY w.end_date ASC
+        """).fetchall()
+        active = [w for w in warranties if w[9] == 'active' and w[7] >= today_str]
+        expiring = [w for w in warranties if w[9] == 'active' and w[7] < today_str]
+        # Auto-expire
+        for w in expiring:
+            conn.execute("UPDATE warranties SET status='expired' WHERE id=?", (w[0],))
+        conn.commit()
+    return render_template("warranties.html", warranties=warranties, active_count=len(active),
+                          expired_count=len(expiring), today=today_str)
+
+@app.route("/warranties/add", methods=["POST"])
+@login_required
+def add_warranty():
+    invoice_id = int(request.form.get('invoice_id', 0))
+    car_id = int(request.form.get('car_id', 0))
+    customer_id = int(request.form.get('customer_id', 0))
+    service = request.form.get('service', '')
+    warranty_days = int(request.form.get('warranty_days', 30))
+    conditions = request.form.get('conditions', '')
+    from datetime import date, timedelta
+    start = date.today()
+    end = start + timedelta(days=warranty_days)
+    with get_db() as conn:
+        conn.execute("""INSERT INTO warranties (invoice_id, car_id, customer_id, service, warranty_days, start_date, end_date, conditions)
+            VALUES (?,?,?,?,?,?,?,?)""",
+            (invoice_id, car_id, customer_id, service, warranty_days, start.isoformat(), end.isoformat(), conditions))
+        conn.commit()
+    flash(f"Garantie {warranty_days}j ajoutée pour {service}", "success")
+    return redirect("/warranties")
+
+@app.route("/warranty/claim/<int:wid>", methods=["POST"])
+@login_required
+def warranty_claim(wid):
+    with get_db() as conn:
+        w = conn.execute("SELECT * FROM warranties WHERE id=?", (wid,)).fetchone()
+        if not w:
+            flash("Garantie introuvable", "danger")
+            return redirect("/warranties")
+        from datetime import date
+        if w[7] < date.today().isoformat():
+            flash("Garantie expirée !", "danger")
+        else:
+            conn.execute("UPDATE warranties SET status='claimed' WHERE id=?", (wid,))
+            conn.commit()
+            flash("Réclamation de garantie enregistrée", "success")
+    return redirect("/warranties")
+
+# ─── Phase 8 Feature 5: Inspection Checklist ───
+INSPECTION_ITEMS = [
+    ('Extérieur', ['Carrosserie', 'Peinture', 'Vitres', 'Phares', 'Feux arrière', 'Rétroviseurs', 'Essuie-glaces', 'Pneus']),
+    ('Intérieur', ['Sièges', 'Tableau de bord', 'Volant', 'Plafond', 'Moquette', 'Ceintures', 'Climatisation', 'Odeur']),
+    ('Mécanique', ['Moteur', 'Huile', 'Liquide refroid.', 'Freins', 'Batterie', 'Courroie', 'Échappement', 'Suspension']),
+    ('Autre', ['Roue de secours', 'Cric', 'Documents', 'Objets personnels', 'Rayures existantes', 'Bosses existantes']),
+]
+
+@app.route("/inspection/<int:appointment_id>", methods=["GET", "POST"])
+@login_required
+def inspection_checklist(appointment_id):
+    import json
+    with get_db() as conn:
+        appt = conn.execute("SELECT a.*, cr.id as car_id, c.name FROM appointments a JOIN cars cr ON a.car_id=cr.id JOIN customers c ON cr.customer_id=c.id WHERE a.id=?", (appointment_id,)).fetchone()
+        if not appt:
+            flash("RDV introuvable", "danger")
+            return redirect("/appointments")
+        existing = conn.execute("SELECT * FROM inspection_checklists WHERE appointment_id=?", (appointment_id,)).fetchone()
+        if request.method == "POST":
+            checklist_data = {}
+            for category, items in INSPECTION_ITEMS:
+                for item in items:
+                    key = f"{category}_{item}".replace(' ', '_').replace('.', '')
+                    checklist_data[key] = {
+                        'status': request.form.get(f'status_{key}', 'ok'),
+                        'note': request.form.get(f'note_{key}', '')
+                    }
+            notes = request.form.get('notes', '')
+            inspector = session.get('username', '')
+            if existing:
+                conn.execute("UPDATE inspection_checklists SET checklist_data=?, notes=?, inspector=?, status='completed' WHERE id=?",
+                    (json.dumps(checklist_data), notes, inspector, existing[0]))
+            else:
+                conn.execute("INSERT INTO inspection_checklists (appointment_id, car_id, inspector, checklist_data, notes, status) VALUES (?,?,?,?,?,?)",
+                    (appointment_id, appt[-2], inspector, json.dumps(checklist_data), notes, 'completed'))
+            conn.commit()
+            flash("Checklist de contrôle enregistrée !", "success")
+            return redirect(f"/inspection/{appointment_id}")
+        checklist = json.loads(existing[4]) if existing and existing[4] else {}
+    return render_template("inspection_checklist.html", appt=appt, existing=existing,
+                          checklist=checklist, items=INSPECTION_ITEMS, notes=existing[5] if existing else '')
+
+# ─── Phase 8 Feature 6: Invoice Terms & Conditions ───
+@app.route("/invoice_terms", methods=["GET", "POST"])
+@login_required
+def invoice_terms():
+    with get_db() as conn:
+        if request.method == "POST":
+            terms = request.form.get('terms', '')
+            warranty_text = request.form.get('warranty_text', '')
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('invoice_terms', ?)", (terms,))
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('invoice_warranty_text', ?)", (warranty_text,))
+            conn.commit()
+            flash("Conditions enregistrées !", "success")
+            return redirect("/invoice_terms")
+        terms = conn.execute("SELECT value FROM settings WHERE key='invoice_terms'").fetchone()
+        warranty_text = conn.execute("SELECT value FROM settings WHERE key='invoice_warranty_text'").fetchone()
+    return render_template("invoice_terms.html",
+        terms=terms[0] if terms else '', warranty_text=warranty_text[0] if warranty_text else '')
+
+# ─── Phase 8 Feature 7: Dynamic Pricing ───
+@app.route("/dynamic_pricing")
+@login_required
+def dynamic_pricing():
+    with get_db() as conn:
+        rules = conn.execute("SELECT * FROM dynamic_pricing WHERE active=1 ORDER BY service_name").fetchall()
+        services = conn.execute("SELECT name, price FROM services WHERE active=1 ORDER BY name").fetchall()
+    return render_template("dynamic_pricing.html", rules=rules, services=services)
+
+@app.route("/dynamic_pricing/add", methods=["POST"])
+@login_required
+def add_pricing_rule():
+    service_name = request.form.get('service_name', '')
+    car_category = request.form.get('car_category', 'sedan')
+    season = request.form.get('season', 'normal')
+    customer_tier = request.form.get('customer_tier', '')
+    price_modifier = float(request.form.get('price_modifier', 1.0))
+    fixed_price = float(request.form.get('fixed_price', 0))
+    with get_db() as conn:
+        conn.execute("INSERT INTO dynamic_pricing (service_name, car_category, season, customer_tier, price_modifier, fixed_price) VALUES (?,?,?,?,?,?)",
+            (service_name, car_category, season, customer_tier, price_modifier, fixed_price))
+        conn.commit()
+    flash("Règle de tarification ajoutée !", "success")
+    return redirect("/dynamic_pricing")
+
+@app.route("/dynamic_pricing/delete/<int:rid>", methods=["POST"])
+@login_required
+def delete_pricing_rule(rid):
+    with get_db() as conn:
+        conn.execute("UPDATE dynamic_pricing SET active=0 WHERE id=?", (rid,))
+        conn.commit()
+    flash("Règle supprimée", "success")
+    return redirect("/dynamic_pricing")
+
+@app.route("/api/get_price")
+@login_required
+def api_get_price():
+    service = request.args.get('service', '')
+    car_cat = request.args.get('car_category', 'sedan')
+    tier = request.args.get('tier', '')
+    with get_db() as conn:
+        base_price = conn.execute("SELECT price FROM services WHERE name=?", (service,)).fetchone()
+        base = base_price[0] if base_price else 0
+        rule = conn.execute("SELECT price_modifier, fixed_price FROM dynamic_pricing WHERE service_name=? AND car_category=? AND active=1",
+            (service, car_cat)).fetchone()
+        if rule:
+            if rule[1] > 0:
+                return jsonify({'price': rule[1], 'base': base, 'modifier': 'fixed'})
+            return jsonify({'price': round(base * rule[0], 2), 'base': base, 'modifier': rule[0]})
+    return jsonify({'price': base, 'base': base, 'modifier': 1.0})
+
+# ─── Phase 8 Feature 8: Retention Analysis ───
+@app.route("/retention_analysis")
+@login_required
+def retention_analysis():
+    with get_db() as conn:
+        from datetime import date, timedelta
+        today = date.today()
+        # All customers with visits
+        customers_data = conn.execute("""
+            SELECT c.id, c.name, c.phone, COUNT(a.id) as visits,
+                   MIN(a.date) as first_visit, MAX(a.date) as last_visit,
+                   COALESCE(SUM(i.amount),0) as total_spent
+            FROM customers c
+            LEFT JOIN cars cr ON cr.customer_id=c.id
+            LEFT JOIN appointments a ON a.car_id=cr.id
+            LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='Payée'
+            GROUP BY c.id ORDER BY last_visit DESC
+        """).fetchall()
+        total = len(customers_data)
+        active_30 = len([c for c in customers_data if c[5] and c[5] >= (today - timedelta(days=30)).isoformat()])
+        active_90 = len([c for c in customers_data if c[5] and c[5] >= (today - timedelta(days=90)).isoformat()])
+        churned = len([c for c in customers_data if c[5] and c[5] < (today - timedelta(days=90)).isoformat()])
+        new_30 = len([c for c in customers_data if c[4] and c[4] >= (today - timedelta(days=30)).isoformat()])
+        returning = len([c for c in customers_data if c[3] and c[3] > 1])
+        retention_rate = round(returning / total * 100, 1) if total > 0 else 0
+        churn_rate = round(churned / total * 100, 1) if total > 0 else 0
+        # Monthly retention
+        monthly_retention = []
+        for i in range(5, -1, -1):
+            m = today.replace(day=1) - timedelta(days=i*30)
+            ms = m.replace(day=1).isoformat()
+            me = (m.replace(day=28) + timedelta(days=4)).replace(day=1).isoformat()
+            active = conn.execute("SELECT COUNT(DISTINCT cr.customer_id) FROM appointments a JOIN cars cr ON a.car_id=cr.id WHERE a.date >= ? AND a.date < ?", (ms, me)).fetchone()[0]
+            monthly_retention.append({'month': ms[:7], 'active': active})
+        # At risk (visited 2+ times, last visit 30-90 days ago)
+        at_risk = [c for c in customers_data if c[3] >= 2 and c[5] and
+                   (today - timedelta(days=90)).isoformat() <= c[5] < (today - timedelta(days=30)).isoformat()]
+    return render_template("retention_analysis.html",
+        total=total, active_30=active_30, active_90=active_90, churned=churned,
+        new_30=new_30, returning=returning, retention_rate=retention_rate,
+        churn_rate=churn_rate, monthly_retention=monthly_retention,
+        at_risk=at_risk[:20], customers=customers_data[:50])
+
+# ─── Phase 8 Feature 9: Subscriptions & Contracts ───
+@app.route("/subscriptions")
+@login_required
+def subscriptions_list():
+    with get_db() as conn:
+        subs = conn.execute("""
+            SELECT s.*, c.name, c.phone FROM subscriptions s
+            JOIN customers c ON s.customer_id=c.id
+            ORDER BY s.created_at DESC
+        """).fetchall()
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        from datetime import date
+        today_str = date.today().isoformat()
+        # Auto-expire
+        for s in subs:
+            if s[9] == 'active' and s[8] < today_str:
+                conn.execute("UPDATE subscriptions SET status='expired' WHERE id=?", (s[0],))
+        conn.commit()
+        active_count = len([s for s in subs if s[9] == 'active' and s[8] >= today_str])
+        total_revenue = sum(s[6] for s in subs if s[9] == 'active')
+    return render_template("subscriptions.html", subs=subs, customers=customers,
+                          active_count=active_count, total_revenue=total_revenue)
+
+@app.route("/subscriptions/add", methods=["POST"])
+@login_required
+def add_subscription():
+    customer_id = int(request.form.get('customer_id', 0))
+    plan_name = request.form.get('plan_name', '')
+    services_included = request.form.get('services_included', '')
+    total_sessions = int(request.form.get('total_sessions', 12))
+    price = float(request.form.get('price', 0))
+    start_date = request.form.get('start_date', '')
+    end_date = request.form.get('end_date', '')
+    with get_db() as conn:
+        conn.execute("""INSERT INTO subscriptions (customer_id, plan_name, services_included, total_sessions, price, start_date, end_date)
+            VALUES (?,?,?,?,?,?,?)""",
+            (customer_id, plan_name, services_included, total_sessions, price, start_date, end_date))
+        conn.commit()
+    flash("Abonnement créé !", "success")
+    return redirect("/subscriptions")
+
+@app.route("/subscriptions/use/<int:sid>", methods=["POST"])
+@login_required
+def use_subscription_session(sid):
+    with get_db() as conn:
+        sub = conn.execute("SELECT * FROM subscriptions WHERE id=?", (sid,)).fetchone()
+        if sub and sub[5] < sub[4]:
+            conn.execute("UPDATE subscriptions SET used_sessions=used_sessions+1 WHERE id=?", (sid,))
+            if sub[5] + 1 >= sub[4]:
+                conn.execute("UPDATE subscriptions SET status='completed' WHERE id=?", (sid,))
+            conn.commit()
+            flash(f"Séance utilisée ({sub[5]+1}/{sub[4]})", "success")
+        else:
+            flash("Toutes les séances ont été utilisées", "warning")
+    return redirect("/subscriptions")
+
+@app.route("/subscriptions/cancel/<int:sid>", methods=["POST"])
+@login_required
+def cancel_subscription(sid):
+    with get_db() as conn:
+        conn.execute("UPDATE subscriptions SET status='cancelled' WHERE id=?", (sid,))
+        conn.commit()
+    flash("Abonnement annulé", "info")
+    return redirect("/subscriptions")
+
+# ─── Phase 8 Feature 10: Enhanced PWA Push Notifications ───
+@app.route("/push_settings", methods=["GET", "POST"])
+@login_required
+def push_settings():
+    with get_db() as conn:
+        if request.method == "POST":
+            for key in ['vapid_public', 'vapid_private', 'vapid_email']:
+                val = request.form.get(key, '')
+                conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
+            conn.commit()
+            flash("Paramètres Push sauvegardés !", "success")
+            return redirect("/push_settings")
+        settings = {}
+        for row in conn.execute("SELECT key, value FROM settings WHERE key LIKE 'vapid_%'").fetchall():
+            settings[row[0]] = row[1]
+    return render_template("push_settings.html", settings=settings)
+
+@app.route("/api/push_subscribe", methods=["POST"])
+def push_subscribe():
+    data = request.get_json()
+    if data:
+        with get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('push_sub_' || ?, ?)",
+                        (data.get('endpoint', '')[:50], str(data)))
+            conn.commit()
+    return jsonify({'status': 'ok'})
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

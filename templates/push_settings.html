@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %} - Push Notifications{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📱 Push Notifications (PWA)</h3>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">⚙️ Configuration VAPID</h6>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Clé Publique VAPID</label>
+                    <input type="text" name="vapid_public" class="form-control form-control-sm" value="{{ settings.get('vapid_public','') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Clé Privée VAPID</label>
+                    <input type="text" name="vapid_private" class="form-control form-control-sm" value="{{ settings.get('vapid_private','') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Email VAPID</label>
+                    <input type="email" name="vapid_email" class="form-control form-control-sm" value="{{ settings.get('vapid_email','') }}" placeholder="admin@amilcar.com" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <button class="btn btn-gold btn-sm w-100">💾 Enregistrer</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">💡 Guide de Configuration</h6>
+            <div style="color:#888;font-size:0.8rem;line-height:1.8">
+                <p><strong style="color:#D4AF37">Étape 1:</strong> Générez des clés VAPID avec <code style="color:#2d6a4f">npx web-push generate-vapid-keys</code></p>
+                <p><strong style="color:#D4AF37">Étape 2:</strong> Collez les clés publique et privée ci-contre</p>
+                <p><strong style="color:#D4AF37">Étape 3:</strong> Les clients recevront les notifications push sur leur mobile</p>
+                <hr style="border-color:#333">
+                <h6 style="color:#888;font-size:0.8rem">📋 Types de Notifications</h6>
+                <ul style="font-size:0.75rem;color:#666">
+                    <li>🚗 "Votre véhicule est prêt !"</li>
+                    <li>📅 Rappel de rendez-vous</li>
+                    <li>🎁 Offres spéciales et promotions</li>
+                    <li>🛡️ Rappel de maintenance</li>
+                    <li>🧾 Facture disponible</li>
+                </ul>
+            </div>
+        </div>
+        <div class="card p-3 mt-3">
+            <h6 style="color:#888;margin-bottom:10px">🔔 Tester les Notifications</h6>
+            <button id="testPush" class="btn btn-sm btn-outline-warning w-100" onclick="testNotification()">📨 Envoyer une notification test</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function testNotification() {
+    if ('Notification' in window) {
+        Notification.requestPermission().then(p => {
+            if (p === 'granted') {
+                new Notification('AMILCAR 🚗', {
+                    body: 'Les notifications fonctionnent ! Vos clients recevront les alertes.',
+                    icon: '/static/icon-192.png'
+                });
+            } else {
+                alert('Les notifications sont bloquées. Activez-les dans les paramètres du navigateur.');
+            }
+        });
+    } else {
+        alert('Les notifications ne sont pas supportées par ce navigateur.');
+    }
+}
+</script>
+{% endblock %}

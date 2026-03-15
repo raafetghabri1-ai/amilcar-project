@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %} - Alertes Intelligentes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🔔 Alertes Intelligentes</h3>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-danger">{{ unread }} non lues</span>
+        {% if unread > 0 %}
+        <form method="POST" action="/smart_alerts/read_all"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button class="btn btn-sm btn-outline-warning" style="font-size:0.7rem">✓ Tout marquer lu</button></form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card p-3">
+    {% for a in alerts %}
+    <div class="d-flex align-items-start gap-3 p-2 mb-2" style="background:{{ '#1a1a1a' if a[5]==0 else '#111' }};border-radius:8px;border-left:4px solid {{ '#dc3545' if a[4]=='danger' else '#D4AF37' if a[4]=='warning' else '#0d6efd' }};{{ 'opacity:0.5' if a[5]==1 }}">
+        <div style="font-size:1.5rem;min-width:40px;text-align:center">
+            {% if a[1] == 'low_stock' %}📦
+            {% elif a[1] == 'overdue_invoice' %}💰
+            {% elif a[1] == 'vip_churn' %}👤
+            {% elif a[1] == 'warranty_expiring' %}🛡️
+            {% else %}🔔{% endif %}
+        </div>
+        <div style="flex:1">
+            <strong style="color:#eee;font-size:0.85rem">{{ a[2] }}</strong>
+            <p style="color:#888;font-size:0.75rem;margin:3px 0 0">{{ a[3] }}</p>
+            <span style="color:#555;font-size:0.6rem">{{ a[7][:16] }}</span>
+        </div>
+        <div>
+            {% if a[5] == 0 %}
+            <form method="POST" action="/smart_alerts/read/{{ a[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button class="btn btn-sm btn-outline-success" style="font-size:0.5rem;padding:2px 5px">✓</button></form>
+            {% else %}
+            <span style="color:#555;font-size:0.6rem">Lu</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% if not alerts %}
+    <div style="text-align:center;padding:40px;color:#555">
+        <div style="font-size:3rem;margin-bottom:10px">✅</div>
+        <p>Aucune alerte — Tout va bien !</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

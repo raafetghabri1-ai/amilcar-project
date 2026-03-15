@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %} - Abonnements{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🧾 Abonnements & Contrats</h3>
+    <div class="d-flex gap-2">
+        <span class="badge bg-success">{{ active_count }} actifs</span>
+        <span class="badge bg-warning text-dark">{{ "%.0f"|format(total_revenue) }} DH revenus</span>
+    </div>
+</div>
+
+<!-- Add Subscription -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouveau Contrat / Abonnement</h6>
+    <form method="POST" action="/subscriptions/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Client</label>
+                <select name="customer_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="">--</option>
+                    {% for c in customers %}<option value="{{ c[0] }}">{{ c[1] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Nom du plan</label>
+                <select name="plan_name" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="Pack Mensuel">Pack Mensuel</option>
+                    <option value="Pack Trimestriel">Pack Trimestriel</option>
+                    <option value="Pack Annuel">Pack Annuel</option>
+                    <option value="Pack VIP">Pack VIP</option>
+                    <option value="Contrat Flotte">Contrat Flotte</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Services inclus</label>
+                <input type="text" name="services_included" class="form-control form-control-sm" placeholder="Lavage, Céramique..." style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Séances</label>
+                <input type="number" name="total_sessions" value="12" min="1" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Prix (DH)</label>
+                <input type="number" step="0.01" name="price" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Début</label>
+                <input type="date" name="start_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Fin</label>
+                <input type="date" name="end_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+        </div>
+        <button class="btn btn-gold btn-sm mt-2">+ Créer l'Abonnement</button>
+    </form>
+</div>
+
+<!-- Subscriptions List -->
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr><th>#</th><th>Client</th><th>Plan</th><th>Services</th><th>Séances</th><th>Prix</th><th>Période</th><th>Statut</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            {% for s in subs %}
+            <tr>
+                <td style="color:#D4AF37">{{ s[0] }}</td>
+                <td><strong>{{ s[11] }}</strong><br><span style="color:#888;font-size:0.65rem">{{ s[12] }}</span></td>
+                <td style="color:#D4AF37">{{ s[2] }}</td>
+                <td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">{{ s[3] }}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:4px">
+                        <span style="color:#2d6a4f;font-weight:700">{{ s[5] }}</span><span style="color:#888">/{{ s[4] }}</span>
+                    </div>
+                    {% set pct = (s[5] / s[4] * 100) if s[4] > 0 else 0 %}
+                    <div style="background:#1a1a1a;border-radius:4px;height:4px;width:80px;margin-top:3px">
+                        <div style="background:#D4AF37;height:100%;width:{{ pct }}%;border-radius:4px"></div>
+                    </div>
+                </td>
+                <td style="font-weight:600">{{ "%.0f"|format(s[6]) }} DH</td>
+                <td style="font-size:0.65rem;color:#888">{{ s[7] }}<br>→ {{ s[8] }}</td>
+                <td>
+                    {% if s[9] == 'active' %}<span class="badge bg-success" style="font-size:0.6rem">✅ Actif</span>
+                    {% elif s[9] == 'completed' %}<span class="badge bg-primary" style="font-size:0.6rem">🏁 Terminé</span>
+                    {% elif s[9] == 'cancelled' %}<span class="badge bg-danger" style="font-size:0.6rem">❌ Annulé</span>
+                    {% else %}<span class="badge bg-secondary" style="font-size:0.6rem">⏰ Expiré</span>{% endif %}
+                </td>
+                <td>
+                    {% if s[9] == 'active' %}
+                    <div class="d-flex gap-1">
+                        <form method="POST" action="/subscriptions/use/{{ s[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px" title="Utiliser 1 séance">+1</button></form>
+                        <form method="POST" action="/subscriptions/cancel/{{ s[0] }}" onsubmit="return confirm('Annuler ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">✗</button></form>
+                    </div>
+                    {% else %}-{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not subs %}<tr><td colspan="9" style="text-align:center;color:#666">Aucun abonnement</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

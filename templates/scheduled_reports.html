@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %} - Rapports Automatiques{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📊 Rapports Automatiques</h3>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-5">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">➕ Programmer un Rapport</h6>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Fréquence</label>
+                    <select name="report_type" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <option value="weekly">📅 Hebdomadaire</option>
+                        <option value="monthly">📆 Mensuel</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Email destinataire</label>
+                    <input type="email" name="email_to" class="form-control form-control-sm" required placeholder="directeur@amilcar.com" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <button class="btn btn-gold btn-sm w-100">+ Programmer</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📋 Rapports Programmés</h6>
+            <div class="table-responsive">
+                <table class="table table-dark table-sm">
+                    <thead><tr><th>Type</th><th>Destinataire</th><th>Dernier envoi</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    {% for r in reports %}
+                    <tr>
+                        <td>{% if r[1] == 'weekly' %}📅 Hebdomadaire{% else %}📆 Mensuel{% endif %}</td>
+                        <td>{{ r[2] }}</td>
+                        <td style="font-size:0.75rem;color:#888">{{ r[3] or 'Jamais' }}</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <form method="POST" action="/scheduled_reports/send_now/{{ r[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button class="btn btn-sm btn-primary" style="font-size:0.55rem;padding:2px 6px">📨 Envoyer</button></form>
+                                <form method="POST" action="/scheduled_reports/delete/{{ r[0] }}" onsubmit="return confirm('Supprimer ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 6px">🗑</button></form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not reports %}<tr><td colspan="4" style="text-align:center;color:#666">Aucun rapport programmé</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

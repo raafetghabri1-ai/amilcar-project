@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %} - Contrôle Véhicule{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="page-title mb-0">📋 Checklist de Contrôle</h3>
+        <span style="color:#888;font-size:0.8rem">RDV #{{ appt[0] }} — {{ appt[-1] }} — {{ appt[3] }}</span>
+    </div>
+    <a href="/appointments" class="btn btn-sm" style="border:1px solid #333;color:#888">← Retour</a>
+</div>
+
+{% if existing and existing[6] == 'completed' %}
+<div class="alert" style="background:#1a3a2a;color:#2d6a4f;border:1px solid #2d6a4f;font-size:0.85rem">
+    ✅ Contrôle effectué par <strong>{{ existing[3] }}</strong> le {{ existing[7][:10] }}
+</div>
+{% endif %}
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    {% for category, category_items in items %}
+    <div class="card p-3 mb-3">
+        <h6 style="color:#D4AF37;margin-bottom:15px">{{ category }}</h6>
+        <div class="row g-2">
+            {% for item in category_items %}
+            {% set key = (category ~ '_' ~ item)|replace(' ', '_')|replace('.', '') %}
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2 p-2" style="background:#1a1a1a;border-radius:6px">
+                    <div style="min-width:120px;font-size:0.8rem">{{ item }}</div>
+                    <div class="d-flex gap-1">
+                        <label class="btn btn-sm {{ 'btn-success' if checklist.get(key, {}).get('status') == 'ok' else 'btn-outline-success' }}" style="font-size:0.6rem;padding:2px 8px">
+                            <input type="radio" name="status_{{ key }}" value="ok" {{ 'checked' if checklist.get(key, {}).get('status', 'ok') == 'ok' }} style="display:none"> ✅ OK
+                        </label>
+                        <label class="btn btn-sm {{ 'btn-warning' if checklist.get(key, {}).get('status') == 'attention' else 'btn-outline-warning' }}" style="font-size:0.6rem;padding:2px 8px">
+                            <input type="radio" name="status_{{ key }}" value="attention" {{ 'checked' if checklist.get(key, {}).get('status') == 'attention' }} style="display:none"> ⚠️
+                        </label>
+                        <label class="btn btn-sm {{ 'btn-danger' if checklist.get(key, {}).get('status') == 'bad' else 'btn-outline-danger' }}" style="font-size:0.6rem;padding:2px 8px">
+                            <input type="radio" name="status_{{ key }}" value="bad" {{ 'checked' if checklist.get(key, {}).get('status') == 'bad' }} style="display:none"> ❌
+                        </label>
+                    </div>
+                    <input type="text" name="note_{{ key }}" value="{{ checklist.get(key, {}).get('note', '') }}" placeholder="Note..." class="form-control form-control-sm" style="background:#111;color:#ccc;border-color:#333;font-size:0.7rem;max-width:150px">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="card p-3 mb-3">
+        <h6 style="color:#D4AF37;margin-bottom:10px">📝 Notes Générales</h6>
+        <textarea name="notes" class="form-control" rows="3" style="background:#1a1a1a;color:#ccc;border-color:#333">{{ notes }}</textarea>
+    </div>
+
+    <button class="btn btn-gold w-100 mb-3">💾 Enregistrer le Contrôle</button>
+</form>
+
+<style>
+    .btn-sm input[type="radio"]:checked + span { font-weight: bold; }
+    label.btn { cursor: pointer; }
+</style>
+{% endblock %}

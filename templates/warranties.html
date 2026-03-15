@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %} - Garanties{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🛡️ Suivi des Garanties</h3>
+    <div class="d-flex gap-2">
+        <span class="badge bg-success">{{ active_count }} actives</span>
+        <span class="badge bg-danger">{{ expired_count }} expirées</span>
+    </div>
+</div>
+
+<!-- Add Warranty -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Ajouter une Garantie</h6>
+    <form method="POST" action="/warranties/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row g-2">
+            <div class="col-md-2">
+                <input type="number" name="invoice_id" class="form-control form-control-sm" placeholder="# Facture" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="customer_id" class="form-control form-control-sm" placeholder="# Client" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="car_id" class="form-control form-control-sm" placeholder="# Véhicule" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="service" class="form-control form-control-sm" placeholder="Service" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="warranty_days" class="form-control form-control-sm" value="30" min="1" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Jours">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="conditions" class="form-control form-control-sm" placeholder="Conditions" style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-sm btn-gold w-100">+</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Warranties List -->
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr><th>#</th><th>Client</th><th>Véhicule</th><th>Service</th><th>Facture</th><th>Début</th><th>Fin</th><th>Jours</th><th>Statut</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            {% for w in warranties %}
+            <tr>
+                <td style="color:#D4AF37">{{ w[0] }}</td>
+                <td><strong>{{ w[11] }}</strong></td>
+                <td style="font-size:0.75rem">{{ w[12] }} {{ w[13] }} <span style="color:#888">({{ w[14] }})</span></td>
+                <td>{{ w[4] }}</td>
+                <td style="color:#888">#{{ w[1] }}</td>
+                <td style="font-size:0.75rem">{{ w[6] }}</td>
+                <td style="font-size:0.75rem;color:{{ '#dc3545' if w[7] < today else '#2d6a4f' }}">{{ w[7] }}</td>
+                <td style="color:#D4AF37;font-weight:600">{{ w[5] }}j</td>
+                <td>
+                    {% if w[9] == 'active' and w[7] >= today %}
+                        <span class="badge bg-success" style="font-size:0.6rem">✅ Active</span>
+                    {% elif w[9] == 'claimed' %}
+                        <span class="badge bg-warning text-dark" style="font-size:0.6rem">📋 Réclamée</span>
+                    {% else %}
+                        <span class="badge bg-danger" style="font-size:0.6rem">❌ Expirée</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if w[9] == 'active' and w[7] >= today %}
+                    <form method="POST" action="/warranty/claim/{{ w[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button class="btn btn-sm btn-outline-warning" style="font-size:0.55rem;padding:2px 5px" title="Réclamation">📋 Réclamer</button></form>
+                    {% else %}-{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not warranties %}<tr><td colspan="10" style="text-align:center;color:#666">Aucune garantie</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

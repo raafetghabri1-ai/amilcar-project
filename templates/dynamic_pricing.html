@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %} - Tarification Dynamique{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🏷️ Tarification Dynamique</h3>
+</div>
+
+<!-- Add Rule -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouvelle Règle de Tarification</h6>
+    <form method="POST" action="/dynamic_pricing/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Service</label>
+                <select name="service_name" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    {% for s in services %}<option value="{{ s[0] }}">{{ s[0] }} ({{ s[1] }} DH)</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Catégorie véhicule</label>
+                <select name="car_category" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="sedan">🚗 Berline</option>
+                    <option value="suv">🚙 SUV / 4x4</option>
+                    <option value="van">🚐 Van / Utilitaire</option>
+                    <option value="luxury">🏎️ Luxe / Sport</option>
+                    <option value="compact">🚘 Citadine</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Saison</label>
+                <select name="season" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="normal">📅 Normal</option>
+                    <option value="high">☀️ Haute saison</option>
+                    <option value="low">❄️ Basse saison</option>
+                    <option value="weekend">📆 Week-end</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Niveau client</label>
+                <select name="customer_tier" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="">Tous</option>
+                    <option value="BRONZE">Bronze</option>
+                    <option value="SILVER">Silver</option>
+                    <option value="GOLD">Gold (-5%)</option>
+                    <option value="PLATINUM">Platinum (-10%)</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Coef.</label>
+                <input type="number" step="0.05" name="price_modifier" value="1.0" min="0.5" max="3.0" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label" style="font-size:0.7rem;color:#888">Prix fixe</label>
+                <input type="number" step="1" name="fixed_price" value="0" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333" title="0 = utiliser le coefficient">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-sm btn-gold w-100">+ Ajouter</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Pricing Matrix -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Matrice de Prix</h6>
+    <p style="color:#666;font-size:0.7rem">Coefficient: 1.0 = prix normal, 1.3 = +30%, 0.9 = -10%. Prix fixe prioritaire si > 0.</p>
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr><th>Service</th><th>Catégorie</th><th>Saison</th><th>Niveau Client</th><th>Coef.</th><th>Prix Fixe</th><th>Prix Final</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            {% for r in rules %}
+            {% set base = 0 %}
+            {% for s in services %}{% if s[0] == r[1] %}{% set base = s[1] %}{% endif %}{% endfor %}
+            <tr>
+                <td style="color:#D4AF37">{{ r[1] }}</td>
+                <td>
+                    {% if r[2] == 'sedan' %}🚗 Berline
+                    {% elif r[2] == 'suv' %}🚙 SUV
+                    {% elif r[2] == 'van' %}🚐 Van
+                    {% elif r[2] == 'luxury' %}🏎️ Luxe
+                    {% else %}🚘 Citadine{% endif %}
+                </td>
+                <td>
+                    {% if r[3] == 'high' %}☀️ Haute
+                    {% elif r[3] == 'low' %}❄️ Basse
+                    {% elif r[3] == 'weekend' %}📆 W-E
+                    {% else %}📅 Normal{% endif %}
+                </td>
+                <td>{{ r[4] or 'Tous' }}</td>
+                <td style="font-weight:700;color:{{ '#2d6a4f' if r[5] <= 1.0 else '#dc3545' }}">×{{ r[5] }}</td>
+                <td>{{ "%.0f"|format(r[6]) if r[6] > 0 else '-' }} DH</td>
+                <td style="color:#D4AF37;font-weight:700">
+                    {% if r[6] > 0 %}{{ "%.0f"|format(r[6]) }}{% else %}calc{% endif %} DH
+                </td>
+                <td>
+                    <form method="POST" action="/dynamic_pricing/delete/{{ r[0] }}" onsubmit="return confirm('Supprimer ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">🗑</button></form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not rules %}<tr><td colspan="8" style="text-align:center;color:#666">Aucune règle — prix de base appliqués</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Base Prices Reference -->
+<div class="card p-3">
+    <h6 style="color:#888;margin-bottom:10px">📖 Prix de Base (référence)</h6>
+    <div class="row g-2">
+        {% for s in services %}
+        <div class="col-md-3 col-6">
+            <div style="background:#1a1a1a;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between">
+                <span style="font-size:0.8rem">{{ s[0] }}</span>
+                <strong style="color:#D4AF37;font-size:0.8rem">{{ "%.0f"|format(s[1]) }} DH</strong>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

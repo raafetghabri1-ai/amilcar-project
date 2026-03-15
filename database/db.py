@@ -401,6 +401,94 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS scheduled_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_type TEXT NOT NULL DEFAULT 'weekly',
+            email_to TEXT NOT NULL,
+            last_sent TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS smart_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            severity TEXT DEFAULT 'info',
+            is_read INTEGER DEFAULT 0,
+            related_id INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS warranties (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            service TEXT NOT NULL,
+            warranty_days INTEGER DEFAULT 30,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            conditions TEXT DEFAULT '',
+            status TEXT DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id),
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inspection_checklists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            inspector TEXT DEFAULT '',
+            checklist_data TEXT DEFAULT '{}',
+            notes TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS dynamic_pricing (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_name TEXT NOT NULL,
+            car_category TEXT DEFAULT 'sedan',
+            season TEXT DEFAULT 'normal',
+            customer_tier TEXT DEFAULT '',
+            price_modifier REAL DEFAULT 1.0,
+            fixed_price REAL DEFAULT 0,
+            active INTEGER DEFAULT 1
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            plan_name TEXT NOT NULL,
+            services_included TEXT DEFAULT '',
+            total_sessions INTEGER DEFAULT 0,
+            used_sessions INTEGER DEFAULT 0,
+            price REAL DEFAULT 0,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            status TEXT DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -434,6 +522,10 @@ def create_tables():
         ("ALTER TABLE quotes ADD COLUMN items TEXT DEFAULT ''", None),
         ("ALTER TABLE customers ADD COLUMN preferred_lang TEXT DEFAULT 'fr'", None),
         ("ALTER TABLE settings ADD COLUMN value2 TEXT DEFAULT ''", None),
+        ("ALTER TABLE invoices ADD COLUMN warranty_days INTEGER DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN terms TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN category_pricing TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN car_category TEXT DEFAULT 'sedan'", None),
     ]
     for sql, _ in migrations:
         try:
@@ -464,6 +556,11 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_car_photos_car ON car_photos(car_id)",
         "CREATE INDEX IF NOT EXISTS idx_online_bookings_status ON online_bookings(status)",
         "CREATE INDEX IF NOT EXISTS idx_maintenance_plans_car ON maintenance_plans(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_smart_alerts_read ON smart_alerts(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_warranties_customer ON warranties(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_warranties_end ON warranties(end_date)",
+        "CREATE INDEX IF NOT EXISTS idx_subscriptions_customer ON subscriptions(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_inspection_appointment ON inspection_checklists(appointment_id)",
     ]
     for idx in indexes:
         try:
