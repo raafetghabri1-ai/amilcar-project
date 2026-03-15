@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %} - Suivi Kilométrage{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🔧 Suivi Kilométrage & Entretien</h3>
+</div>
+
+<!-- Alerts -->
+<div id="alertsSection"></div>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Véhicule</th>
+                    <th>Plaque</th>
+                    <th class="text-end">Kilométrage</th>
+                    <th>Dernier Vidange</th>
+                    <th>Prochain Entretien</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in cars %}
+            <tr id="row-{{ c[0] }}">
+                <td>{{ c[1] }}</td>
+                <td>{{ c[2] }} {{ c[3] }}</td>
+                <td style="color:#D4AF37">{{ c[4] }}</td>
+                <td class="text-end"><strong>{{ c[5] }} km</strong></td>
+                <td style="color:#888">{{ c[6] or '—' }}</td>
+                <td>
+                    {% if c[7] %}
+                        <span style="color:{% if c[7] < today %}#C41E3A{% else %}#22c55e{% endif %}">{{ c[7] }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editMileage({{ c[0] }}, {{ c[5] }}, '{{ c[6] }}', '{{ c[7] }}')" style="font-size:0.65rem">✎ Modifier</button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="mileageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background:#1a1a1a;border:1px solid #333">
+            <div class="modal-header" style="border-color:#333">
+                <h5 class="modal-title" style="color:#D4AF37">Mise à jour Kilométrage</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="mileageForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kilométrage actuel</label>
+                        <input type="number" name="mileage" id="mileageInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date du dernier vidange</label>
+                        <input type="date" name="last_oil_change" id="oilInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date prochain entretien</label>
+                        <input type="date" name="next_service_date" id="nextInput" class="form-control" style="background:#111;color:#ccc;border-color:#333">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-color:#333">
+                    <button type="submit" class="btn btn-gold">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function editMileage(carId, mileage, oil, next) {
+    document.getElementById('mileageForm').action = '/mileage_tracking/update/' + carId;
+    document.getElementById('mileageInput').value = mileage;
+    document.getElementById('oilInput').value = oil;
+    document.getElementById('nextInput').value = next;
+    new bootstrap.Modal(document.getElementById('mileageModal')).show();
+}
+// Load alerts
+fetch('/api/mileage_alerts').then(r => r.json()).then(data => {
+    if (data.length) {
+        var h = '<div class="card p-3 mb-4" style="border-left:3px solid #C41E3A"><h6 style="color:#C41E3A;margin-bottom:10px">⚠️ Alertes Entretien (' + data.length + ')</h6>';
+        data.forEach(a => {
+            h += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+                '<span>' + (a.overdue ? '🔴' : '🟡') + ' <strong>' + a.customer + '</strong> — ' + a.car + ' (' + a.plate + ')</span>' +
+                '<span style="color:' + (a.overdue ? '#C41E3A' : '#f59e0b') + ';font-weight:600">' + a.due_date + '</span></div>';
+        });
+        h += '</div>';
+        document.getElementById('alertsSection').innerHTML = h;
+    }
+});
+</script>
+{% endblock %}

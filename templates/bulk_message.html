@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %} - Messages Groupés{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">💬 Messages WhatsApp Groupés</h3>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card p-3">
+            <form method="POST" action="/bulk_message/send">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-3">
+                    <label class="form-label">🎯 Cible</label>
+                    <select name="target" id="targetSelect" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333" onchange="toggleTier()">
+                        <option value="all">Tous les clients</option>
+                        <option value="active">Clients actifs (90 jours)</option>
+                        <option value="inactive">Clients inactifs (+90 jours)</option>
+                        <option value="tier">Par niveau fidélité</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="tierDiv" style="display:none">
+                    <label class="form-label">🏆 Niveau</label>
+                    <select name="tier" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        {% for t in tiers %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">📝 Message</label>
+                    <textarea name="message" class="form-control" rows="5" required placeholder="Bonjour {name}, ..." style="background:#1a1a1a;color:#ccc;border-color:#333"></textarea>
+                    <small style="color:#666;font-size:0.7rem">Variables: {name} = nom du client, {shop} = nom boutique</small>
+                </div>
+                <button class="btn btn-gold w-100">📱 Préparer les Messages</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">💡 Modèles Rapides</h6>
+            <div class="d-grid gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('promo')">🎉 Promotion</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('reminder')">🔔 Rappel</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('thanks')">🙏 Remerciement</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="useTemplate('holiday')">🎊 Fête</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleTier() {
+    document.getElementById('tierDiv').style.display =
+        document.getElementById('targetSelect').value === 'tier' ? 'block' : 'none';
+}
+var templates = {
+    promo: "Bonjour {name} 👋\n🎉 Offre spéciale chez {shop} !\nProfitez de -20% sur tous nos services cette semaine.\n📞 Réservez maintenant !",
+    reminder: "Bonjour {name} 👋\n🔧 Il est temps pour l'entretien de votre véhicule !\nN'hésitez pas à prendre rendez-vous chez {shop}.\n📞 Contactez-nous !",
+    thanks: "Bonjour {name} 👋\n🙏 Merci pour votre fidélité chez {shop} !\nVotre confiance nous honore. Au plaisir de vous revoir !",
+    holiday: "Bonjour {name} 👋\n🎊 Joyeuses fêtes de la part de toute l'équipe {shop} !\nProfitez de nos offres spéciales pour cette occasion."
+};
+function useTemplate(key) {
+    document.querySelector('textarea[name="message"]').value = templates[key] || '';
+}
+</script>
+{% endblock %}

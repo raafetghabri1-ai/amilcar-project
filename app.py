@@ -3770,6 +3770,609 @@ def _calculate_tier(total_earned):
 def auto_reward_points(response):
     return response
 
+# ─── Phase 6 Feature 1: Advanced PDF Reports ───
+@app.route("/advanced_report")
+@login_required
+def advanced_report():
+    from datetime import date, timedelta
+    period = request.args.get('period', 'month')
+    today = date.today()
+    if period == 'year':
+        start = f"{today.year}-01-01"
+        title = f"Rapport Annuel {today.year}"
+    else:
+        start = f"{today.year}-{today.month:02d}-01"
+        title = f"Rapport Mensuel {today.strftime('%B %Y')}"
+    end = today.isoformat()
+    with get_db() as conn:
+        revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid' AND date_created BETWEEN ? AND ?", (start, end)).fetchone()[0]
+        expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date BETWEEN ? AND ?", (start, end)).fetchone()[0]
+        appt_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE date BETWEEN ? AND ?", (start, end)).fetchone()[0]
+        completed = conn.execute("SELECT COUNT(*) FROM appointments WHERE date BETWEEN ? AND ? AND status='completed'", (start, end)).fetchone()[0]
+        new_customers = conn.execute("SELECT COUNT(*) FROM customers WHERE id IN (SELECT DISTINCT ca.customer_id FROM cars ca JOIN appointments a ON a.car_id=ca.id WHERE a.date BETWEEN ? AND ?)", (start, end)).fetchone()[0]
+        top_services = conn.execute("SELECT service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) FROM appointments a LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid' WHERE a.date BETWEEN ? AND ? GROUP BY a.service ORDER BY cnt DESC LIMIT 10", (start, end)).fetchall()
+        top_customers = conn.execute("SELECT cu.name, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) FROM appointments a JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid' WHERE a.date BETWEEN ? AND ? GROUP BY cu.id ORDER BY cnt DESC LIMIT 10", (start, end)).fetchall()
+        monthly_rev = conn.execute("SELECT strftime('%Y-%m', date_created) as m, SUM(amount) FROM invoices WHERE status='paid' AND date_created >= date(?, '-12 months') GROUP BY m ORDER BY m", (end,)).fetchall()
+    data = {
+        'title': title, 'period': period, 'start': start, 'end': end,
+        'revenue': revenue, 'expenses': expenses, 'profit': revenue - expenses,
+        'appt_count': appt_count, 'completed': completed, 'new_customers': new_customers,
+        'completion_rate': round(completed/appt_count*100) if appt_count else 0,
+        'top_services': top_services, 'top_customers': top_customers, 'monthly_rev': monthly_rev
+    }
+    fmt = request.args.get('format', 'html')
+    if fmt == 'pdf':
+        from xhtml2pdf import pisa
+        html = render_template("advanced_report.html", data=data, pdf_mode=True)
+        result = io.BytesIO()
+        pisa.CreatePDF(io.BytesIO(html.encode('utf-8')), dest=result)
+        result.seek(0)
+        response = make_response(result.read())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=rapport_{period}_{end}.pdf'
+        return response
+    return render_template("advanced_report.html", data=data, pdf_mode=False)
+
+# ─── Phase 6 Feature 2: Bulk WhatsApp Messaging ───
+@app.route("/bulk_message")
+@login_required
+def bulk_message():
+    with get_db() as conn:
+        customers = conn.execute("SELECT id, name, phone FROM customers ORDER BY name").fetchall()
+        tiers = conn.execute("SELECT DISTINCT tier FROM reward_points").fetchall()
+    return render_template("bulk_message.html", customers=customers, tiers=[t[0] for t in tiers])
+
+@app.route("/bulk_message/send", methods=["POST"])
+@login_required
+def send_bulk_message():
+    import urllib.parse
+    message_template = request.form.get("message", "").strip()
+    target = request.form.get("target", "all")
+    tier_filter = request.form.get("tier", "")
+    if not message_template:
+        flash("Le message ne peut pas être vide", "error")
+        return redirect("/bulk_message")
+    with get_db() as conn:
+        if target == 'tier' and tier_filter:
+            customers = conn.execute(
+                "SELECT cu.id, cu.name, cu.phone FROM customers cu "
+                "JOIN reward_points rp ON rp.customer_id = cu.id WHERE rp.tier = ?",
+                (tier_filter,)).fetchall()
+        elif target == 'active':
+            from datetime import date, timedelta
+            d90 = (date.today() - timedelta(days=90)).isoformat()
+            customers = conn.execute(
+                "SELECT DISTINCT cu.id, cu.name, cu.phone FROM customers cu "
+                "JOIN cars ca ON ca.customer_id=cu.id JOIN appointments a ON a.car_id=ca.id "
+                "WHERE a.date >= ?", (d90,)).fetchall()
+        elif target == 'inactive':
+            from datetime import date, timedelta
+            d90 = (date.today() - timedelta(days=90)).isoformat()
+            customers = conn.execute(
+                "SELECT cu.id, cu.name, cu.phone FROM customers cu "
+                "WHERE cu.id NOT IN (SELECT DISTINCT ca.customer_id FROM cars ca "
+                "JOIN appointments a ON a.car_id=ca.id WHERE a.date >= ?)", (d90,)).fetchall()
+        else:
+            customers = conn.execute("SELECT id, name, phone FROM customers").fetchall()
+        # Log communications
+        for c in customers:
+            conn.execute("INSERT INTO communication_log (customer_id, type, subject, message, sent_by) VALUES (?,?,?,?,?)",
+                (c[0], 'whatsapp_bulk', 'Message groupé', message_template.replace('{name}', c[1]), session.get('username','')))
+        conn.commit()
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR')
+    links = []
+    for c in customers:
+        phone = c[2].strip().replace(' ','').replace('-','')
+        if phone.startswith('0'):
+            phone = '216' + phone[1:]
+        elif not phone.startswith('+') and not phone.startswith('216'):
+            phone = '216' + phone
+        phone = phone.replace('+','')
+        msg = message_template.replace('{name}', c[1]).replace('{shop}', shop_name)
+        links.append({'name': c[1], 'phone': c[2], 'url': f"https://wa.me/{phone}?text={urllib.parse.quote(msg)}"})
+    log_activity('Bulk Message', f'Sent to {len(links)} customers ({target})')
+    flash(f"Message préparé pour {len(links)} clients", "success")
+    return render_template("bulk_message_results.html", links=links, count=len(links))
+
+# ─── Phase 6 Feature 3: Mobile Dashboard ───
+@app.route("/mobile")
+@login_required
+def mobile_dashboard():
+    from datetime import date
+    today = str(date.today())
+    with get_db() as conn:
+        today_appts = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ?", (today,)).fetchone()[0]
+        pending = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ? AND status='pending'", (today,)).fetchone()[0]
+        in_progress = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ? AND status='in_progress'", (today,)).fetchone()[0]
+        completed_today = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ? AND status='completed'", (today,)).fetchone()[0]
+        today_revenue = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid' AND date_created = ?", (today,)).fetchone()[0]
+        unpaid = conn.execute(
+            "SELECT COUNT(*) FROM invoices WHERE status IN ('unpaid','partial')").fetchone()[0]
+    return render_template("mobile_dashboard.html",
+        today_appts=today_appts, pending=pending, in_progress=in_progress,
+        completed_today=completed_today, today_revenue=today_revenue, unpaid=unpaid)
+
+# ─── Phase 6 Feature 4: Promo Coupons System ───
+@app.route("/coupons")
+@login_required
+def coupons_page():
+    with get_db() as conn:
+        coupons = conn.execute("SELECT * FROM coupons ORDER BY created_at DESC").fetchall()
+    return render_template("coupons.html", coupons=coupons)
+
+@app.route("/coupons/add", methods=["POST"])
+@login_required
+def add_coupon():
+    code = request.form.get("code", "").strip().upper()
+    discount_type = request.form.get("discount_type", "percent")
+    discount_value = float(request.form.get("discount_value", 0))
+    max_uses = int(request.form.get("max_uses", 1))
+    expires_at = request.form.get("expires_at", "")
+    min_amount = float(request.form.get("min_amount", 0))
+    if not code or discount_value <= 0:
+        flash("Code et valeur requis", "error")
+        return redirect("/coupons")
+    if discount_type not in ('percent', 'fixed'):
+        discount_type = 'percent'
+    with get_db() as conn:
+        existing = conn.execute("SELECT id FROM coupons WHERE code = ?", (code,)).fetchone()
+        if existing:
+            flash("Ce code existe déjà", "error")
+            return redirect("/coupons")
+        conn.execute("INSERT INTO coupons (code, discount_type, discount_value, max_uses, expires_at, min_amount) VALUES (?,?,?,?,?,?)",
+            (code, discount_type, discount_value, max_uses, expires_at, min_amount))
+        conn.commit()
+    log_activity('Coupon Created', f'{code} ({discount_type}: {discount_value})')
+    flash(f"Coupon {code} créé", "success")
+    return redirect("/coupons")
+
+@app.route("/coupons/toggle/<int:coupon_id>", methods=["POST"])
+@login_required
+def toggle_coupon(coupon_id):
+    with get_db() as conn:
+        conn.execute("UPDATE coupons SET active = CASE WHEN active = 1 THEN 0 ELSE 1 END WHERE id = ?", (coupon_id,))
+        conn.commit()
+    flash("Statut modifié", "success")
+    return redirect("/coupons")
+
+@app.route("/coupons/delete/<int:coupon_id>", methods=["POST"])
+@login_required
+def delete_coupon(coupon_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM coupons WHERE id = ?", (coupon_id,))
+        conn.commit()
+    flash("Coupon supprimé", "success")
+    return redirect("/coupons")
+
+@app.route("/api/validate_coupon")
+@login_required
+def validate_coupon():
+    from datetime import date
+    code = request.args.get('code', '').strip().upper()
+    amount = float(request.args.get('amount', 0))
+    with get_db() as conn:
+        coupon = conn.execute("SELECT id, discount_type, discount_value, max_uses, used_count, expires_at, active, min_amount FROM coupons WHERE code = ?", (code,)).fetchone()
+    if not coupon:
+        return jsonify({'valid': False, 'error': 'Code invalide'})
+    if not coupon[6]:
+        return jsonify({'valid': False, 'error': 'Coupon désactivé'})
+    if coupon[4] >= coupon[3]:
+        return jsonify({'valid': False, 'error': 'Coupon épuisé'})
+    if coupon[5] and coupon[5] < date.today().isoformat():
+        return jsonify({'valid': False, 'error': 'Coupon expiré'})
+    if amount < coupon[7]:
+        return jsonify({'valid': False, 'error': f'Montant minimum: {coupon[7]} DT'})
+    if coupon[1] == 'percent':
+        discount = round(amount * coupon[2] / 100, 2)
+    else:
+        discount = min(coupon[2], amount)
+    return jsonify({'valid': True, 'discount': discount, 'type': coupon[1], 'value': coupon[2]})
+
+# ─── Phase 6 Feature 5: Maintenance Mileage Reminders ───
+@app.route("/mileage_tracking")
+@login_required
+def mileage_tracking():
+    with get_db() as conn:
+        cars = conn.execute(
+            "SELECT ca.id, cu.name, ca.brand, ca.model, ca.plate, "
+            "COALESCE(ca.mileage,0), COALESCE(ca.last_oil_change,''), COALESCE(ca.next_service_date,'') "
+            "FROM cars ca JOIN customers cu ON ca.customer_id = cu.id ORDER BY cu.name").fetchall()
+    return render_template("mileage_tracking.html", cars=cars)
+
+@app.route("/mileage_tracking/update/<int:car_id>", methods=["POST"])
+@login_required
+def update_mileage(car_id):
+    mileage = request.form.get("mileage", "0")
+    last_oil = request.form.get("last_oil_change", "")
+    next_service = request.form.get("next_service_date", "")
+    try:
+        mileage_val = int(mileage)
+    except ValueError:
+        mileage_val = 0
+    with get_db() as conn:
+        conn.execute("UPDATE cars SET mileage = ?, last_oil_change = ?, next_service_date = ? WHERE id = ?",
+            (mileage_val, last_oil, next_service, car_id))
+        conn.commit()
+    flash("Kilométrage mis à jour", "success")
+    return redirect("/mileage_tracking")
+
+@app.route("/api/mileage_alerts")
+@login_required
+def mileage_alerts():
+    from datetime import date, timedelta
+    soon = (date.today() + timedelta(days=14)).isoformat()
+    today = date.today().isoformat()
+    with get_db() as conn:
+        due = conn.execute(
+            "SELECT ca.id, cu.name, cu.phone, ca.brand, ca.model, ca.plate, ca.next_service_date, ca.mileage "
+            "FROM cars ca JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE ca.next_service_date != '' AND ca.next_service_date <= ? ORDER BY ca.next_service_date",
+            (soon,)).fetchall()
+    alerts = []
+    for d in due:
+        overdue = d[6] < today
+        alerts.append({'car_id': d[0], 'customer': d[1], 'phone': d[2], 'car': f"{d[3]} {d[4]}",
+                       'plate': d[5], 'due_date': d[6], 'mileage': d[7], 'overdue': overdue})
+    return jsonify(alerts)
+
+# ─── Phase 6 Feature 6: Supplier Management ───
+@app.route("/suppliers")
+@login_required
+def suppliers_page():
+    with get_db() as conn:
+        suppliers = conn.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
+    return render_template("suppliers.html", suppliers=suppliers)
+
+@app.route("/suppliers/add", methods=["POST"])
+@login_required
+def add_supplier():
+    name = request.form.get("name", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    address = request.form.get("address", "").strip()
+    notes = request.form.get("notes", "").strip()
+    if not name:
+        flash("Nom requis", "error")
+        return redirect("/suppliers")
+    with get_db() as conn:
+        conn.execute("INSERT INTO suppliers (name, phone, email, address, notes) VALUES (?,?,?,?,?)",
+            (name, phone, email, address, notes))
+        conn.commit()
+    log_activity('Supplier Added', name)
+    flash(f"Fournisseur {name} ajouté", "success")
+    return redirect("/suppliers")
+
+@app.route("/suppliers/delete/<int:sid>", methods=["POST"])
+@login_required
+def delete_supplier(sid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM suppliers WHERE id = ?", (sid,))
+        conn.commit()
+    flash("Fournisseur supprimé", "success")
+    return redirect("/suppliers")
+
+@app.route("/purchase_orders")
+@login_required
+def purchase_orders():
+    with get_db() as conn:
+        orders = conn.execute(
+            "SELECT po.id, s.name, po.order_date, po.status, po.total_amount, po.notes "
+            "FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.id "
+            "ORDER BY po.order_date DESC").fetchall()
+        suppliers = conn.execute("SELECT id, name FROM suppliers ORDER BY name").fetchall()
+        inventory = conn.execute("SELECT id, name, unit_price FROM inventory ORDER BY name").fetchall()
+    return render_template("purchase_orders.html", orders=orders, suppliers=suppliers, inventory=inventory)
+
+@app.route("/purchase_orders/add", methods=["POST"])
+@login_required
+def add_purchase_order():
+    supplier_id = request.form.get("supplier_id")
+    order_date = request.form.get("order_date", "")
+    notes = request.form.get("notes", "").strip()
+    items_json = request.form.get("items", "[]")
+    import json
+    try:
+        items = json.loads(items_json)
+    except (json.JSONDecodeError, TypeError):
+        items = []
+    if not supplier_id or not items:
+        flash("Fournisseur et articles requis", "error")
+        return redirect("/purchase_orders")
+    total = sum(float(i.get('quantity', 0)) * float(i.get('unit_price', 0)) for i in items)
+    with get_db() as conn:
+        cursor = conn.execute("INSERT INTO purchase_orders (supplier_id, order_date, total_amount, notes) VALUES (?,?,?,?)",
+            (supplier_id, order_date, total, notes))
+        order_id = cursor.lastrowid
+        for item in items:
+            inv_id = item.get('inventory_id') or None
+            conn.execute("INSERT INTO purchase_items (order_id, inventory_id, item_name, quantity, unit_price) VALUES (?,?,?,?,?)",
+                (order_id, inv_id, item.get('name', ''), float(item.get('quantity', 0)), float(item.get('unit_price', 0))))
+        conn.commit()
+    log_activity('Purchase Order', f'Order #{order_id} total: {total} DT')
+    flash(f"Commande #{order_id} créée ({total} DT)", "success")
+    return redirect("/purchase_orders")
+
+@app.route("/purchase_orders/receive/<int:order_id>", methods=["POST"])
+@login_required
+def receive_purchase_order(order_id):
+    with get_db() as conn:
+        items = conn.execute("SELECT inventory_id, quantity FROM purchase_items WHERE order_id = ? AND inventory_id IS NOT NULL", (order_id,)).fetchall()
+        for item in items:
+            conn.execute("UPDATE inventory SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (item[1], item[0]))
+        conn.execute("UPDATE purchase_orders SET status = 'received' WHERE id = ?", (order_id,))
+        conn.commit()
+    log_activity('Order Received', f'Order #{order_id} stock updated')
+    flash(f"Commande #{order_id} reçue — stock mis à jour", "success")
+    return redirect("/purchase_orders")
+
+# ─── Phase 6 Feature 7: Customer Analytics ───
+@app.route("/customer_analytics/<int:customer_id>")
+@login_required
+def customer_analytics(customer_id):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Client introuvable", "error")
+            return redirect("/customers")
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id = ?", (customer_id,)).fetchall()
+        car_ids = [c[0] for c in cars]
+        if car_ids:
+            placeholders = ','.join(['?' for _ in car_ids])
+            appointments = conn.execute(
+                f"SELECT a.id, a.date, a.service, a.status, ca.brand, ca.model, ca.plate "
+                f"FROM appointments a JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=? ORDER BY a.date DESC", (customer_id,)).fetchall()
+            total_spent = conn.execute(
+                f"SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+                f"JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=? AND i.status='paid'", (customer_id,)).fetchone()[0]
+            visit_count = conn.execute(
+                f"SELECT COUNT(*) FROM appointments a JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=?", (customer_id,)).fetchone()[0]
+            services_used = conn.execute(
+                f"SELECT a.service, COUNT(*) as cnt FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                f"WHERE ca.customer_id=? GROUP BY a.service ORDER BY cnt DESC", (customer_id,)).fetchall()
+            monthly_spending = conn.execute(
+                f"SELECT strftime('%Y-%m', a.date) as m, COALESCE(SUM(i.amount),0) "
+                f"FROM appointments a JOIN cars ca ON a.car_id=ca.id LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid' "
+                f"WHERE ca.customer_id=? GROUP BY m ORDER BY m DESC LIMIT 12", (customer_id,)).fetchall()
+            first_visit = conn.execute(
+                f"SELECT MIN(a.date) FROM appointments a JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=?", (customer_id,)).fetchone()[0]
+            last_visit = conn.execute(
+                f"SELECT MAX(a.date) FROM appointments a JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=?", (customer_id,)).fetchone()[0]
+        else:
+            appointments, total_spent, visit_count, services_used, monthly_spending = [], 0, 0, [], []
+            first_visit, last_visit = None, None
+        # Rewards info
+        rewards = conn.execute("SELECT points, total_earned, tier FROM reward_points WHERE customer_id=?", (customer_id,)).fetchone()
+        # Ratings
+        avg_rating = conn.execute(
+            "SELECT AVG(r.rating) FROM ratings r WHERE r.customer_id=?", (customer_id,)).fetchone()[0]
+    # Predict next visit
+    from datetime import date, timedelta
+    predicted_next = None
+    if visit_count >= 2 and last_visit and first_visit:
+        try:
+            d_first = date.fromisoformat(first_visit)
+            d_last = date.fromisoformat(last_visit)
+            avg_gap = (d_last - d_first).days / max(visit_count - 1, 1)
+            predicted_next = (d_last + timedelta(days=int(avg_gap))).isoformat()
+        except (ValueError, TypeError):
+            pass
+    return render_template("customer_analytics.html",
+        customer=customer, cars=cars, appointments=appointments[:20],
+        total_spent=total_spent, visit_count=visit_count,
+        services_used=services_used, monthly_spending=list(reversed(monthly_spending)),
+        first_visit=first_visit, last_visit=last_visit,
+        predicted_next=predicted_next, rewards=rewards,
+        avg_rating=round(avg_rating, 1) if avg_rating else None)
+
+# ─── Phase 6 Feature 8: Advanced Role Permissions ───
+PERMISSIONS = {
+    'admin': ['all'],
+    'manager': ['customers', 'appointments', 'invoices', 'reports', 'inventory', 'services', 'expenses'],
+    'receptionist': ['customers', 'appointments', 'invoices', 'calendar'],
+    'technician': ['appointments', 'live_board', 'time_tracking', 'gallery'],
+}
+
+def has_permission(permission):
+    role = session.get('role', 'employee')
+    if role == 'admin':
+        return True
+    allowed = PERMISSIONS.get(role, [])
+    return permission in allowed or 'all' in allowed
+
+@app.route("/manage_roles")
+@login_required
+def manage_roles():
+    if session.get('role') != 'admin':
+        flash("Accès refusé", "error")
+        return redirect("/")
+    with get_db() as conn:
+        users = conn.execute("SELECT id, username, role, COALESCE(full_name,'') FROM users ORDER BY id").fetchall()
+    return render_template("manage_roles.html", users=users, roles=PERMISSIONS)
+
+@app.route("/manage_roles/update/<int:user_id>", methods=["POST"])
+@login_required
+def update_user_role(user_id):
+    if session.get('role') != 'admin':
+        flash("Accès refusé", "error")
+        return redirect("/")
+    new_role = request.form.get("role", "employee")
+    if new_role not in PERMISSIONS and new_role != 'employee':
+        new_role = 'employee'
+    with get_db() as conn:
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        conn.commit()
+    log_activity('Role Updated', f'User #{user_id} → {new_role}')
+    flash(f"Rôle mis à jour: {new_role}", "success")
+    return redirect("/manage_roles")
+
+# ─── Phase 6 Feature 9: Smart Waiting Queue ───
+@app.route("/queue")
+@login_required
+def waiting_queue():
+    with get_db() as conn:
+        queue = conn.execute(
+            "SELECT wq.id, cu.name, cu.phone, COALESCE(ca.brand||' '||ca.model,''), "
+            "wq.service, wq.priority, wq.status, wq.estimated_wait, wq.notes, wq.created_at "
+            "FROM waiting_queue wq JOIN customers cu ON wq.customer_id=cu.id "
+            "LEFT JOIN cars ca ON wq.car_id=ca.id "
+            "WHERE wq.status IN ('waiting','serving') ORDER BY wq.priority DESC, wq.created_at").fetchall()
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT id, brand||' '||model, customer_id FROM cars ORDER BY brand").fetchall()
+        services_list = conn.execute("SELECT name FROM services ORDER BY name").fetchall()
+    return render_template("waiting_queue.html", queue=queue, customers=customers,
+                           cars=cars, services=[s[0] for s in services_list])
+
+@app.route("/queue/add", methods=["POST"])
+@login_required
+def add_to_queue():
+    customer_id = request.form.get("customer_id")
+    car_id = request.form.get("car_id") or None
+    service = request.form.get("service", "").strip()
+    priority = int(request.form.get("priority", "0"))
+    notes = request.form.get("notes", "").strip()
+    estimated_wait = int(request.form.get("estimated_wait", "30"))
+    if not customer_id:
+        flash("Client requis", "error")
+        return redirect("/queue")
+    with get_db() as conn:
+        conn.execute("INSERT INTO waiting_queue (customer_id, car_id, service, priority, estimated_wait, notes) VALUES (?,?,?,?,?,?)",
+            (customer_id, car_id, service, priority, estimated_wait, notes))
+        conn.commit()
+    flash("Client ajouté à la file d'attente", "success")
+    return redirect("/queue")
+
+@app.route("/queue/update/<int:queue_id>", methods=["POST"])
+@login_required
+def update_queue_status(queue_id):
+    new_status = request.form.get("status", "waiting")
+    if new_status not in ('waiting', 'serving', 'done', 'cancelled'):
+        new_status = 'waiting'
+    with get_db() as conn:
+        conn.execute("UPDATE waiting_queue SET status = ? WHERE id = ?", (new_status, queue_id))
+        conn.commit()
+    return redirect("/queue")
+
+@app.route("/queue/remove/<int:queue_id>", methods=["POST"])
+@login_required
+def remove_from_queue(queue_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM waiting_queue WHERE id = ?", (queue_id,))
+        conn.commit()
+    flash("Retiré de la file", "success")
+    return redirect("/queue")
+
+@app.route("/api/queue_status")
+@login_required
+def api_queue_status():
+    with get_db() as conn:
+        queue = conn.execute(
+            "SELECT wq.id, cu.name, wq.service, wq.priority, wq.status, wq.estimated_wait, wq.created_at "
+            "FROM waiting_queue wq JOIN customers cu ON wq.customer_id=cu.id "
+            "WHERE wq.status IN ('waiting','serving') ORDER BY wq.priority DESC, wq.created_at").fetchall()
+    position = 0
+    total_wait = 0
+    items = []
+    for q in queue:
+        if q[4] == 'waiting':
+            position += 1
+            total_wait += q[5]
+        items.append({
+            'id': q[0], 'customer': q[1], 'service': q[2], 'priority': q[3],
+            'status': q[4], 'wait': q[5], 'since': q[6], 'position': position
+        })
+    return jsonify({'queue': items, 'total_waiting': position, 'est_total_wait': total_wait})
+
+# ─── Phase 6 Feature 10: Customer Portal App ───
+@app.route("/client")
+def customer_login_page():
+    return render_template("customer_login.html")
+
+@app.route("/client/login", methods=["POST"])
+def customer_login():
+    phone = request.form.get("phone", "").strip()
+    if not phone:
+        flash("Numéro de téléphone requis", "error")
+        return redirect("/client")
+    with get_db() as conn:
+        customer = conn.execute("SELECT id, name, phone FROM customers WHERE phone = ?", (phone,)).fetchone()
+    if not customer:
+        flash("Numéro non trouvé. Contactez-nous pour créer votre compte.", "error")
+        return redirect("/client")
+    session['client_id'] = customer[0]
+    session['client_name'] = customer[1]
+    session['client_phone'] = customer[2]
+    return redirect("/client/dashboard")
+
+@app.route("/client/dashboard")
+def customer_dashboard():
+    client_id = session.get('client_id')
+    if not client_id:
+        return redirect("/client")
+    with get_db() as conn:
+        customer = conn.execute("SELECT id, name, phone, email FROM customers WHERE id = ?", (client_id,)).fetchone()
+        if not customer:
+            session.pop('client_id', None)
+            return redirect("/client")
+        cars = conn.execute("SELECT id, brand, model, plate FROM cars WHERE customer_id = ?", (client_id,)).fetchall()
+        car_ids = [c[0] for c in cars]
+        appointments = []
+        invoices_data = []
+        if car_ids:
+            appointments = conn.execute(
+                "SELECT a.id, a.date, a.service, a.status, ca.brand||' '||ca.model, COALESCE(a.time,'') "
+                "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                "WHERE ca.customer_id = ? ORDER BY a.date DESC LIMIT 20", (client_id,)).fetchall()
+            invoices_data = conn.execute(
+                "SELECT i.id, i.amount, i.status, a.date, a.service "
+                "FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+                "JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id = ? ORDER BY a.date DESC LIMIT 20", (client_id,)).fetchall()
+        rewards = conn.execute(
+            "SELECT points, total_earned, tier FROM reward_points WHERE customer_id = ?", (client_id,)).fetchone()
+        total_spent = conn.execute(
+            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+            "JOIN cars ca ON a.car_id=ca.id WHERE ca.customer_id=? AND i.status='paid'", (client_id,)).fetchone()[0]
+    return render_template("customer_app.html",
+        customer=customer, cars=cars, appointments=appointments,
+        invoices=invoices_data, rewards=rewards, total_spent=total_spent)
+
+@app.route("/client/request_appointment", methods=["POST"])
+def customer_request_appointment():
+    client_id = session.get('client_id')
+    if not client_id:
+        return redirect("/client")
+    car_id = request.form.get("car_id")
+    date_val = request.form.get("date", "")
+    service = request.form.get("service", "")
+    time_val = request.form.get("time", "")
+    if not car_id or not date_val or not service:
+        flash("Tous les champs sont requis", "error")
+        return redirect("/client/dashboard")
+    # Verify car belongs to customer
+    with get_db() as conn:
+        car = conn.execute("SELECT id FROM cars WHERE id = ? AND customer_id = ?", (car_id, client_id)).fetchone()
+        if not car:
+            flash("Véhicule invalide", "error")
+            return redirect("/client/dashboard")
+        conn.execute("INSERT INTO appointments (car_id, date, service, status, time) VALUES (?,?,?,?,?)",
+            (car_id, date_val, service, 'pending', time_val))
+        conn.commit()
+    flash("Demande de rendez-vous envoyée !", "success")
+    return redirect("/client/dashboard")
+
+@app.route("/client/logout")
+def customer_logout():
+    session.pop('client_id', None)
+    session.pop('client_name', None)
+    session.pop('client_phone', None)
+    return redirect("/client")
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

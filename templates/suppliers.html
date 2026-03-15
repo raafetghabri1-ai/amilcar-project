@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %} - Fournisseurs{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🏭 Gestion des Fournisseurs</h3>
+    <a href="/purchase_orders" class="btn btn-sm btn-gold">📦 Commandes</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-5">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouveau Fournisseur</h6>
+            <form method="POST" action="/suppliers/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="text" name="name" class="form-control form-control-sm mb-2" placeholder="Nom *" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <input type="tel" name="phone" class="form-control form-control-sm mb-2" placeholder="Téléphone" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <input type="email" name="email" class="form-control form-control-sm mb-2" placeholder="Email" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <input type="text" name="address" class="form-control form-control-sm mb-2" placeholder="Adresse" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                <textarea name="notes" class="form-control form-control-sm mb-2" placeholder="Notes" rows="2" style="background:#1a1a1a;color:#ccc;border-color:#333"></textarea>
+                <button class="btn btn-sm btn-gold w-100">✅ Ajouter</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📋 Liste des Fournisseurs</h6>
+            <div class="table-responsive">
+                <table class="table table-dark table-sm table-hover">
+                    <thead><tr><th>Nom</th><th>Téléphone</th><th>Email</th><th>Adresse</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    {% for s in suppliers %}
+                    <tr>
+                        <td><strong style="color:#D4AF37">{{ s[1] }}</strong></td>
+                        <td style="color:#888">{{ s[2] }}</td>
+                        <td style="color:#888;font-size:0.75rem">{{ s[3] }}</td>
+                        <td style="color:#888;font-size:0.75rem">{{ s[4] }}</td>
+                        <td>
+                            <form method="POST" action="/suppliers/delete/{{ s[0] }}" class="d-inline" onsubmit="return confirm('Supprimer ?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button class="btn btn-sm btn-outline-danger" style="font-size:0.6rem;padding:2px 6px">✗</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not suppliers %}<tr><td colspan="5" style="text-align:center;color:#666">Aucun fournisseur</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

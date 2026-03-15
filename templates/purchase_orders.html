@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %} - Commandes Fournisseurs{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📦 Commandes d'Achat</h3>
+    <a href="/suppliers" class="btn btn-sm btn-outline-secondary">🏭 Fournisseurs</a>
+</div>
+
+<!-- New Order -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouvelle Commande</h6>
+    <form method="POST" action="/purchase_orders/add" id="orderForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="items" id="itemsJson" value="[]">
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <select name="supplier_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="">-- Fournisseur --</option>
+                    {% for s in suppliers %}<option value="{{ s[0] }}">{{ s[1] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="order_date" class="form-control form-control-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+            <div class="col-md-5">
+                <input type="text" name="notes" class="form-control form-control-sm" placeholder="Notes" style="background:#1a1a1a;color:#ccc;border-color:#333">
+            </div>
+        </div>
+        <!-- Items -->
+        <div id="orderItems">
+            <div class="row g-2 mb-2 item-row">
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm item-inv" style="background:#1a1a1a;color:#ccc;border-color:#333" onchange="fillPrice(this)">
+                        <option value="">Article personnalisé</option>
+                        {% for inv in inventory %}<option value="{{ inv[0] }}" data-price="{{ inv[2] }}">{{ inv[1] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3"><input type="text" class="form-control form-control-sm item-name" placeholder="Nom article" style="background:#1a1a1a;color:#ccc;border-color:#333"></div>
+                <div class="col-md-2"><input type="number" class="form-control form-control-sm item-qty" placeholder="Qté" value="1" min="1" style="background:#1a1a1a;color:#ccc;border-color:#333"></div>
+                <div class="col-md-2"><input type="number" class="form-control form-control-sm item-price" placeholder="Prix unit." step="0.01" style="background:#1a1a1a;color:#ccc;border-color:#333"></div>
+                <div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.item-row').remove()">✗</button></div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addItemRow()">+ Article</button>
+            <button type="submit" class="btn btn-sm btn-gold" onclick="prepareItems()">📦 Créer la Commande</button>
+        </div>
+    </form>
+</div>
+
+<!-- Orders List -->
+<div class="card p-3">
+    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Commandes</h6>
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead><tr><th>#</th><th>Fournisseur</th><th>Date</th><th>Statut</th><th class="text-end">Total (DT)</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for o in orders %}
+            <tr>
+                <td style="color:#D4AF37">#{{ o[0] }}</td>
+                <td><strong>{{ o[1] }}</strong></td>
+                <td style="color:#888">{{ o[2] }}</td>
+                <td>{% if o[3] == 'received' %}<span class="badge bg-success">Reçue</span>{% elif o[3] == 'pending' %}<span class="badge bg-warning text-dark">En attente</span>{% else %}<span class="badge bg-secondary">{{ o[3] }}</span>{% endif %}</td>
+                <td class="text-end" style="font-weight:700">{{ o[4]|round(1) }}</td>
+                <td style="color:#888;font-size:0.75rem">{{ o[5] }}</td>
+                <td>
+                    {% if o[3] == 'pending' %}
+                    <form method="POST" action="/purchase_orders/receive/{{ o[0] }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button class="btn btn-sm btn-success" style="font-size:0.6rem;padding:2px 8px">✅ Reçue</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not orders %}<tr><td colspan="7" style="text-align:center;color:#666">Aucune commande</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addItemRow() {
+    var tpl = document.querySelector('.item-row').cloneNode(true);
+    tpl.querySelectorAll('input').forEach(i => i.value = '');
+    tpl.querySelector('.item-inv').selectedIndex = 0;
+    tpl.querySelector('.item-qty').value = 1;
+    document.getElementById('orderItems').appendChild(tpl);
+}
+function fillPrice(sel) {
+    var row = sel.closest('.item-row');
+    var opt = sel.options[sel.selectedIndex];
+    if (opt.dataset.price) row.querySelector('.item-price').value = opt.dataset.price;
+    if (opt.text && opt.value) row.querySelector('.item-name').value = opt.text;
+}
+function prepareItems() {
+    var rows = document.querySelectorAll('.item-row');
+    var items = [];
+    rows.forEach(r => {
+        var name = r.querySelector('.item-name').value;
+        var qty = r.querySelector('.item-qty').value;
+        var price = r.querySelector('.item-price').value;
+        var inv = r.querySelector('.item-inv').value;
+        if (name && qty && price) {
+            items.push({name: name, quantity: qty, unit_price: price, inventory_id: inv || null});
+        }
+    });
+    document.getElementById('itemsJson').value = JSON.stringify(items);
+}
+</script>
+{% endblock %}

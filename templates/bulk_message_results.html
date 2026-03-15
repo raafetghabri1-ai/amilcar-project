@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %} - Résultat Envoi{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📱 Messages Prêts — {{ count }} clients</h3>
+    <a href="/bulk_message" class="btn btn-sm btn-gold">← Retour</a>
+</div>
+<p style="color:#888;font-size:0.8rem;margin-bottom:20px">Cliquez sur chaque lien pour ouvrir WhatsApp et envoyer le message.</p>
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm">
+            <thead><tr><th>#</th><th>Client</th><th>Téléphone</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for link in links %}
+            <tr>
+                <td style="color:#D4AF37">{{ loop.index }}</td>
+                <td>{{ link.name }}</td>
+                <td style="color:#888">{{ link.phone }}</td>
+                <td><a href="{{ link.url }}" target="_blank" style="background:#25D366;color:white;padding:4px 12px;border-radius:6px;font-size:0.7rem;text-decoration:none;font-weight:600">📱 Envoyer</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

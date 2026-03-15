@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} - Mobile{% endblock %}
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+.hero, .navbar { display: none !important; }
+.main-container { padding: 10px !important; margin-top: 0 !important; }
+.mobile-header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+.mobile-header h4 { color: #D4AF37; margin: 0; font-size: 1.2rem; }
+.mobile-header small { color: #888; font-size: 0.7rem; }
+.quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+.quick-btn { background: #1a1a1a; border: 1px solid rgba(212,175,55,0.15); border-radius: 12px; padding: 20px 10px; text-align: center; text-decoration: none; transition: all 0.3s; }
+.quick-btn:hover { border-color: #D4AF37; transform: scale(1.02); }
+.quick-btn .icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+.quick-btn .label { color: #ccc; font-size: 0.75rem; font-weight: 600; }
+.mobile-stat { background: #1a1a1a; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid rgba(212,175,55,0.1); }
+.mobile-stat .num { color: #D4AF37; font-size: 1.5rem; font-weight: 800; }
+.mobile-stat .lbl { color: #888; font-size: 0.6rem; letter-spacing: 1px; }
+.mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #111; border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 8px 0; z-index: 999; }
+.mobile-nav a { text-align: center; text-decoration: none; color: #888; font-size: 0.6rem; }
+.mobile-nav a .icon { font-size: 1.3rem; display: block; }
+.mobile-nav a.active { color: #D4AF37; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="mobile-header">
+    <h4>AMILCAR</h4>
+    <small>{{ session.get('username','') }} — Aujourd'hui</small>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px">
+    <div class="mobile-stat"><div class="num">{{ today_appts }}</div><div class="lbl">TOTAL</div></div>
+    <div class="mobile-stat"><div class="num" style="color:#f59e0b">{{ pending }}</div><div class="lbl">EN ATTENTE</div></div>
+    <div class="mobile-stat"><div class="num" style="color:#3b82f6">{{ in_progress }}</div><div class="lbl">EN COURS</div></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px">
+    <div class="mobile-stat"><div class="num" style="color:#22c55e">{{ completed_today }}</div><div class="lbl">TERMINÉS</div></div>
+    <div class="mobile-stat"><div class="num">{{ today_revenue|round(0) }}</div><div class="lbl">REVENUS DT</div></div>
+    <div class="mobile-stat"><div class="num" style="color:#C41E3A">{{ unpaid }}</div><div class="lbl">IMPAYÉS</div></div>
+</div>
+
+<div class="quick-grid">
+    <a href="/add_appointment" class="quick-btn"><span class="icon">📅</span><span class="label">Nouveau RDV</span></a>
+    <a href="/add_customer" class="quick-btn"><span class="icon">👤</span><span class="label">Nouveau Client</span></a>
+    <a href="/live_board" class="quick-btn"><span class="icon">📋</span><span class="label">Tableau Atelier</span></a>
+    <a href="/queue" class="quick-btn"><span class="icon">⏳</span><span class="label">File d'Attente</span></a>
+    <a href="/clock_in_out" class="quick-btn" onclick="event.preventDefault();quickClock()"><span class="icon">⏱️</span><span class="label">Pointer</span></a>
+    <a href="/invoices" class="quick-btn"><span class="icon">📄</span><span class="label">Factures</span></a>
+    <a href="/appointments" class="quick-btn"><span class="icon">📋</span><span class="label">Rendez-vous</span></a>
+    <a href="/daily" class="quick-btn"><span class="icon">📊</span><span class="label">Aujourd'hui</span></a>
+</div>
+
+<div class="mobile-nav">
+    <a href="/mobile" class="active"><span class="icon">🏠</span>Accueil</a>
+    <a href="/appointments"><span class="icon">📅</span>RDV</a>
+    <a href="/live_board"><span class="icon">📋</span>Atelier</a>
+    <a href="/customers"><span class="icon">👥</span>Clients</a>
+    <a href="/"><span class="icon">💻</span>Bureau</a>
+</div>
+<div style="height:60px"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+function quickClock() {
+    if (confirm("Pointer Entrée ?")) {
+        var f = document.createElement('form');
+        f.method = 'POST'; f.action = '/clock_in_out';
+        var i1 = document.createElement('input'); i1.name = 'action'; i1.value = 'clock_in'; i1.type = 'hidden';
+        var i2 = document.createElement('input'); i2.name = 'user_id'; i2.value = '{{ session.get("user_id","") }}'; i2.type = 'hidden';
+        var csrf = document.createElement('input'); csrf.name = 'csrf_token'; csrf.value = '{{ csrf_token() }}'; csrf.type = 'hidden';
+        f.appendChild(i1); f.appendChild(i2); f.appendChild(csrf);
+        document.body.appendChild(f); f.submit();
+    }
+}
+</script>
+{% endblock %}

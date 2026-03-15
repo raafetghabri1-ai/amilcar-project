@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %} - Analyse Client{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📈 Analyse Client — {{ customer[1] }}</h3>
+    <a href="/customer/{{ customer[0] }}" class="btn btn-sm btn-outline-secondary">← Fiche Client</a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ visit_count }}</h2><p>VISITES</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2 style="color:#22c55e;-webkit-text-fill-color:#22c55e">{{ total_spent|round(0) }}</h2><p>DÉPENSÉ (DT)</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ cars|length }}</h2><p>VÉHICULES</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ avg_rating or '—' }}</h2><p>NOTE MOY.</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ (rewards[2] if rewards else 'BRONZE') }}</h2><p>NIVEAU</p></div></div>
+    <div class="col-md-2 col-6"><div class="stat-card"><h2>{{ rewards[0] if rewards else 0 }}</h2><p>POINTS</p></div></div>
+</div>
+
+<!-- Timeline & Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📅 Dates Clés</h6>
+            <div style="font-size:0.85rem">
+                <p><span style="color:#888">Première visite:</span> <strong>{{ first_visit or '—' }}</strong></p>
+                <p><span style="color:#888">Dernière visite:</span> <strong>{{ last_visit or '—' }}</strong></p>
+                <p><span style="color:#888">Prochaine visite estimée:</span>
+                    <strong style="color:#D4AF37">{{ predicted_next or '—' }}</strong></p>
+                <p><span style="color:#888">Dépense moyenne:</span>
+                    <strong>{{ (total_spent / visit_count)|round(0) if visit_count else 0 }} DT</strong></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🔝 Services Préférés</h6>
+            <canvas id="servicesChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">💰 Dépenses Mensuelles</h6>
+            <canvas id="spendingChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Appointments -->
+<div class="card p-3">
+    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Dernières Visites</h6>
+    <div class="table-responsive">
+        <table class="table table-dark table-sm">
+            <thead><tr><th>Date</th><th>Service</th><th>Véhicule</th><th>Statut</th></tr></thead>
+            <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td style="color:#888">{{ a[1] }}</td>
+                <td>{{ a[2] }}</td>
+                <td style="color:#888;font-size:0.8rem">{{ a[4] }} {{ a[5] }} ({{ a[6] }})</td>
+                <td>{% if a[3] == 'completed' %}<span class="badge bg-success">Terminé</span>
+                    {% elif a[3] == 'pending' %}<span class="badge bg-warning text-dark">En attente</span>
+                    {% elif a[3] == 'in_progress' %}<span class="badge bg-primary">En cours</span>
+                    {% else %}<span class="badge bg-secondary">{{ a[3] }}</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var services = {{ services_used|tojson }};
+var monthly = {{ monthly_spending|tojson }};
+if (services.length) {
+    new Chart(document.getElementById('servicesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: services.map(s => s[0].substring(0, 20)),
+            datasets: [{ data: services.map(s => s[1]),
+                backgroundColor: ['#D4AF37','#C41E3A','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ef4444','#06b6d4'] }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#888', font: { size: 10 } } } } }
+    });
+}
+if (monthly.length) {
+    new Chart(document.getElementById('spendingChart'), {
+        type: 'bar',
+        data: {
+            labels: monthly.map(m => m[0]),
+            datasets: [{ label: 'DT', data: monthly.map(m => m[1]),
+                backgroundColor: 'rgba(212,175,55,0.7)', borderRadius: 4 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { color: '#888' } }, x: { ticks: { color: '#888', font: { size: 9 } } } }
+        }
+    });
+}
+</script>
+{% endblock %}

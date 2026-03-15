@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Mon Espace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#333;padding-bottom:30px}
+        .top-bar{background:#fff;border-bottom:3px solid #D4AF37;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+        .brand{font-family:'Playfair Display',serif;color:#B8860B;font-size:1.4rem}
+        .welcome{color:#555;font-size:0.85rem}
+        .logout-btn{color:#B8860B;text-decoration:none;font-weight:500;font-size:0.85rem}
+        .container{max-width:900px}
+        .section-card{background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.06);padding:24px;margin-bottom:24px}
+        .section-title{font-family:'Playfair Display',serif;color:#B8860B;font-size:1.1rem;margin-bottom:16px;border-bottom:2px solid #f0e6c8;padding-bottom:8px}
+        .stat-card{background:linear-gradient(135deg,#fdf6e3,#fff);border:1px solid #f0e6c8;border-radius:10px;padding:16px;text-align:center}
+        .stat-val{font-size:1.6rem;font-weight:700;color:#B8860B}
+        .stat-label{color:#888;font-size:0.75rem;text-transform:uppercase}
+        .tier-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600}
+        .tier-bronze{background:#CD7F32;color:#fff}
+        .tier-silver{background:#C0C0C0;color:#333}
+        .tier-gold{background:#D4AF37;color:#fff}
+        .tier-platinum{background:#1a1a1a;color:#D4AF37}
+        table{font-size:0.85rem}
+        .badge-status{font-size:0.7rem}
+        .form-control,.form-select{border:2px solid #eee;border-radius:8px;font-size:0.9rem}
+        .form-control:focus,.form-select:focus{border-color:#D4AF37;box-shadow:0 0 0 3px rgba(212,175,55,0.15)}
+        .btn-gold{background:linear-gradient(135deg,#D4AF37,#B8860B);border:none;color:#fff;font-weight:600;border-radius:8px;padding:10px 20px}
+        .btn-gold:hover{color:#fff;transform:translateY(-1px)}
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div>
+            <div class="brand">AMILCAR</div>
+            <div class="welcome">Bienvenue, <strong>{{ customer[1] }}</strong></div>
+        </div>
+        <a href="/client/logout" class="logout-btn">Déconnexion →</a>
+    </div>
+
+    <div class="container">
+        <!-- Stats -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-val">{{ appointments|length }}</div>
+                    <div class="stat-label">Rendez-vous</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-val">{{ invoices|length }}</div>
+                    <div class="stat-label">Factures</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-val">{{ customer[7] if customer[7] else 0 }}</div>
+                    <div class="stat-label">Points</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <span class="tier-badge tier-{{ (customer[8] if customer[8] else 'bronze')|lower }}">{{ customer[8] if customer[8] else 'Bronze' }}</span>
+                    <div class="stat-label mt-1">Niveau</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cars -->
+        <div class="section-card">
+            <div class="section-title">🚗 Mes Véhicules</div>
+            {% if cars %}
+            <div class="row g-2">
+                {% for car in cars %}
+                <div class="col-md-4">
+                    <div style="background:#fdf6e3;border-radius:8px;padding:12px;border:1px solid #f0e6c8">
+                        <strong style="color:#B8860B">{{ car[2] }} {{ car[3] }}</strong>
+                        <div style="color:#888;font-size:0.8rem">{{ car[4] }} • {{ car[5] }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#aaa;font-size:0.85rem">Aucun véhicule enregistré</p>
+            {% endif %}
+        </div>
+
+        <!-- Request Appointment -->
+        <div class="section-card">
+            <div class="section-title">📅 Demander un Rendez-vous</div>
+            {% if message %}
+            <div class="alert alert-success" style="font-size:0.85rem">{{ message }}</div>
+            {% endif %}
+            <form method="POST" action="/client/request_appointment">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <select name="car_id" class="form-select form-select-sm" required>
+                            <option value="">Véhicule</option>
+                            {% for car in cars %}<option value="{{ car[0] }}">{{ car[2] }} {{ car[3] }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="date" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="time" name="time" class="form-control form-control-sm" value="09:00" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="service" class="form-control form-control-sm" placeholder="Service" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-gold btn-sm w-100">Demander</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Appointments -->
+        <div class="section-card">
+            <div class="section-title">📋 Mes Rendez-vous</div>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>Date</th><th>Heure</th><th>Service</th><th>Statut</th></tr></thead>
+                    <tbody>
+                    {% for a in appointments %}
+                    <tr>
+                        <td>{{ a[3] }}</td>
+                        <td>{{ a[4] }}</td>
+                        <td>{{ a[5] }}</td>
+                        <td>
+                            {% if a[6] == 'Confirmé' %}<span class="badge bg-success badge-status">{{ a[6] }}</span>
+                            {% elif a[6] == 'En attente' %}<span class="badge bg-warning text-dark badge-status">{{ a[6] }}</span>
+                            {% elif a[6] == 'Annulé' %}<span class="badge bg-danger badge-status">{{ a[6] }}</span>
+                            {% else %}<span class="badge bg-info badge-status">{{ a[6] }}</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not appointments %}<tr><td colspan="4" style="color:#aaa;text-align:center">Aucun rendez-vous</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="section-card">
+            <div class="section-title">🧾 Mes Factures</div>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>#</th><th>Date</th><th>Total</th><th>Statut</th></tr></thead>
+                    <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        <td style="color:#B8860B;font-weight:600">{{ inv[0] }}</td>
+                        <td>{{ inv[3] }}</td>
+                        <td><strong>{{ "%.2f"|format(inv[5]) }} DH</strong></td>
+                        <td>
+                            {% if inv[6] == 'Payée' %}<span class="badge bg-success badge-status">{{ inv[6] }}</span>
+                            {% else %}<span class="badge bg-warning text-dark badge-status">{{ inv[6] }}</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not invoices %}<tr><td colspan="4" style="color:#aaa;text-align:center">Aucune facture</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

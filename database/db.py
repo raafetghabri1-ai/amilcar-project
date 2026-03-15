@@ -217,6 +217,97 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS coupons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            discount_type TEXT NOT NULL DEFAULT 'percent',
+            discount_value REAL NOT NULL DEFAULT 0,
+            min_amount REAL DEFAULT 0,
+            max_uses INTEGER DEFAULT 1,
+            used_count INTEGER DEFAULT 0,
+            expires_at TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS coupon_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            coupon_id INTEGER NOT NULL,
+            invoice_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            discount_applied REAL DEFAULT 0,
+            used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (coupon_id) REFERENCES coupons (id),
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id),
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            supplier_id INTEGER NOT NULL,
+            order_date TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            total_amount REAL DEFAULT 0,
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (supplier_id) REFERENCES suppliers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS purchase_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            inventory_id INTEGER,
+            item_name TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            unit_price REAL NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES purchase_orders (id),
+            FOREIGN KEY (inventory_id) REFERENCES inventory (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS waiting_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER,
+            service TEXT DEFAULT '',
+            priority INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'waiting',
+            estimated_wait INTEGER DEFAULT 30,
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_permissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL,
+            permission TEXT NOT NULL,
+            UNIQUE(role, permission)
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -236,6 +327,12 @@ def create_tables():
         ("ALTER TABLE customers ADD COLUMN portal_token TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN estimated_duration INTEGER DEFAULT 60", None),
         ("ALTER TABLE invoices ADD COLUMN qr_token TEXT DEFAULT ''", None),
+        ("ALTER TABLE cars ADD COLUMN mileage INTEGER DEFAULT 0", None),
+        ("ALTER TABLE cars ADD COLUMN last_oil_change TEXT DEFAULT ''", None),
+        ("ALTER TABLE cars ADD COLUMN next_service_date TEXT DEFAULT ''", None),
+        ("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT ''", None),
+        ("ALTER TABLE invoices ADD COLUMN coupon_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN password_hash TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -257,6 +354,10 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_time_tracking_user ON time_tracking(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_time_tracking_date ON time_tracking(date)",
         "CREATE INDEX IF NOT EXISTS idx_reward_points_customer ON reward_points(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code)",
+        "CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)",
+        "CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier ON purchase_orders(supplier_id)",
+        "CREATE INDEX IF NOT EXISTS idx_waiting_queue_status ON waiting_queue(status)",
     ]
     for idx in indexes:
         try:
@@ -284,6 +385,7 @@ def create_tables():
         ('shop_address', 'MAHRES, SFAX, TUNISIA'),
         ('shop_phone', ''),
         ('tax_rate', '0'),
+        ('max_daily_appointments', '10'),
     ]
     for key, val in defaults:
         try:
