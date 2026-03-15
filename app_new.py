@@ -22,6 +22,7 @@ Blueprint Structure:
 """
 from flask import Flask, jsonify, session, request
 from database.db import create_tables, get_db
+from database.migrations import migrate
 from helpers import check_api_rate_limit, TRANSLATIONS, csrf
 import os
 import time as time_module
@@ -46,6 +47,7 @@ def _get_secret_key():
 app.secret_key = _get_secret_key()
 csrf.init_app(app)
 create_tables()
+migrate()  # Apply pending database migrations
 
 # ─── Security Configuration ───
 app.config['SESSION_COOKIE_HTTPONLY'] = True

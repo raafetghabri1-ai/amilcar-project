@@ -12,6 +12,36 @@ import time as time_module
 # ─── CSRF instance (initialized in app_new.py) ───
 csrf = CSRFProtect()
 
+# ─── Simple In-Memory Cache ───
+class SimpleCache:
+    """Thread-safe TTL cache for frequently accessed data."""
+    def __init__(self):
+        self._store = {}
+
+    def get(self, key):
+        if key in self._store:
+            value, expires = self._store[key]
+            if time_module.time() < expires:
+                return value
+            del self._store[key]
+        return None
+
+    def set(self, key, value, ttl=60):
+        self._store[key] = (value, time_module.time() + ttl)
+
+    def delete(self, key):
+        self._store.pop(key, None)
+
+    def clear(self):
+        self._store.clear()
+
+    def invalidate_prefix(self, prefix):
+        keys = [k for k in self._store if k.startswith(prefix)]
+        for k in keys:
+            del self._store[k]
+
+cache = SimpleCache()
+
 # ─── Constants ───
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -104,26 +134,41 @@ def client_required(f):
 # ─── Utility Functions ───
 
 def get_services():
+    cached = cache.get('services')
+    if cached is not None:
+        return cached
     try:
         with get_db() as conn:
             rows = conn.execute("SELECT name, price FROM services WHERE active = 1 ORDER BY id").fetchall()
-        return [(r[0], r[1]) for r in rows] if rows else SERVICES_FALLBACK
+        result = [(r[0], r[1]) for r in rows] if rows else SERVICES_FALLBACK
+        cache.set('services', result, ttl=300)
+        return result
     except Exception:
         return SERVICES_FALLBACK
 
 def get_setting(key, default=''):
+    cached = cache.get(f'setting:{key}')
+    if cached is not None:
+        return cached
     try:
         with get_db() as conn:
             row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-        return row[0] if row else default
+        value = row[0] if row else default
+        cache.set(f'setting:{key}', value, ttl=300)
+        return value
     except Exception:
         return default
 
 def get_all_settings():
+    cached = cache.get('all_settings')
+    if cached is not None:
+        return cached
     try:
         with get_db() as conn:
             rows = conn.execute("SELECT key, value FROM settings").fetchall()
-        return {r[0]: r[1] for r in rows}
+        result = {r[0]: r[1] for r in rows}
+        cache.set('all_settings', result, ttl=300)
+        return result
     except Exception:
         return {}
 
@@ -165,3 +210,22 @@ def check_api_rate_limit():
     else:
         _api_rate[ip] = (1, now)
     return False
+
+def invalidate_cache(*prefixes):
+    """Invalidate cache entries. Call after modifying settings/services."""
+    if not prefixes:
+        cache.clear()
+    else:
+        for p in prefixes:
+            cache.invalidate_prefix(p)
+
+def paginate_query(conn, query, params=(), page=1, per_page=PER_PAGE):
+    """Execute a paginated query and return (rows, total, pages)."""
+    page = safe_page(page)
+    count_query = f"SELECT COUNT(*) FROM ({query})"
+    total = conn.execute(count_query, params).fetchone()[0]
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    offset = (page - 1) * per_page
+    rows = conn.execute(f"{query} LIMIT ? OFFSET ?", (*params, per_page, offset)).fetchall()
+    return rows, total, pages, page
