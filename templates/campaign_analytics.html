@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Analytique Campagnes — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-graph-up-arrow text-primary"></i> Analytique Campagnes</h2>
+        <p class="text-muted mb-0">Performance et ROI des campagnes marketing</p>
+    </div>
+    <a href="/marketing_campaigns" class="btn btn-outline-primary"><i class="bi bi-megaphone"></i> Gérer Campagnes</a>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-primary">{{ total_campaigns }}</div>
+                <small class="text-muted">Campagnes</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-success">{{ total_sent }}</div>
+                <small class="text-muted">Messages Envoyés</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-info">{{ "%.1f"|format(avg_open_rate) }}%</div>
+                <small class="text-muted">Taux d'Ouverture</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                {% set active = campaigns|selectattr('is_active')|list|length %}
+                <div class="display-6 fw-bold text-warning">{{ active }}</div>
+                <small class="text-muted">Actives</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Campaign Performance -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Performance des Campagnes</h5></div>
+    <div class="card-body">
+        <canvas id="campaignChart" height="80"></canvas>
+    </div>
+</div>
+
+<!-- Campaign Table -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Détail des Campagnes</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Campagne</th><th>Type</th><th>Envoyés</th><th>Ouverts</th><th>Cliqués</th><th>Taux</th><th>Statut</th></tr></thead>
+            <tbody>
+            {% for c in campaigns %}
+            <tr>
+                <td><strong>{{ c.name }}</strong></td>
+                <td><span class="badge bg-secondary">{{ c.campaign_type or 'email' }}</span></td>
+                <td>{{ c.sent_count or 0 }}</td>
+                <td>{{ c.opened_count or 0 }}</td>
+                <td>{{ c.clicked_count or 0 }}</td>
+                <td>
+                    {% if c.sent_count %}
+                    <span class="badge bg-{{ 'success' if (c.opened_count or 0) / c.sent_count > 0.3 else 'warning' }}">
+                        {{ "%.1f"|format((c.opened_count or 0) / c.sent_count * 100) }}%
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary">—</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge bg-{{ 'success' if c.is_active else 'secondary' }}">{{ 'Active' if c.is_active else 'Inactive' }}</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Logs -->
+{% if recent_logs %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Derniers Messages</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm">
+            <thead><tr><th>Campagne</th><th>Client</th><th>Statut</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for l in recent_logs %}
+            <tr>
+                <td>{{ l.campaign_name or '—' }}</td>
+                <td>{{ l.customer_name or '—' }}</td>
+                <td><span class="badge bg-{{ 'success' if l.status == 'sent' else 'info' if l.status == 'opened' else 'warning' }}">{{ l.status }}</span></td>
+                <td class="text-muted small">{{ l.sent_at[:16] if l.sent_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const names = [{% for c in campaigns %}'{{ c.name|truncate(20) }}',{% endfor %}];
+const sent = [{% for c in campaigns %}{{ c.sent_count or 0 }},{% endfor %}];
+const opened = [{% for c in campaigns %}{{ c.opened_count or 0 }},{% endfor %}];
+new Chart(document.getElementById('campaignChart'), {
+    type: 'bar',
+    data: {labels: names, datasets: [
+        {label: 'Envoyés', data: sent, backgroundColor: '#4fc3f7', borderRadius: 4},
+        {label: 'Ouverts', data: opened, backgroundColor: '#66bb6a', borderRadius: 4}
+    ]},
+    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+});
+</script>
+{% endblock %}

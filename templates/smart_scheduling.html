@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Planification Intelligente — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-calendar-check-fill text-primary"></i> Planification Intelligente</h2>
+        <p class="text-muted mb-0">{{ weekday }} — {{ date }}</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <input type="date" name="date" class="form-control" value="{{ date }}">
+        <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </form>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Timeline -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between">
+                <h5 class="mb-0">Planning du Jour</h5>
+                <span class="badge bg-primary">{{ appointments|length }} RDV</span>
+            </div>
+            <div class="card-body">
+                <div class="position-relative" style="min-height:500px">
+                    {% for hour in range(8, 19) %}
+                    <div class="d-flex border-bottom py-2" style="min-height:50px">
+                        <div class="text-muted fw-bold me-3" style="min-width:60px">{{ "%02d"|format(hour) }}:00</div>
+                        <div class="flex-fill d-flex flex-wrap gap-2">
+                            {% for a in appointments %}
+                            {% if a.time and a.time[:2]|int == hour %}
+                            <div class="badge bg-{{ 'success' if a.status == 'completed' else 'primary' if a.status == 'confirmed' else 'warning' }} text-wrap text-start p-2"
+                                 style="min-width:150px">
+                                <div class="fw-bold">{{ a.customer_name }}</div>
+                                <div class="small">{{ a.brand }} {{ a.model }} — {{ a.service or 'N/A' }}</div>
+                                {% if a.assigned_to %}<div class="small opacity-75">👤 {{ a.assigned_to }}</div>{% endif %}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggestion Tool -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">🤖 Suggestion Créneau</h5></div>
+            <div class="card-body">
+                <form id="suggestForm" class="row g-2 align-items-end">
+                    <input type="hidden" name="date" value="{{ date }}">
+                    <div class="col-md-4">
+                        <label class="form-label">Service</label>
+                        <select name="service_id" class="form-select">
+                            {% for s in services %}
+                            <option value="{{ s.id }}">{{ s.name }} ({{ s.estimated_minutes }}min)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Durée estimée (min)</label>
+                        <input type="number" name="duration" class="form-control" value="60">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-warning w-100" onclick="getSuggestions()">
+                            <i class="bi bi-magic"></i> Suggérer
+                        </button>
+                    </div>
+                </form>
+                <div id="suggestions" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Resources -->
+    <div class="col-lg-4">
+        <!-- Bays -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Baies de Service</h5></div>
+            <div class="card-body">
+                {% if bays %}
+                {% for bay in bays %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span><i class="bi bi-wrench"></i> {{ bay.name }}</span>
+                    <span class="badge bg-{{ 'success' if bay.is_active else 'secondary' }}">
+                        {{ 'Libre' if bay.is_active else 'Occupée' }}
+                    </span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">Aucune baie configurée</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Employees -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Équipe Disponible</h5></div>
+            <div class="card-body">
+                {% for emp in employees %}
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <div>
+                        <strong>{{ emp.full_name or 'Employé #' ~ emp.id }}</strong>
+                        {% if emp.specialties %}
+                        <div class="small text-muted">{{ emp.specialties }}</div>
+                        {% endif %}
+                    </div>
+                    {% if emp.shift_start %}
+                    <span class="badge bg-success">{{ emp.shift_start }} - {{ emp.shift_end }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Pas de shift</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if not employees %}
+                <p class="text-muted">Aucun employé</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Historical Pattern -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Tendance {{ weekday }}</h5></div>
+            <div class="card-body">
+                {% if hourly_pattern %}
+                {% for hp in hourly_pattern %}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small">{{ hp.time or '—' }}</span>
+                    <div class="progress flex-fill mx-2" style="height:8px">
+                        <div class="progress-bar bg-info" style="width:{{ [hp.count * 20, 100]|min }}%"></div>
+                    </div>
+                    <span class="badge bg-secondary">{{ hp.count }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted small">Pas assez de données</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getSuggestions() {
+    const form = document.getElementById('suggestForm');
+    const fd = new FormData(form);
+    fetch('/smart_scheduling/suggest', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .then(data => {
+            let html = '';
+            if (data.suggestions && data.suggestions.length > 0) {
+                html = '<div class="list-group">';
+                data.suggestions.forEach((s, i) => {
+                    html += `<div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div><i class="bi bi-clock"></i> <strong>${s.time}</strong></div>
+                        <span class="badge bg-${s.score > 80 ? 'success' : s.score > 50 ? 'warning' : 'danger'}">
+                            Score: ${s.score}</span>
+                    </div>`;
+                });
+                html += '</div>';
+            } else {
+                html = '<div class="alert alert-warning">Aucun créneau disponible</div>';
+            }
+            document.getElementById('suggestions').innerHTML = html;
+        });
+}
+</script>
+{% endblock %}

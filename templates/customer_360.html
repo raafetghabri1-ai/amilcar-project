@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Client 360° — {{ customer.name }} — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-person-badge-fill text-primary"></i> {{ customer.name }} — Vue 360°</h2>
+        <p class="text-muted mb-0">Profil complet du client avec tous les touchpoints</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/customer/{{ customer.id }}" class="btn btn-outline-primary"><i class="bi bi-eye"></i> Fiche</a>
+        <a href="/wallet/{{ customer.id }}" class="btn btn-outline-success"><i class="bi bi-wallet2"></i> Wallet</a>
+    </div>
+</div>
+
+<!-- Customer Header -->
+<div class="card border-0 shadow-sm mb-4 bg-dark text-white">
+    <div class="card-body py-4">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div class="rounded-circle bg-white text-dark d-flex align-items-center justify-content-center" style="width:80px;height:80px">
+                    <span class="display-6 fw-bold">{{ customer.name[0]|upper }}</span>
+                </div>
+            </div>
+            <div class="col">
+                <h3 class="mb-1">{{ customer.name }}</h3>
+                <div class="d-flex gap-3 text-white-50">
+                    <span><i class="bi bi-telephone"></i> {{ customer.phone or '—' }}</span>
+                    <span><i class="bi bi-envelope"></i> {{ customer.email or '—' }}</span>
+                    {% if customer.birthday %}<span><i class="bi bi-calendar-heart"></i> {{ customer.birthday }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="col-auto text-end">
+                <div class="d-flex gap-3">
+                    <div class="text-center">
+                        <div class="h3 fw-bold mb-0" style="color:#c9a84c">{{ "%.0f"|format(total_spent) }} DT</div>
+                        <small class="text-white-50">Total Dépensé</small>
+                    </div>
+                    <div class="text-center">
+                        <div class="h3 fw-bold mb-0 text-info">{{ total_visits }}</div>
+                        <small class="text-white-50">Visites</small>
+                    </div>
+                    <div class="text-center">
+                        <span class="badge bg-{{ 'warning' if customer.loyalty_level == 'gold' else 'secondary' if customer.loyalty_level == 'silver' else 'info' if customer.loyalty_level == 'platinum' else 'dark' }} fs-6">
+                            {{ (customer.loyalty_level or 'bronze')|upper }}
+                        </span>
+                        <div><small class="text-white-50">Fidélité</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+        <!-- Vehicles -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-car-front"></i> Véhicules ({{ cars|length }})</h5></div>
+            <div class="card-body">
+                {% if cars %}
+                <div class="row g-2">
+                {% for car in cars %}
+                <div class="col-md-6">
+                    <div class="border rounded p-3">
+                        <strong>{{ car.brand }} {{ car.model }}</strong>
+                        <div class="small text-muted">{{ car.plate }} {% if car.vehicle_type %}· {{ car.vehicle_type }}{% endif %} {% if car.color %}· {{ car.color }}{% endif %}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                </div>
+                {% else %}<p class="text-muted">Aucun véhicule</p>{% endif %}
+            </div>
+        </div>
+
+        <!-- Appointments -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-calendar"></i> Derniers RDV ({{ appointments|length }})</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead><tr><th>Date</th><th>Véhicule</th><th>Service</th><th>Statut</th></tr></thead>
+                    <tbody>
+                    {% for a in appointments %}
+                    <tr>
+                        <td>{{ a.date }}</td>
+                        <td>{{ a.brand }} {{ a.model }}</td>
+                        <td>{{ a.service or '—' }}</td>
+                        <td><span class="badge bg-{{ 'success' if a.status == 'completed' else 'warning' if a.status == 'pending' else 'danger' }}">{{ a.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Invoices -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-receipt"></i> Factures ({{ invoices|length }})</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead><tr><th>N°</th><th>Date</th><th>Total</th><th>Statut</th></tr></thead>
+                    <tbody>
+                    {% for i in invoices %}
+                    <tr>
+                        <td><a href="/print_invoice/{{ i.id }}">#{{ i.id }}</a></td>
+                        <td>{{ i.date }}</td>
+                        <td class="fw-bold">{{ "%.2f"|format(i.total) }} DT</td>
+                        <td><span class="badge bg-{{ 'success' if i.status == 'paid' else 'warning' if i.status == 'partial' else 'danger' }}">{{ i.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Treatments -->
+        {% if treatments %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-shield-check"></i> Traitements</h5></div>
+            <div class="card-body">
+                {% for t in treatments %}
+                <div class="d-flex justify-content-between border-bottom py-2">
+                    <div>
+                        <strong>{{ t.treatment_type }}</strong>
+                        <div class="small text-muted">{{ t.product_used or '' }} — {{ t.applied_date }}</div>
+                    </div>
+                    {% if t.warranty_end %}
+                    <span class="badge bg-info align-self-center">Garantie → {{ t.warranty_end }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+        <!-- Wallet -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="bi bi-wallet2"></i> Portefeuille</h5></div>
+            <div class="card-body text-center">
+                <div class="display-5 fw-bold text-success">{{ "%.2f"|format(customer.wallet_balance or 0) }} DT</div>
+                <small class="text-muted">Solde disponible</small>
+                {% if wallet %}
+                <hr>
+                {% for w in wallet[:5] %}
+                <div class="d-flex justify-content-between small border-bottom py-1">
+                    <span class="{{ 'text-success' if w.transaction_type == 'topup' else 'text-danger' }}">
+                        {{ '+' if w.transaction_type == 'topup' else '-' }}{{ "%.2f"|format(w.amount) }} DT
+                    </span>
+                    <span class="text-muted">{{ w.created_at[:10] if w.created_at else '' }}</span>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- NPS -->
+        {% if nps %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-primary text-white"><h5 class="mb-0"><i class="bi bi-emoji-smile"></i> NPS</h5></div>
+            <div class="card-body">
+                {% for n in nps %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <div class="fw-bold">Score: {{ n.score }}/10</div>
+                        <div class="small text-muted">{{ n.created_at[:10] if n.created_at else '' }}</div>
+                    </div>
+                    <span class="badge bg-{{ 'success' if n.category == 'promoter' else 'warning' if n.category == 'passive' else 'danger' }}">
+                        {{ n.category }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Reviews -->
+        {% if reviews %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark"><h5 class="mb-0"><i class="bi bi-star"></i> Avis</h5></div>
+            <div class="card-body">
+                {% for r in reviews %}
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="text-warning">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</div>
+                    <div class="small">{{ r.comment or '' }}</div>
+                    <div class="small text-muted">{{ r.created_at[:10] if r.created_at else '' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Communications -->
+        {% if comms %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-info text-white"><h5 class="mb-0"><i class="bi bi-chat-dots"></i> Communications</h5></div>
+            <div class="card-body">
+                {% for c in comms %}
+                <div class="d-flex gap-2 mb-2 pb-2 border-bottom">
+                    <span class="badge bg-{{ 'success' if c.channel == 'whatsapp' else 'primary' if c.channel == 'email' else 'secondary' }} align-self-start">
+                        {{ c.channel[:3] }}
+                    </span>
+                    <div class="small">{{ c.message[:80] }}{% if c.message|length > 80 %}...{% endif %}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Loyalty -->
+        {% if loyalty %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-trophy"></i> Fidélité</h5></div>
+            <div class="card-body text-center">
+                <div class="h4 fw-bold">{{ loyalty.total_washes or 0 }} lavages</div>
+                <div class="small text-muted">{{ loyalty.free_washes_earned or 0 }} gratuits gagnés</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Referrals -->
+        {% if referrals %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-share"></i> Parrainages</h5></div>
+            <div class="card-body">
+                {% for r in referrals %}
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>{{ r.referred_name or 'Client #' ~ r.referred_id }}</span>
+                    <span class="badge bg-{{ 'success' if r.status == 'converted' else 'secondary' }}">{{ r.status }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Timeline -->
+{% if timeline %}
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-clock-history"></i> Timeline</h5></div>
+    <div class="card-body">
+        <div class="timeline">
+        {% for t in timeline %}
+        <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+            <div class="text-center" style="min-width:60px">
+                <div class="small fw-bold">{{ t.created_at[:10] if t.created_at else '' }}</div>
+                <div class="small text-muted">{{ t.created_at[11:16] if t.created_at and t.created_at|length > 16 else '' }}</div>
+            </div>
+            <div>
+                <span class="badge bg-secondary">{{ t.event_type }}</span>
+                <div class="mt-1">{{ t.description }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

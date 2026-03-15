@@ -9444,6 +9444,621 @@ def loyalty_level_update():
     flash(f"{updated} niveaux de fidélité mis à jour", "success")
     return redirect("/loyalty_gamified")
 
+# ─── Phase 16: Operational Mastery & Smart Automation ───
+
+# ── 1. Flash Sales Manager ──
+@app.route('/flash_sales_manager')
+@login_required
+def flash_sales_manager():
+    with get_db() as conn:
+        sales = conn.execute("SELECT * FROM flash_sales ORDER BY created_at DESC").fetchall()
+        services = conn.execute("SELECT id, name FROM services ORDER BY name").fetchall()
+    now = datetime.now().strftime('%Y-%m-%dT%H:%M')
+    return render_template('flash_sales_manager.html', sales=sales, services=services, now=now)
+
+@app.route('/flash_sale/edit/<int:sale_id>', methods=['POST'])
+@login_required
+def flash_sale_edit(sale_id):
+    with get_db() as conn:
+        conn.execute("""UPDATE flash_sales SET name=?, service_ids=?, discount_pct=?,
+            start_datetime=?, end_datetime=?, max_bookings=?, description=?, banner_color=?
+            WHERE id=?""",
+            (request.form['name'], request.form.get('service_ids', ''),
+             float(request.form.get('discount_pct', 0)),
+             request.form['start_datetime'], request.form['end_datetime'],
+             int(request.form.get('max_bookings', 0)),
+             request.form.get('description', ''), request.form.get('banner_color', '#ff6b35'),
+             sale_id))
+        conn.commit()
+    flash("Vente flash mise à jour", "success")
+    return redirect("/flash_sales_manager")
+
+@app.route('/flash_sale/toggle/<int:sale_id>')
+@login_required
+def flash_sale_toggle(sale_id):
+    with get_db() as conn:
+        sale = conn.execute("SELECT is_active FROM flash_sales WHERE id=?", (sale_id,)).fetchone()
+        if sale:
+            conn.execute("UPDATE flash_sales SET is_active=? WHERE id=?", (1 - sale['is_active'], sale_id))
+            conn.commit()
+    flash("Statut mis à jour", "success")
+    return redirect("/flash_sales_manager")
+
+@app.route('/flash_sale/delete/<int:sale_id>')
+@login_required
+def flash_sale_delete(sale_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM flash_sales WHERE id=?", (sale_id,))
+        conn.commit()
+    flash("Vente flash supprimée", "success")
+    return redirect("/flash_sales_manager")
+
+# ── 2. Revenue Heatmap ──
+@app.route('/revenue_heatmap')
+@login_required
+def revenue_heatmap():
+    year = request.args.get('year', datetime.now().year, type=int)
+    with get_db() as conn:
+        daily_data = conn.execute("""
+            SELECT date, SUM(total) as revenue, COUNT(*) as count
+            FROM invoices WHERE date LIKE ? AND status != 'cancelled'
+            GROUP BY date ORDER BY date
+        """, (f"{year}%",)).fetchall()
+        monthly_summary = conn.execute("""
+            SELECT strftime('%m', date) as month, SUM(total) as revenue,
+                   COUNT(*) as invoices, AVG(total) as avg_ticket
+            FROM invoices WHERE strftime('%Y', date) = ? AND status != 'cancelled'
+            GROUP BY strftime('%m', date) ORDER BY month
+        """, (str(year),)).fetchall()
+        best_day = conn.execute("""
+            SELECT date, SUM(total) as revenue FROM invoices
+            WHERE strftime('%Y', date) = ? AND status != 'cancelled'
+            GROUP BY date ORDER BY revenue DESC LIMIT 1
+        """, (str(year),)).fetchone()
+        total_year = conn.execute("""
+            SELECT COALESCE(SUM(total), 0) FROM invoices
+            WHERE strftime('%Y', date) = ? AND status != 'cancelled'
+        """, (str(year),)).fetchone()[0]
+    heatmap_data = {}
+    for d in daily_data:
+        heatmap_data[d['date']] = {'revenue': d['revenue'], 'count': d['count']}
+    return render_template('revenue_heatmap.html', year=year, heatmap_data=heatmap_data,
+                          monthly_summary=monthly_summary, best_day=best_day,
+                          total_year=total_year)
+
+# ── 3. Commission Tracker ──
+@app.route('/commission_tracker')
+@login_required
+def commission_tracker():
+    month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+    with get_db() as conn:
+        employees = conn.execute("SELECT id, full_name, commission_rate FROM users WHERE role != 'admin' ORDER BY full_name").fetchall()
+        commissions = conn.execute("""
+            SELECT cl.*, u.full_name as emp_name FROM commission_log cl
+            LEFT JOIN users u ON cl.employee_id = u.id
+            WHERE cl.month = ? ORDER BY cl.created_at DESC
+        """, (month,)).fetchall()
+        summary = conn.execute("""
+            SELECT employee_id, employee_name,
+                   SUM(invoice_total) as total_revenue,
+                   SUM(commission_amount) as total_commission,
+                   COUNT(*) as services_count,
+                   SUM(CASE WHEN status='paid' THEN commission_amount ELSE 0 END) as paid,
+                   SUM(CASE WHEN status='pending' THEN commission_amount ELSE 0 END) as pending
+            FROM commission_log WHERE month = ?
+            GROUP BY employee_id ORDER BY total_commission DESC
+        """, (month,)).fetchall()
+    return render_template('commission_tracker.html', employees=employees, commissions=commissions,
+                          summary=summary, month=month)
+
+@app.route('/commission/generate', methods=['POST'])
+@login_required
+def commission_generate():
+    month = request.form['month']
+    with get_db() as conn:
+        existing = conn.execute("SELECT COUNT(*) FROM commission_log WHERE month=?", (month,)).fetchone()[0]
+        if existing > 0:
+            flash("Commissions déjà générées pour ce mois", "warning")
+            return redirect(f"/commission_tracker?month={month}")
+        employees = conn.execute("SELECT id, full_name, commission_rate FROM users WHERE role != 'admin' AND commission_rate > 0").fetchall()
+        for emp in employees:
+            invoices = conn.execute("""
+                SELECT i.id, i.total, a.service, a.id as appt_id
+                FROM invoices i LEFT JOIN appointments a ON i.appointment_id = a.id
+                WHERE a.assigned_to = ? AND i.date LIKE ? AND i.status != 'cancelled'
+            """, (emp['full_name'], f"{month}%")).fetchall()
+            for inv in invoices:
+                commission = inv['total'] * (emp['commission_rate'] / 100)
+                conn.execute("""INSERT INTO commission_log
+                    (employee_id, employee_name, month, appointment_id, invoice_id,
+                     service_name, invoice_total, commission_rate, commission_amount)
+                    VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (emp['id'], emp['full_name'], month, inv['appt_id'] or 0, inv['id'],
+                     inv['service'] or '', inv['total'], emp['commission_rate'], commission))
+        conn.commit()
+    flash("Commissions générées avec succès", "success")
+    return redirect(f"/commission_tracker?month={month}")
+
+@app.route('/commission/pay/<int:emp_id>', methods=['POST'])
+@login_required
+def commission_pay(emp_id):
+    month = request.form['month']
+    with get_db() as conn:
+        conn.execute("UPDATE commission_log SET status='paid', paid_at=? WHERE employee_id=? AND month=? AND status='pending'",
+                    (datetime.now().strftime('%Y-%m-%d %H:%M'), emp_id, month))
+        conn.commit()
+    flash("Commissions marquées comme payées", "success")
+    return redirect(f"/commission_tracker?month={month}")
+
+# ── 4. Campaign Analytics ──
+@app.route('/campaign_analytics')
+@login_required
+def campaign_analytics():
+    with get_db() as conn:
+        campaigns = conn.execute("""
+            SELECT mc.*, COUNT(cl.id) as message_count,
+                   SUM(CASE WHEN cl.status='sent' THEN 1 ELSE 0 END) as sent_count,
+                   SUM(CASE WHEN cl.status='opened' THEN 1 ELSE 0 END) as opened_count,
+                   SUM(CASE WHEN cl.status='clicked' THEN 1 ELSE 0 END) as clicked_count
+            FROM marketing_campaigns mc
+            LEFT JOIN campaign_log cl ON mc.id = cl.campaign_id
+            GROUP BY mc.id ORDER BY mc.created_at DESC
+        """).fetchall()
+        total_campaigns = len(campaigns)
+        total_sent = sum(c['sent_count'] or 0 for c in campaigns)
+        total_opened = sum(c['opened_count'] or 0 for c in campaigns)
+        avg_open_rate = (total_opened / total_sent * 100) if total_sent > 0 else 0
+        recent_logs = conn.execute("""
+            SELECT cl.*, mc.name as campaign_name, c.name as customer_name
+            FROM campaign_log cl
+            LEFT JOIN marketing_campaigns mc ON cl.campaign_id = mc.id
+            LEFT JOIN customers c ON cl.customer_id = c.id
+            ORDER BY cl.sent_at DESC LIMIT 50
+        """).fetchall()
+    return render_template('campaign_analytics.html', campaigns=campaigns,
+                          total_campaigns=total_campaigns, total_sent=total_sent,
+                          avg_open_rate=avg_open_rate, recent_logs=recent_logs)
+
+# ── 5. Multi-Channel Inbox ──
+@app.route('/channel_inbox')
+@login_required
+def channel_inbox():
+    channel = request.args.get('channel', 'all')
+    status = request.args.get('status', 'all')
+    with get_db() as conn:
+        query = "SELECT * FROM channel_inbox WHERE 1=1"
+        params = []
+        if channel != 'all':
+            query += " AND channel = ?"
+            params.append(channel)
+        if status != 'all':
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at DESC LIMIT 200"
+        messages = conn.execute(query, params).fetchall()
+        stats = conn.execute("""
+            SELECT channel, COUNT(*) as total,
+                   SUM(CASE WHEN direction='outgoing' THEN 1 ELSE 0 END) as sent,
+                   SUM(CASE WHEN direction='incoming' THEN 1 ELSE 0 END) as received,
+                   SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed
+            FROM channel_inbox GROUP BY channel
+        """).fetchall()
+        # Sync existing logs into unified inbox
+        existing_count = conn.execute("SELECT COUNT(*) FROM channel_inbox").fetchone()[0]
+        if existing_count == 0:
+            # Import from whatsapp_logs
+            wa_logs = conn.execute("SELECT * FROM whatsapp_logs LIMIT 500").fetchall()
+            for log in wa_logs:
+                conn.execute("""INSERT INTO channel_inbox
+                    (customer_id, customer_name, channel, direction, message, status, created_at)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (log['customer_id'], '', 'whatsapp', 'outgoing',
+                     log['message_text'], log['status'], log['created_at']))
+            # Import from email_log
+            em_logs = conn.execute("SELECT * FROM email_log LIMIT 500").fetchall()
+            for log in em_logs:
+                conn.execute("""INSERT INTO channel_inbox
+                    (customer_id, customer_name, channel, direction, message, status, created_at)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (log['customer_id'], '', 'email', 'outgoing',
+                     log['subject'], log['status'], log['sent_at']))
+            conn.commit()
+            messages = conn.execute(query, params).fetchall()
+            stats = conn.execute("""
+                SELECT channel, COUNT(*) as total,
+                       SUM(CASE WHEN direction='outgoing' THEN 1 ELSE 0 END) as sent,
+                       SUM(CASE WHEN direction='incoming' THEN 1 ELSE 0 END) as received,
+                       SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) as failed
+                FROM channel_inbox GROUP BY channel
+            """).fetchall()
+    return render_template('channel_inbox.html', messages=messages, stats=stats,
+                          channel=channel, status=status)
+
+@app.route('/channel_inbox/send', methods=['POST'])
+@login_required
+def channel_inbox_send():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO channel_inbox
+            (customer_id, customer_name, channel, direction, message, status)
+            VALUES (?,?,?,?,?,?)""",
+            (int(request.form.get('customer_id', 0)), request.form.get('customer_name', ''),
+             request.form['channel'], 'outgoing', request.form['message'], 'sent'))
+        conn.commit()
+    flash("Message envoyé", "success")
+    return redirect("/channel_inbox")
+
+# ── 6. Business Health Score ──
+@app.route('/business_health')
+@login_required
+def business_health():
+    with get_db() as conn:
+        today = datetime.now().strftime('%Y-%m-%d')
+        month_start = datetime.now().strftime('%Y-%m-01')
+        last_month_start = (datetime.now().replace(day=1) - timedelta(days=1)).strftime('%Y-%m-01')
+        last_month_end = (datetime.now().replace(day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
+
+        # Revenue score (0-100)
+        current_revenue = conn.execute(
+            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= ? AND status != 'cancelled'",
+            (month_start,)).fetchone()[0]
+        last_revenue = conn.execute(
+            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= ? AND date <= ? AND status != 'cancelled'",
+            (last_month_start, last_month_end)).fetchone()[0]
+        revenue_score = min(100, (current_revenue / max(last_revenue, 1)) * 100)
+
+        # Satisfaction score (NPS-based)
+        nps_data = conn.execute("SELECT AVG(score) as avg_nps FROM nps_surveys WHERE created_at >= ?", (month_start,)).fetchone()
+        satisfaction_score = min(100, ((nps_data['avg_nps'] or 7) / 10) * 100)
+
+        # Efficiency score
+        timers = conn.execute("SELECT AVG(efficiency_pct) FROM service_timer WHERE started_at >= ?", (month_start,)).fetchone()[0]
+        efficiency_score = min(100, timers or 75)
+
+        # Retention score
+        total_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        returning = conn.execute("SELECT COUNT(*) FROM customers WHERE total_visits > 1").fetchone()[0]
+        retention_score = (returning / max(total_customers, 1)) * 100
+
+        # Growth score
+        new_this_month = conn.execute(
+            "SELECT COUNT(*) FROM customers WHERE created_at >= ?", (month_start,)).fetchone()[0]
+        new_last_month = conn.execute(
+            "SELECT COUNT(*) FROM customers WHERE created_at >= ? AND created_at < ?",
+            (last_month_start, month_start)).fetchone()[0]
+        growth_score = min(100, (new_this_month / max(new_last_month, 1)) * 100)
+
+        overall = (revenue_score * 0.3 + satisfaction_score * 0.2 + efficiency_score * 0.2 +
+                   retention_score * 0.15 + growth_score * 0.15)
+
+        # Save to history
+        conn.execute("""INSERT OR REPLACE INTO business_health_score
+            (date, overall_score, revenue_score, satisfaction_score,
+             efficiency_score, retention_score, growth_score)
+            VALUES (?,?,?,?,?,?,?)""",
+            (today, overall, revenue_score, satisfaction_score,
+             efficiency_score, retention_score, growth_score))
+        conn.commit()
+
+        # History for chart
+        history = conn.execute(
+            "SELECT * FROM business_health_score ORDER BY date DESC LIMIT 30").fetchall()
+
+        # Top metrics
+        appointments_today = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date = ?", (today,)).fetchone()[0]
+        revenue_today = conn.execute(
+            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date = ? AND status != 'cancelled'",
+            (today,)).fetchone()[0]
+
+    return render_template('business_health.html', overall=overall,
+                          revenue_score=revenue_score, satisfaction_score=satisfaction_score,
+                          efficiency_score=efficiency_score, retention_score=retention_score,
+                          growth_score=growth_score, history=history,
+                          current_revenue=current_revenue, last_revenue=last_revenue,
+                          appointments_today=appointments_today, revenue_today=revenue_today)
+
+# ── 7. Smart Scheduling ──
+@app.route('/smart_scheduling')
+@login_required
+def smart_scheduling():
+    date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    with get_db() as conn:
+        # Get all bays
+        bays = conn.execute("SELECT * FROM service_bays WHERE is_active=1 ORDER BY name").fetchall()
+        # Get appointments for date
+        appointments = conn.execute("""
+            SELECT a.*, c.name as customer_name, car.brand, car.model
+            FROM appointments a
+            LEFT JOIN customers c ON a.customer_id = c.id
+            LEFT JOIN cars car ON a.car_id = car.id
+            WHERE a.date = ? ORDER BY a.time
+        """, (date,)).fetchall()
+        # Get employees and their shifts
+        employees = conn.execute("""
+            SELECT u.id, u.full_name, u.specialties,
+                   es.shift_start, es.shift_end
+            FROM users u
+            LEFT JOIN employee_shifts es ON u.id = es.employee_id AND es.date = ?
+            WHERE u.role != 'admin' ORDER BY u.full_name
+        """, (date,)).fetchall()
+        # Get historical load pattern for this weekday
+        weekday = datetime.strptime(date, '%Y-%m-%d').strftime('%A')
+        hourly_pattern = conn.execute("""
+            SELECT time, COUNT(*) as count FROM appointments
+            WHERE strftime('%w', date) = strftime('%w', ?)
+            GROUP BY time ORDER BY time
+        """, (date,)).fetchall()
+        # Available services
+        services = conn.execute("SELECT id, name, estimated_minutes FROM services ORDER BY name").fetchall()
+    return render_template('smart_scheduling.html', date=date, bays=bays,
+                          appointments=appointments, employees=employees,
+                          hourly_pattern=hourly_pattern, services=services, weekday=weekday)
+
+@app.route('/smart_scheduling/suggest', methods=['POST'])
+@login_required
+def smart_scheduling_suggest():
+    date = request.form['date']
+    service_id = int(request.form.get('service_id', 0))
+    duration = int(request.form.get('duration', 60))
+    with get_db() as conn:
+        # Find busy times
+        busy = conn.execute("""
+            SELECT time, estimated_duration FROM appointments WHERE date = ? AND status != 'cancelled'
+        """, (date,)).fetchall()
+        busy_times = set()
+        for b in busy:
+            if b['time']:
+                hour = int(b['time'].split(':')[0]) if ':' in b['time'] else 8
+                dur = b['estimated_duration'] or 60
+                for h in range(hour, min(hour + (dur // 60) + 1, 19)):
+                    busy_times.add(h)
+        # Suggest free slots
+        suggestions = []
+        for hour in range(8, 18):
+            slots_needed = max(1, duration // 60)
+            if all(h not in busy_times for h in range(hour, min(hour + slots_needed, 19))):
+                suggestions.append({'time': f"{hour:02d}:00", 'score': 100 - len(busy_times) * 5})
+        # Sort by score
+        suggestions.sort(key=lambda x: x['score'], reverse=True)
+    return jsonify({'suggestions': suggestions[:5]})
+
+# ── 8. Data Import Center ──
+@app.route('/import_center')
+@login_required
+def import_center():
+    with get_db() as conn:
+        history = conn.execute("SELECT * FROM import_history ORDER BY created_at DESC LIMIT 20").fetchall()
+    return render_template('import_center.html', history=history)
+
+@app.route('/import_center/upload', methods=['POST'])
+@login_required
+def import_center_upload():
+    import csv
+    import io
+    import_type = request.form['import_type']
+    file = request.files.get('file')
+    if not file or not file.filename.endswith('.csv'):
+        flash("Veuillez fournir un fichier CSV valide", "danger")
+        return redirect("/import_center")
+
+    content = file.read().decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(content), delimiter=';')
+    rows = list(reader)
+    if not rows:
+        flash("Fichier vide", "warning")
+        return redirect("/import_center")
+
+    imported = 0
+    errors = 0
+    error_details = []
+
+    with get_db() as conn:
+        for i, row in enumerate(rows):
+            try:
+                if import_type == 'services':
+                    name = row.get('name', row.get('nom', '')).strip()
+                    price = float(row.get('price', row.get('prix', 0)))
+                    if name:
+                        conn.execute("INSERT INTO services (name, price) VALUES (?,?)", (name, price))
+                        imported += 1
+                elif import_type == 'inventory':
+                    name = row.get('name', row.get('nom', '')).strip()
+                    qty = int(row.get('quantity', row.get('quantite', 0)))
+                    price = float(row.get('price', row.get('prix', 0)))
+                    if name:
+                        conn.execute("INSERT INTO inventory (name, quantity, price) VALUES (?,?,?)",
+                                   (name, qty, price))
+                        imported += 1
+                elif import_type == 'customers':
+                    name = row.get('name', row.get('nom', '')).strip()
+                    phone = row.get('phone', row.get('telephone', '')).strip()
+                    if name:
+                        conn.execute("INSERT INTO customers (name, phone) VALUES (?,?)", (name, phone))
+                        imported += 1
+                elif import_type == 'cars':
+                    brand = row.get('brand', row.get('marque', '')).strip()
+                    model = row.get('model', row.get('modele', '')).strip()
+                    plate = row.get('plate', row.get('matricule', '')).strip()
+                    cid = int(row.get('customer_id', row.get('client_id', 0)))
+                    if brand and plate:
+                        conn.execute("INSERT INTO cars (brand, model, plate, customer_id) VALUES (?,?,?,?)",
+                                   (brand, model, plate, cid))
+                        imported += 1
+            except Exception as e:
+                errors += 1
+                error_details.append(f"Ligne {i+2}: {str(e)[:80]}")
+
+        conn.execute("""INSERT INTO import_history
+            (import_type, filename, total_rows, imported_rows, errors, error_details)
+            VALUES (?,?,?,?,?,?)""",
+            (import_type, file.filename, len(rows), imported, errors, str(error_details)))
+        conn.commit()
+
+    flash(f"Import terminé: {imported} importés, {errors} erreurs", "success" if errors == 0 else "warning")
+    return redirect("/import_center")
+
+# ── 9. PDF Report Builder ──
+@app.route('/report_builder')
+@login_required
+def report_builder():
+    with get_db() as conn:
+        reports = conn.execute("SELECT * FROM report_builder ORDER BY created_at DESC").fetchall()
+    return render_template('report_builder.html', reports=reports)
+
+@app.route('/report_builder/create', methods=['POST'])
+@login_required
+def report_builder_create():
+    sections = request.form.getlist('sections')
+    with get_db() as conn:
+        conn.execute("""INSERT INTO report_builder (name, report_type, sections, schedule)
+            VALUES (?,?,?,?)""",
+            (request.form['name'], request.form['report_type'],
+             ','.join(sections), request.form.get('schedule', '')))
+        conn.commit()
+    flash("Rapport créé avec succès", "success")
+    return redirect("/report_builder")
+
+@app.route('/report_builder/generate/<int:report_id>')
+@login_required
+def report_builder_generate(report_id):
+    with get_db() as conn:
+        report = conn.execute("SELECT * FROM report_builder WHERE id=?", (report_id,)).fetchone()
+        if not report:
+            flash("Rapport non trouvé", "danger")
+            return redirect("/report_builder")
+        sections = (report['sections'] or '').split(',')
+        data = {}
+        month_start = datetime.now().strftime('%Y-%m-01')
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        if 'revenue' in sections:
+            data['revenue'] = conn.execute("""
+                SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count,
+                       AVG(total) as avg_ticket
+                FROM invoices WHERE date >= ? AND status != 'cancelled'
+            """, (month_start,)).fetchone()
+        if 'appointments' in sections:
+            data['appointments'] = conn.execute("""
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+                       SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled
+                FROM appointments WHERE date >= ?
+            """, (month_start,)).fetchone()
+        if 'customers' in sections:
+            data['customers'] = conn.execute("""
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_this_month
+                FROM customers
+            """, (month_start,)).fetchone()
+        if 'services' in sections:
+            data['services'] = conn.execute("""
+                SELECT service, COUNT(*) as count, SUM(i.total) as revenue
+                FROM appointments a LEFT JOIN invoices i ON a.id = i.appointment_id
+                WHERE a.date >= ? GROUP BY a.service ORDER BY count DESC LIMIT 10
+            """, (month_start,)).fetchall()
+        if 'employees' in sections:
+            data['employees'] = conn.execute("""
+                SELECT assigned_to, COUNT(*) as count
+                FROM appointments WHERE date >= ? AND assigned_to != ''
+                GROUP BY assigned_to ORDER BY count DESC
+            """, (month_start,)).fetchall()
+        if 'inventory' in sections:
+            data['inventory'] = conn.execute("""
+                SELECT name, quantity, min_quantity FROM inventory
+                WHERE quantity <= min_quantity ORDER BY quantity ASC LIMIT 10
+            """).fetchall()
+
+        conn.execute("UPDATE report_builder SET last_generated=? WHERE id=?", (today, report_id))
+        conn.commit()
+
+    # Generate PDF
+    settings = {}
+    with get_db() as conn:
+        for s in conn.execute("SELECT key, value FROM settings").fetchall():
+            settings[s['key']] = s['value']
+
+    html = render_template('report_builder_pdf.html', report=report, data=data,
+                          sections=sections, settings=settings,
+                          generated_at=datetime.now().strftime('%d/%m/%Y %H:%M'))
+    from xhtml2pdf import pisa
+    pdf_buffer = io.BytesIO()
+    pisa.CreatePDF(io.BytesIO(html.encode('utf-8')), dest=pdf_buffer)
+    pdf_buffer.seek(0)
+    return send_file(pdf_buffer, mimetype='application/pdf',
+                    download_name=f"rapport_{report['name']}_{today}.pdf", as_attachment=True)
+
+@app.route('/report_builder/delete/<int:report_id>')
+@login_required
+def report_builder_delete(report_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM report_builder WHERE id=?", (report_id,))
+        conn.commit()
+    flash("Rapport supprimé", "success")
+    return redirect("/report_builder")
+
+# ── 10. Customer 360 View ──
+@app.route('/customer_360/<int:customer_id>')
+@login_required
+def customer_360(customer_id):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Client non trouvé", "danger")
+            return redirect("/customers")
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (customer_id,)).fetchall()
+        appointments = conn.execute("""
+            SELECT a.*, c.brand, c.model, c.plate FROM appointments a
+            LEFT JOIN cars c ON a.car_id = c.id
+            WHERE a.customer_id=? ORDER BY a.date DESC LIMIT 20
+        """, (customer_id,)).fetchall()
+        invoices = conn.execute("""
+            SELECT * FROM invoices WHERE customer_id=? ORDER BY date DESC LIMIT 20
+        """, (customer_id,)).fetchall()
+        total_spent = conn.execute(
+            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE customer_id=? AND status != 'cancelled'",
+            (customer_id,)).fetchone()[0]
+        total_visits = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE customer_id=?", (customer_id,)).fetchone()[0]
+        # Wallet
+        wallet = conn.execute(
+            "SELECT * FROM wallet_transactions WHERE customer_id=? ORDER BY created_at DESC LIMIT 10",
+            (customer_id,)).fetchall()
+        # NPS
+        nps = conn.execute(
+            "SELECT * FROM nps_surveys WHERE customer_id=? ORDER BY created_at DESC LIMIT 5",
+            (customer_id,)).fetchall()
+        # Communications
+        comms = conn.execute(
+            "SELECT * FROM channel_inbox WHERE customer_id=? ORDER BY created_at DESC LIMIT 10",
+            (customer_id,)).fetchall()
+        # Loyalty
+        loyalty = conn.execute(
+            "SELECT * FROM loyalty WHERE customer_id=?", (customer_id,)).fetchone()
+        # Treatments
+        treatments = conn.execute("""
+            SELECT t.* FROM treatments t
+            LEFT JOIN cars c ON t.car_id = c.id
+            WHERE c.customer_id=? ORDER BY t.applied_date DESC LIMIT 10
+        """, (customer_id,)).fetchall()
+        # Timeline
+        timeline = conn.execute(
+            "SELECT * FROM customer_timeline WHERE customer_id=? ORDER BY created_at DESC LIMIT 20",
+            (customer_id,)).fetchall()
+        # Reviews
+        reviews = conn.execute(
+            "SELECT * FROM client_reviews WHERE customer_id=? ORDER BY created_at DESC LIMIT 5",
+            (customer_id,)).fetchall()
+        # Referrals
+        referrals = conn.execute(
+            "SELECT * FROM referrals WHERE referrer_id=? OR referred_id=? ORDER BY created_at DESC",
+            (customer_id, customer_id)).fetchall()
+    return render_template('customer_360.html', customer=customer, cars=cars,
+                          appointments=appointments, invoices=invoices,
+                          total_spent=total_spent, total_visits=total_visits,
+                          wallet=wallet, nps=nps, comms=comms, loyalty=loyalty,
+                          treatments=treatments, timeline=timeline, reviews=reviews,
+                          referrals=referrals)
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

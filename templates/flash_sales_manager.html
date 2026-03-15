@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Ventes Flash — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-lightning-charge-fill text-warning"></i> Ventes Flash</h2>
+        <p class="text-muted mb-0">Gérer les offres flash et promotions limitées</p>
+    </div>
+    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#addSaleModal">
+        <i class="bi bi-plus-lg"></i> Nouvelle Vente Flash
+    </button>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    {% set active_sales = sales|selectattr('is_active')|list %}
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-warning">{{ sales|length }}</div>
+                <small class="text-muted">Total Ventes Flash</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-success">{{ active_sales|length }}</div>
+                <small class="text-muted">Actives</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                {% set total_bookings = sales|sum(attribute='current_bookings') %}
+                <div class="display-6 fw-bold text-primary">{{ total_bookings }}</div>
+                <small class="text-muted">Réservations Totales</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                {% if sales|length > 0 %}
+                <div class="display-6 fw-bold text-danger">{{ "%.0f"|format(sales|map(attribute='discount_pct')|list|max) }}%</div>
+                {% else %}
+                <div class="display-6 fw-bold text-danger">0%</div>
+                {% endif %}
+                <small class="text-muted">Réduction Max</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sales List -->
+<div class="row g-3">
+{% for sale in sales %}
+<div class="col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid {{ sale.banner_color or '#ff6b35' }}!important">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="card-title mb-0">{{ sale.name }}</h5>
+                {% if sale.is_active %}
+                <span class="badge bg-success">Active</span>
+                {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </div>
+            {% if sale.description %}
+            <p class="text-muted small">{{ sale.description }}</p>
+            {% endif %}
+            <div class="mb-2">
+                <span class="badge bg-danger fs-6">-{{ sale.discount_pct }}%</span>
+            </div>
+            <div class="small text-muted">
+                <i class="bi bi-calendar"></i> {{ sale.start_datetime[:16] }} → {{ sale.end_datetime[:16] }}<br>
+                <i class="bi bi-people"></i> {{ sale.current_bookings }}/{{ sale.max_bookings or '∞' }} réservations
+            </div>
+            {% if sale.max_bookings > 0 %}
+            <div class="progress mt-2" style="height:6px">
+                <div class="progress-bar bg-warning" style="width:{{ (sale.current_bookings/sale.max_bookings*100)|int }}%"></div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-transparent d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary flex-fill" data-bs-toggle="modal"
+                    data-bs-target="#editSale{{ sale.id }}"><i class="bi bi-pencil"></i></button>
+            <a href="/flash_sale/toggle/{{ sale.id }}" class="btn btn-sm btn-outline-{{ 'warning' if sale.is_active else 'success' }} flex-fill">
+                <i class="bi bi-{{ 'pause' if sale.is_active else 'play' }}"></i></a>
+            <a href="/flash_sale/delete/{{ sale.id }}" class="btn btn-sm btn-outline-danger flex-fill"
+               onclick="return confirm('Supprimer cette vente flash ?')"><i class="bi bi-trash"></i></a>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editSale{{ sale.id }}">
+    <div class="modal-dialog">
+        <form method="post" action="/flash_sale/edit/{{ sale.id }}" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Modifier: {{ sale.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Nom</label>
+                    <input type="text" name="name" class="form-control" value="{{ sale.name }}" required></div>
+                <div class="mb-3"><label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2">{{ sale.description or '' }}</textarea></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">Réduction %</label>
+                        <input type="number" name="discount_pct" class="form-control" value="{{ sale.discount_pct }}" step="0.1"></div>
+                    <div class="col-6"><label class="form-label">Max Réservations</label>
+                        <input type="number" name="max_bookings" class="form-control" value="{{ sale.max_bookings }}"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">Début</label>
+                        <input type="datetime-local" name="start_datetime" class="form-control" value="{{ sale.start_datetime }}"></div>
+                    <div class="col-6"><label class="form-label">Fin</label>
+                        <input type="datetime-local" name="end_datetime" class="form-control" value="{{ sale.end_datetime }}"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Services (IDs séparés par virgule)</label>
+                    <input type="text" name="service_ids" class="form-control" value="{{ sale.service_ids }}"></div>
+                <div class="mb-3"><label class="form-label">Couleur bannière</label>
+                    <input type="color" name="banner_color" class="form-control form-control-color" value="{{ sale.banner_color or '#ff6b35' }}"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+{% if not sales %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-lightning-charge display-1"></i>
+    <p class="mt-3">Aucune vente flash créée</p>
+</div>
+{% endif %}
+
+<!-- Add Sale Modal -->
+<div class="modal fade" id="addSaleModal">
+    <div class="modal-dialog">
+        <form method="post" action="/flash_sale/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Nouvelle Vente Flash</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Nom</label>
+                    <input type="text" name="name" class="form-control" required placeholder="Ex: Promo Été 2026"></div>
+                <div class="mb-3"><label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2"></textarea></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">Réduction %</label>
+                        <input type="number" name="discount_pct" class="form-control" step="0.1" value="20"></div>
+                    <div class="col-6"><label class="form-label">Max Réservations</label>
+                        <input type="number" name="max_bookings" class="form-control" value="10"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">Début</label>
+                        <input type="datetime-local" name="start_datetime" class="form-control" value="{{ now }}" required></div>
+                    <div class="col-6"><label class="form-label">Fin</label>
+                        <input type="datetime-local" name="end_datetime" class="form-control" required></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Services</label>
+                    <select name="service_ids" class="form-select" multiple>
+                        {% for s in services %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select></div>
+                <div class="mb-3"><label class="form-label">Couleur bannière</label>
+                    <input type="color" name="banner_color" class="form-control form-control-color" value="#ff6b35"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-warning">Créer</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

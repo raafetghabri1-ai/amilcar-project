@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; margin: 30px; font-size: 12px; }
+        .header { text-align: center; border-bottom: 3px solid #1a1a2e; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: #1a1a2e; font-size: 28px; margin: 0; letter-spacing: 3px; }
+        .header .tagline { color: #c9a84c; font-size: 11px; letter-spacing: 4px; margin-top: 3px; }
+        .header .report-title { font-size: 16px; color: #555; margin-top: 8px; }
+        .meta { display: flex; justify-content: space-between; margin-bottom: 20px; color: #777; font-size: 10px; }
+        .section { margin-bottom: 25px; }
+        .section h2 { font-size: 16px; color: #1a1a2e; border-bottom: 2px solid #c9a84c; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th { background: #1a1a2e; color: #fff; padding: 8px 10px; text-align: left; font-size: 11px; }
+        td { padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 11px; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .kpi-grid { display: flex; gap: 15px; margin-top: 10px; }
+        .kpi-box { flex: 1; text-align: center; background: #f5f5f5; padding: 12px; border-radius: 6px; }
+        .kpi-value { font-size: 22px; font-weight: bold; color: #1a1a2e; }
+        .kpi-label { font-size: 9px; color: #777; text-transform: uppercase; letter-spacing: 1px; }
+        .footer { text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; color: #aaa; font-size: 9px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ settings.get('shop_name', 'AMILCAR') }}</h1>
+        <div class="tagline">{{ settings.get('shop_tagline', 'WHERE CARS BECOME ART') }}</div>
+        <div class="report-title">{{ report.name }} — {{ report.report_type|upper }}</div>
+    </div>
+
+    <div class="meta">
+        <span>{{ settings.get('shop_address', '') }}</span>
+        <span>Généré le {{ generated_at }}</span>
+    </div>
+
+    {% if 'revenue' in sections and data.revenue %}
+    <div class="section">
+        <h2>💰 Revenus</h2>
+        <div class="kpi-grid">
+            <div class="kpi-box">
+                <div class="kpi-value">{{ "%.2f"|format(data.revenue.total or 0) }} DT</div>
+                <div class="kpi-label">Revenu Total</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.revenue.count or 0 }}</div>
+                <div class="kpi-label">Factures</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ "%.2f"|format(data.revenue.avg_ticket or 0) }} DT</div>
+                <div class="kpi-label">Ticket Moyen</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'appointments' in sections and data.appointments %}
+    <div class="section">
+        <h2>📅 Rendez-vous</h2>
+        <div class="kpi-grid">
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.appointments.total or 0 }}</div>
+                <div class="kpi-label">Total</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.appointments.completed or 0 }}</div>
+                <div class="kpi-label">Complétés</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.appointments.cancelled or 0 }}</div>
+                <div class="kpi-label">Annulés</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'customers' in sections and data.customers %}
+    <div class="section">
+        <h2>👥 Clients</h2>
+        <div class="kpi-grid">
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.customers.total or 0 }}</div>
+                <div class="kpi-label">Total Clients</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-value">{{ data.customers.new_this_month or 0 }}</div>
+                <div class="kpi-label">Nouveaux ce mois</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'services' in sections and data.services %}
+    <div class="section">
+        <h2>🛠️ Top Services</h2>
+        <table>
+            <thead><tr><th>Service</th><th>Nombre</th><th>Revenu</th></tr></thead>
+            <tbody>
+            {% for s in data.services %}
+            <tr>
+                <td>{{ s.service or '—' }}</td>
+                <td>{{ s.count }}</td>
+                <td>{{ "%.2f"|format(s.revenue or 0) }} DT</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if 'employees' in sections and data.employees %}
+    <div class="section">
+        <h2>👷 Performance Équipe</h2>
+        <table>
+            <thead><tr><th>Employé</th><th>RDV Réalisés</th></tr></thead>
+            <tbody>
+            {% for e in data.employees %}
+            <tr><td>{{ e.assigned_to }}</td><td>{{ e.count }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if 'inventory' in sections and data.inventory %}
+    <div class="section">
+        <h2>📦 Stock Critique</h2>
+        <table>
+            <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil Min</th></tr></thead>
+            <tbody>
+            {% for i in data.inventory %}
+            <tr>
+                <td>{{ i.name }}</td>
+                <td style="color:red;font-weight:bold">{{ i.quantity }}</td>
+                <td>{{ i.min_quantity }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        {{ settings.get('shop_name', 'AMILCAR') }} — {{ settings.get('shop_address', '') }} — Tel: {{ settings.get('shop_phone', '') }}<br>
+        Rapport généré automatiquement le {{ generated_at }}
+    </div>
+</body>
+</html>

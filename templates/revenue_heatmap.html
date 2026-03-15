@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Revenue Heatmap — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-calendar-fill text-success"></i> Revenue Heatmap {{ year }}</h2>
+        <p class="text-muted mb-0">Visualisation calendaire des revenus quotidiens</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/revenue_heatmap?year={{ year-1 }}" class="btn btn-outline-secondary"><i class="bi bi-chevron-left"></i> {{ year-1 }}</a>
+        <a href="/revenue_heatmap?year={{ year+1 }}" class="btn btn-outline-secondary">{{ year+1 }} <i class="bi bi-chevron-right"></i></a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-success">{{ "%.0f"|format(total_year) }} DT</div>
+                <small class="text-muted">Revenu Total {{ year }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-primary">{{ heatmap_data|length }}</div>
+                <small class="text-muted">Jours Actifs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                {% if heatmap_data|length > 0 %}
+                <div class="display-6 fw-bold text-info">{{ "%.0f"|format(total_year / heatmap_data|length) }} DT</div>
+                {% else %}
+                <div class="display-6 fw-bold text-info">0 DT</div>
+                {% endif %}
+                <small class="text-muted">Moyenne/Jour Actif</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                {% if best_day %}
+                <div class="display-6 fw-bold text-warning">{{ "%.0f"|format(best_day.revenue) }} DT</div>
+                <small class="text-muted">Meilleur Jour: {{ best_day.date }}</small>
+                {% else %}
+                <div class="display-6 fw-bold text-warning">—</div>
+                <small class="text-muted">Meilleur Jour</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Bar Chart -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Revenus Mensuels {{ year }}</h5></div>
+    <div class="card-body">
+        <canvas id="monthlyChart" height="80"></canvas>
+    </div>
+</div>
+
+<!-- Heatmap Calendar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Calendrier des Revenus</h5></div>
+    <div class="card-body">
+        <div class="d-flex gap-2 mb-3 justify-content-end">
+            <span class="badge" style="background:#e8f5e9">0 DT</span>
+            <span class="badge" style="background:#a5d6a7">Faible</span>
+            <span class="badge" style="background:#66bb6a;color:#fff">Moyen</span>
+            <span class="badge" style="background:#2e7d32;color:#fff">Bon</span>
+            <span class="badge" style="background:#1b5e20;color:#fff">Excellent</span>
+        </div>
+        <div class="row g-2">
+        {% set months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+        {% for m in range(1, 13) %}
+        <div class="col-md-4 col-lg-3 mb-3">
+            <h6 class="fw-bold text-center">{{ months[m-1] }}</h6>
+            <div class="d-flex flex-wrap gap-1 justify-content-center">
+                {% for d in range(1, 32) %}
+                    {% set date_str = "%04d-%02d-%02d"|format(year, m, d) %}
+                    {% if date_str in heatmap_data %}
+                        {% set rev = heatmap_data[date_str].revenue %}
+                        {% if rev > 2000 %}{% set color = '#1b5e20' %}
+                        {% elif rev > 1000 %}{% set color = '#2e7d32' %}
+                        {% elif rev > 500 %}{% set color = '#66bb6a' %}
+                        {% elif rev > 100 %}{% set color = '#a5d6a7' %}
+                        {% else %}{% set color = '#e8f5e9' %}{% endif %}
+                        <div style="width:18px;height:18px;border-radius:3px;background:{{ color }};cursor:pointer"
+                             title="{{ date_str }}: {{ '%.0f'|format(rev) }} DT ({{ heatmap_data[date_str].count }} factures)"></div>
+                    {% else %}
+                        <div style="width:18px;height:18px;border-radius:3px;background:#f5f5f5" title="{{ date_str }}: 0 DT"></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Détail Mensuel</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover">
+            <thead><tr><th>Mois</th><th>Revenu</th><th>Factures</th><th>Ticket Moyen</th></tr></thead>
+            <tbody>
+            {% for ms in monthly_summary %}
+            <tr>
+                <td>{{ months[ms.month|int - 1] }}</td>
+                <td class="fw-bold text-success">{{ "%.2f"|format(ms.revenue) }} DT</td>
+                <td>{{ ms.invoices }}</td>
+                <td>{{ "%.2f"|format(ms.avg_ticket or 0) }} DT</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const monthlyData = Array(12).fill(0);
+{% for ms in monthly_summary %}
+monthlyData[{{ ms.month|int - 1 }}] = {{ ms.revenue }};
+{% endfor %}
+new Chart(document.getElementById('monthlyChart'), {
+    type: 'bar',
+    data: {labels: months, datasets: [{label: 'Revenu (DT)', data: monthlyData,
+        backgroundColor: monthlyData.map(v => v > 5000 ? '#1b5e20' : v > 2000 ? '#2e7d32' : v > 1000 ? '#66bb6a' : '#a5d6a7'),
+        borderRadius: 6}]},
+    options: {responsive: true, plugins: {legend: {display: false}},
+        scales: {y: {beginAtZero: true, ticks: {callback: v => v + ' DT'}}}}
+});
+</script>
+{% endblock %}

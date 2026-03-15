@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Commission Tracker — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-cash-coin text-success"></i> Suivi des Commissions</h2>
+        <p class="text-muted mb-0">Calcul automatique et suivi des commissions employés</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <input type="month" name="month" class="form-control" value="{{ month }}">
+            <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+            <div class="card-body text-center">
+                {% set total_comm = summary|sum(attribute='total_commission') if summary else 0 %}
+                <div class="display-6 fw-bold text-success">{{ "%.2f"|format(total_comm) }} DT</div>
+                <small class="text-muted">Total Commissions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+            <div class="card-body text-center">
+                {% set total_rev = summary|sum(attribute='total_revenue') if summary else 0 %}
+                <div class="display-6 fw-bold text-primary">{{ "%.2f"|format(total_rev) }} DT</div>
+                <small class="text-muted">Revenu Généré</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+            <div class="card-body text-center">
+                {% set total_pending = summary|sum(attribute='pending') if summary else 0 %}
+                <div class="display-6 fw-bold text-warning">{{ "%.2f"|format(total_pending) }} DT</div>
+                <small class="text-muted">En Attente</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+            <div class="card-body text-center">
+                {% set total_paid = summary|sum(attribute='paid') if summary else 0 %}
+                <div class="display-6 fw-bold text-info">{{ "%.2f"|format(total_paid) }} DT</div>
+                <small class="text-muted">Payées</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Button -->
+<div class="d-flex gap-2 mb-4">
+    <form method="post" action="/commission/generate">
+        <input type="hidden" name="month" value="{{ month }}">
+        <button type="submit" class="btn btn-warning"><i class="bi bi-gear"></i> Générer Commissions {{ month }}</button>
+    </form>
+</div>
+
+<!-- Employee Commission Summary -->
+{% if summary %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Résumé par Employé</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr><th>Employé</th><th>Services</th><th>Revenu</th><th>Commission</th><th>Payé</th><th>En Attente</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for s in summary %}
+            <tr>
+                <td><strong>{{ s.employee_name }}</strong></td>
+                <td><span class="badge bg-primary">{{ s.services_count }}</span></td>
+                <td>{{ "%.2f"|format(s.total_revenue) }} DT</td>
+                <td class="fw-bold text-success">{{ "%.2f"|format(s.total_commission) }} DT</td>
+                <td class="text-info">{{ "%.2f"|format(s.paid) }} DT</td>
+                <td class="text-warning">{{ "%.2f"|format(s.pending) }} DT</td>
+                <td>
+                    {% if s.pending > 0 %}
+                    <form method="post" action="/commission/pay/{{ s.employee_id }}" class="d-inline">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <button class="btn btn-sm btn-success" onclick="return confirm('Marquer comme payé?')">
+                            <i class="bi bi-check-circle"></i> Payer
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="badge bg-success"><i class="bi bi-check"></i> Payé</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Commission Rate Setup -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Taux de Commission</h5></div>
+    <div class="card-body">
+        <div class="row g-3">
+        {% for emp in employees %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                    <span>{{ emp.full_name or 'Employé #' ~ emp.id }}</span>
+                    <span class="badge bg-{{ 'success' if emp.commission_rate > 0 else 'secondary' }}">
+                        {{ emp.commission_rate or 0 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+        <p class="text-muted mt-2 small"><i class="bi bi-info-circle"></i> Les taux sont définis dans Paramètres → Utilisateurs</p>
+    </div>
+</div>
+
+<!-- Detailed Log -->
+{% if commissions %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Détail des Commissions</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Employé</th><th>Service</th><th>Facture</th><th>Taux</th><th>Commission</th><th>Statut</th></tr></thead>
+            <tbody>
+            {% for c in commissions %}
+            <tr>
+                <td>{{ c.employee_name }}</td>
+                <td>{{ c.service_name }}</td>
+                <td>{{ "%.2f"|format(c.invoice_total) }} DT</td>
+                <td>{{ c.commission_rate }}%</td>
+                <td class="fw-bold">{{ "%.2f"|format(c.commission_amount) }} DT</td>
+                <td><span class="badge bg-{{ 'success' if c.status == 'paid' else 'warning' }}">{{ c.status }}</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

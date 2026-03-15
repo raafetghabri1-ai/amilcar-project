@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Inbox Multi-Canal — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-inbox-fill text-primary"></i> Inbox Multi-Canal</h2>
+        <p class="text-muted mb-0">Tous les messages WhatsApp, SMS, Email en un seul endroit</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sendModal">
+        <i class="bi bi-send"></i> Nouveau Message
+    </button>
+</div>
+
+<!-- Channel Stats -->
+<div class="row g-3 mb-4">
+    {% set channel_icons = {'whatsapp': '💬', 'sms': '📱', 'email': '📧', 'push': '🔔'} %}
+    {% for s in stats %}
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-uppercase text-muted small">{{ s.channel }}</h6>
+                        <div class="h4 fw-bold">{{ s.total }}</div>
+                    </div>
+                    <div class="display-5">{{ channel_icons.get(s.channel, '📨') }}</div>
+                </div>
+                <div class="small">
+                    <span class="text-success">↑ {{ s.sent or 0 }} envoyés</span>
+                    {% if s.failed and s.failed > 0 %} · <span class="text-danger">{{ s.failed }} échoués</span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <select name="channel" class="form-select form-select-sm" style="width:auto">
+                <option value="all" {{ 'selected' if channel == 'all' }}>Tous canaux</option>
+                <option value="whatsapp" {{ 'selected' if channel == 'whatsapp' }}>WhatsApp</option>
+                <option value="sms" {{ 'selected' if channel == 'sms' }}>SMS</option>
+                <option value="email" {{ 'selected' if channel == 'email' }}>Email</option>
+                <option value="push" {{ 'selected' if channel == 'push' }}>Push</option>
+            </select>
+            <select name="status" class="form-select form-select-sm" style="width:auto">
+                <option value="all" {{ 'selected' if status == 'all' }}>Tous statuts</option>
+                <option value="sent" {{ 'selected' if status == 'sent' }}>Envoyé</option>
+                <option value="delivered" {{ 'selected' if status == 'delivered' }}>Délivré</option>
+                <option value="failed" {{ 'selected' if status == 'failed' }}>Échoué</option>
+            </select>
+            <button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Filtrer</button>
+        </form>
+    </div>
+</div>
+
+<!-- Messages List -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+        {% for msg in messages %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="d-flex gap-3">
+                    <div class="text-center" style="min-width:40px">
+                        {% if msg.channel == 'whatsapp' %}
+                        <span class="badge bg-success rounded-circle p-2"><i class="bi bi-whatsapp"></i></span>
+                        {% elif msg.channel == 'sms' %}
+                        <span class="badge bg-info rounded-circle p-2"><i class="bi bi-phone"></i></span>
+                        {% elif msg.channel == 'email' %}
+                        <span class="badge bg-primary rounded-circle p-2"><i class="bi bi-envelope"></i></span>
+                        {% else %}
+                        <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-bell"></i></span>
+                        {% endif %}
+                        <div class="small text-muted mt-1">{{ msg.direction[:3] }}</div>
+                    </div>
+                    <div>
+                        <div class="fw-bold">{{ msg.customer_name or 'Client #' ~ msg.customer_id }}</div>
+                        <div class="text-muted">{{ msg.message[:120] }}{% if msg.message|length > 120 %}...{% endif %}</div>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-{{ 'success' if msg.status == 'sent' or msg.status == 'delivered' else 'danger' if msg.status == 'failed' else 'secondary' }}">
+                        {{ msg.status }}
+                    </span>
+                    <div class="small text-muted mt-1">{{ msg.created_at[:16] if msg.created_at else '' }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if not messages %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-inbox display-1"></i>
+    <p class="mt-3">Aucun message</p>
+</div>
+{% endif %}
+
+<!-- Send Modal -->
+<div class="modal fade" id="sendModal">
+    <div class="modal-dialog">
+        <form method="post" action="/channel_inbox/send" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Nouveau Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Canal</label>
+                    <select name="channel" class="form-select">
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="sms">SMS</option>
+                        <option value="email">Email</option>
+                    </select></div>
+                <div class="mb-3"><label class="form-label">Client</label>
+                    <input type="text" name="customer_name" class="form-control" placeholder="Nom du client"></div>
+                <input type="hidden" name="customer_id" value="0">
+                <div class="mb-3"><label class="form-label">Message</label>
+                    <textarea name="message" class="form-control" rows="4" required></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Envoyer</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

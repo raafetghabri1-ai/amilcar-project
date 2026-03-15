@@ -1156,6 +1156,12 @@ def create_tables():
         ("ALTER TABLE appointments ADD COLUMN actual_start TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN actual_end TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN assigned_employee_id INTEGER DEFAULT 0", None),
+        # Phase 16 migrations
+        ("ALTER TABLE flash_sales ADD COLUMN description TEXT DEFAULT ''", None),
+        ("ALTER TABLE flash_sales ADD COLUMN banner_color TEXT DEFAULT '#ff6b35'", None),
+        ("ALTER TABLE invoices ADD COLUMN commission_paid REAL DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN specialties TEXT DEFAULT ''", None),
+        ("ALTER TABLE users ADD COLUMN availability TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -1523,6 +1529,17 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_monthly_goals_month ON monthly_goals(month)",
         "CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_customer ON whatsapp_logs(customer_id)",
         "CREATE INDEX IF NOT EXISTS idx_loyalty_challenges_status ON loyalty_challenges(status)",
+        # Phase 16 indexes
+        "CREATE INDEX IF NOT EXISTS idx_commission_log_employee ON commission_log(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_commission_log_month ON commission_log(month)",
+        "CREATE INDEX IF NOT EXISTS idx_revenue_daily_date ON revenue_daily(date)",
+        "CREATE INDEX IF NOT EXISTS idx_channel_inbox_customer ON channel_inbox(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_channel_inbox_status ON channel_inbox(status)",
+        "CREATE INDEX IF NOT EXISTS idx_import_history_type ON import_history(import_type)",
+        "CREATE INDEX IF NOT EXISTS idx_health_score_date ON business_health_score(date)",
+        "CREATE INDEX IF NOT EXISTS idx_report_builder_created ON report_builder(created_by)",
+        "CREATE INDEX IF NOT EXISTS idx_flash_sales_active ON flash_sales(is_active)",
+        "CREATE INDEX IF NOT EXISTS idx_flash_sales_dates ON flash_sales(start_datetime, end_datetime)",
     ]
     for idx in indexes:
         try:
@@ -1696,6 +1713,93 @@ def create_tables():
         max_bookings INTEGER DEFAULT 0,
         current_bookings INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # ─── Phase 16: Operational Mastery & Smart Automation Tables ───
+
+    # Commission Log
+    cursor.execute('''CREATE TABLE IF NOT EXISTS commission_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id INTEGER NOT NULL,
+        employee_name TEXT DEFAULT '',
+        month TEXT NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        invoice_id INTEGER DEFAULT 0,
+        service_name TEXT DEFAULT '',
+        invoice_total REAL DEFAULT 0,
+        commission_rate REAL DEFAULT 0,
+        commission_amount REAL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        paid_at TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES users(id)
+    )''')
+
+    # Revenue Daily (pre-aggregated)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS revenue_daily (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        total_revenue REAL DEFAULT 0,
+        total_appointments INTEGER DEFAULT 0,
+        total_invoices INTEGER DEFAULT 0,
+        avg_ticket REAL DEFAULT 0,
+        new_customers INTEGER DEFAULT 0,
+        services_breakdown TEXT DEFAULT '{}',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Multi-Channel Inbox
+    cursor.execute('''CREATE TABLE IF NOT EXISTS channel_inbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER DEFAULT 0,
+        customer_name TEXT DEFAULT '',
+        channel TEXT DEFAULT 'whatsapp',
+        direction TEXT DEFAULT 'outgoing',
+        message TEXT DEFAULT '',
+        status TEXT DEFAULT 'sent',
+        reference_type TEXT DEFAULT '',
+        reference_id INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Business Health Score
+    cursor.execute('''CREATE TABLE IF NOT EXISTS business_health_score (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        overall_score REAL DEFAULT 0,
+        revenue_score REAL DEFAULT 0,
+        satisfaction_score REAL DEFAULT 0,
+        efficiency_score REAL DEFAULT 0,
+        retention_score REAL DEFAULT 0,
+        growth_score REAL DEFAULT 0,
+        details TEXT DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Import History
+    cursor.execute('''CREATE TABLE IF NOT EXISTS import_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        import_type TEXT NOT NULL,
+        filename TEXT DEFAULT '',
+        total_rows INTEGER DEFAULT 0,
+        imported_rows INTEGER DEFAULT 0,
+        errors INTEGER DEFAULT 0,
+        error_details TEXT DEFAULT '[]',
+        imported_by TEXT DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Report Builder
+    cursor.execute('''CREATE TABLE IF NOT EXISTS report_builder (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        report_type TEXT DEFAULT 'weekly',
+        sections TEXT DEFAULT '[]',
+        filters TEXT DEFAULT '{}',
+        schedule TEXT DEFAULT '',
+        last_generated TEXT DEFAULT '',
+        created_by TEXT DEFAULT 'admin',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
 

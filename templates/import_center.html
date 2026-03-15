@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Import Center — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-cloud-upload-fill text-primary"></i> Centre d'Import</h2>
+        <p class="text-muted mb-0">Importer des données depuis des fichiers CSV</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Import Form -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Importer des Données</h5></div>
+            <div class="card-body">
+                <form method="post" action="/import_center/upload" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Type de données</label>
+                        <select name="import_type" class="form-select" id="importType" onchange="showTemplate()">
+                            <option value="customers">Clients</option>
+                            <option value="cars">Véhicules</option>
+                            <option value="services">Services</option>
+                            <option value="inventory">Inventaire</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fichier CSV</label>
+                        <input type="file" name="file" class="form-control" accept=".csv" required>
+                        <div class="form-text">Séparateur: point-virgule (;) — Encodage: UTF-8</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Importer</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Import Templates -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Format CSV Requis</h5></div>
+            <div class="card-body">
+                <div id="template-customers">
+                    <h6>Clients</h6>
+                    <code>name;phone;email</code>
+                    <p class="text-muted small mt-1">Ou: nom;telephone;email</p>
+                </div>
+                <div id="template-cars" style="display:none">
+                    <h6>Véhicules</h6>
+                    <code>brand;model;plate;customer_id</code>
+                    <p class="text-muted small mt-1">Ou: marque;modele;matricule;client_id</p>
+                </div>
+                <div id="template-services" style="display:none">
+                    <h6>Services</h6>
+                    <code>name;price</code>
+                    <p class="text-muted small mt-1">Ou: nom;prix</p>
+                </div>
+                <div id="template-inventory" style="display:none">
+                    <h6>Inventaire</h6>
+                    <code>name;quantity;price</code>
+                    <p class="text-muted small mt-1">Ou: nom;quantite;prix</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Historique d'Import</h5></div>
+            <div class="card-body">
+                {% if history %}
+                {% for h in history %}
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ h.import_type|upper }}</strong>
+                        <small class="text-muted">{{ h.created_at[:16] if h.created_at else '' }}</small>
+                    </div>
+                    <div class="small">
+                        📄 {{ h.filename }} — 
+                        <span class="text-success">{{ h.imported_rows }} importés</span>
+                        {% if h.errors > 0 %}
+                        / <span class="text-danger">{{ h.errors }} erreurs</span>
+                        {% endif %}
+                        sur {{ h.total_rows }} lignes
+                    </div>
+                    {% if h.errors > 0 %}
+                    <div class="progress mt-1" style="height:4px">
+                        <div class="progress-bar bg-success" style="width:{{ (h.imported_rows / h.total_rows * 100)|int if h.total_rows else 0 }}%"></div>
+                        <div class="progress-bar bg-danger" style="width:{{ (h.errors / h.total_rows * 100)|int if h.total_rows else 0 }}%"></div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center py-3">Aucun import effectué</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTemplate() {
+    const type = document.getElementById('importType').value;
+    ['customers','cars','services','inventory'].forEach(t => {
+        document.getElementById('template-'+t).style.display = t === type ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}
