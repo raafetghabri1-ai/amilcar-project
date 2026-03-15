@@ -23,7 +23,7 @@
 <!-- New Ticket -->
 <div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
     <h5 style="color:var(--gold);margin-bottom:12px">+ Nouveau Ticket</h5>
-    <form method="POST" action="{{ url_for('add_ticket') }}">
+    <form method="POST" action="{{ url_for('team_bp.add_ticket') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row g-2">
             <div class="col-md-3">

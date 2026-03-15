@@ -9,7 +9,7 @@
     <div class="col-lg-6">
         <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
             <h5 style="color:var(--gold);margin-bottom:16px">🔑 Clés API</h5>
-            <form method="POST" action="{{ url_for('add_api_key') }}" class="mb-3">
+            <form method="POST" action="{{ url_for('admin_bp.api_key_add') }}" class="mb-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2">
                     <div class="col-5"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
@@ -31,12 +31,12 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:6px">
                     <code style="font-size:.6rem;color:var(--gold);background:var(--bg-hover);padding:2px 8px;border-radius:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ k.api_key }}</code>
-                    <form method="POST" action="{{ url_for('toggle_api_key') }}" style="display:inline">
+                    <form method="POST" action="{{ url_for('admin_bp.api_key_toggle') }}" style="display:inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="key_id" value="{{ k.id }}">
                         <button type="submit" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if k.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if k.active else '⏸' }}</button>
                     </form>
-                    <form method="POST" action="{{ url_for('delete_api_key') }}" style="display:inline" onsubmit="return confirm('Supprimer cette clé ?')">
+                    <form method="POST" action="{{ url_for('admin_bp.api_key_delete') }}" style="display:inline" onsubmit="return confirm('Supprimer cette clé ?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="key_id" value="{{ k.id }}">
                         <button type="submit" class="btn btn-sm" style="font-size:.65rem;background:var(--red);color:#fff">🗑</button>
@@ -63,7 +63,7 @@
     <div class="col-lg-6">
         <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
             <h5 style="color:var(--gold);margin-bottom:16px">🔔 Webhooks</h5>
-            <form method="POST" action="{{ url_for('add_webhook') }}" class="mb-3">
+            <form method="POST" action="{{ url_for('main_bp.webhook_add') }}" class="mb-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2 mb-2">
                     <div class="col-4"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
@@ -91,7 +91,7 @@
                     <span style="font-size:.6rem;color:var(--green-light)">✓ Dernier envoi: {{ h.last_triggered[:16] }}</span>
                     {% endif %}
                 </div>
-                <form method="POST" action="{{ url_for('toggle_webhook') }}" style="display:inline">
+                <form method="POST" action="{{ url_for('main_bp.webhook_toggle') }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="hook_id" value="{{ h.id }}">
                     <button type="submit" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if h.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if h.active else '⏸' }}</button>

@@ -36,15 +36,7 @@
 
         {% if d.appointments %}
         <hr style="border-color:var(--border-color);margin:8px 0">
-        <small style="color:var(--gold);font-weight:600">RDV ({{ d.appointments|length }})</small>
-        {% for apt in d.appointments[:3] %}
-        <div style="font-size:.65rem;color:var(--text-muted);padding:2px 0">
-            {{ apt.time[:5] if apt.time else '—' }} • {{ apt.customer_name|default('—') }}
-        </div>
-        {% endfor %}
-        {% if d.appointments|length > 3 %}
-        <small style="color:var(--gold);font-size:.6rem">+{{ d.appointments|length - 3 }} autres</small>
-        {% endif %}
+        <small style="color:var(--gold);font-weight:600">RDV ({{ d.appointments }})</small>
         {% endif %}
     </div>
 </div>

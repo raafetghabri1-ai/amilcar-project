@@ -12,13 +12,13 @@
     </div>
     <div style="display:flex;gap:8px">
         {% if not time_entry or not time_entry.clock_in %}
-        <form method="POST" action="{{ url_for('tech_clock') }}">
+        <form method="POST" action="{{ url_for('team_bp.tech_clock') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="clock_in">
             <button type="submit" class="btn" style="background:var(--green-light);color:#000;font-weight:700;font-size:.85rem;padding:8px 16px">🟢 Pointer Entrée</button>
         </form>
         {% elif time_entry and not time_entry.clock_out %}
-        <form method="POST" action="{{ url_for('tech_clock') }}">
+        <form method="POST" action="{{ url_for('team_bp.tech_clock') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="clock_out">
             <button type="submit" class="btn" style="background:var(--red);color:#fff;font-weight:700;font-size:.85rem;padding:8px 16px">🔴 Pointer Sortie</button>
@@ -77,7 +77,7 @@
             <span style="padding:4px 12px;border-radius:var(--radius);font-size:.7rem;font-weight:600;background:{{ status_colors.get(o.status, 'var(--bg-hover)') }};color:#000">
                 {{ {'pending':'⏳ En attente','in_progress':'🔧 En cours','completed':'✅ Terminé','cancelled':'❌ Annulé'}.get(o.status, o.status) }}
             </span>
-            <form method="POST" action="{{ url_for('tech_update_status', appt_id=o.id) }}" style="display:flex;gap:4px">
+            <form method="POST" action="{{ url_for('team_bp.tech_update_status', appt_id=o.id) }}" style="display:flex;gap:4px">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if o.status == 'pending' %}
                 <input type="hidden" name="status" value="in_progress">

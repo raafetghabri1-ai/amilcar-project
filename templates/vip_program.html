@@ -21,7 +21,7 @@
             <div style="font-size:.65rem;color:var(--text-muted);margin-top:6px">{{ lv.perks }}</div>
 
             {% if session.get('role') == 'admin' %}
-            <form method="POST" action="{{ url_for('edit_vip_level') }}" style="margin-top:10px;border-top:1px solid var(--border-subtle);padding-top:8px">
+            <form method="POST" action="{{ url_for('customers_bp.edit_vip_level') }}" style="margin-top:10px;border-top:1px solid var(--border-subtle);padding-top:8px">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="level_id" value="{{ lv.id }}">
                 <div class="row g-1" style="font-size:.7rem">

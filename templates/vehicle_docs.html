@@ -21,7 +21,7 @@
 <!-- Upload -->
 <div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
     <h5 style="color:var(--gold);margin-bottom:12px">📤 Ajouter un document</h5>
-    <form method="POST" action="{{ url_for('add_vehicle_doc', car_id=car.id) }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('vehicles_bp.add_vehicle_doc', car_id=car.id) }}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row g-2">
             <div class="col-md-3">
@@ -57,7 +57,7 @@
                     <span style="font-size:1.5rem">{{ type_icons.get(d.doc_type, '📁') }}</span>
                     <h6 style="color:var(--gold);margin:4px 0 0">{{ d.doc_type }}</h6>
                 </div>
-                <form method="POST" action="{{ url_for('delete_vehicle_doc', doc_id=d.id, car_id=car.id) }}" onsubmit="return confirm('Supprimer ?')">
+                <form method="POST" action="{{ url_for('vehicles_bp.delete_vehicle_doc', doc_id=d.id, car_id=car.id) }}" onsubmit="return confirm('Supprimer ?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm" style="background:var(--red);color:#fff;font-size:.6rem">🗑</button>
                 </form>

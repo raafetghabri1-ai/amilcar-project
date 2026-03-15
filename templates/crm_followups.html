@@ -24,7 +24,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="customer_id" value="{{ c[0] }}">
                         <input type="hidden" name="type" value="absence">
-                        <input type="hidden" name="scheduled_date" value="{{ (now|default(''))|string[:10] if now else '' }}">
+                        <input type="hidden" name="scheduled_date" value="{{ ((now|default(''))|string)[:10] if now else '' }}">
                         <input type="hidden" name="reason" value="Client absent > 60 jours">
                         <button class="btn btn-sm" style="background:var(--gold);color:#000;padding:3px 12px;border-radius:4px;font-size:.75rem" type="submit">📞 Planifier relance</button>
                     </form>

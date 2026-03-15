@@ -8,7 +8,7 @@
     <div class="col-lg-5">
         <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
             <h5 style="color:var(--gold);margin-bottom:12px">🔎 Décoder un VIN</h5>
-            <form method="POST" action="{{ url_for('vin_decode') }}">
+            <form method="POST" action="{{ url_for('vehicles_bp.vin_decode') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3">
                     <label style="color:var(--text-muted);font-size:.75rem">Véhicule (optionnel)</label>

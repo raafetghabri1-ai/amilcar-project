@@ -29,7 +29,7 @@
         <!-- Add Company -->
         <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
             <h5 style="color:var(--gold);margin-bottom:10px">🏢 Ajouter Assureur</h5>
-            <form method="POST" action="{{ url_for('add_insurance_company') }}">
+            <form method="POST" action="{{ url_for('admin_bp.add_insurance_company') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2">
                     <div class="col-6"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
@@ -61,7 +61,7 @@
         <!-- Add Claim -->
         <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
             <h5 style="color:var(--gold);margin-bottom:10px">📋 Nouveau Dossier Sinistre</h5>
-            <form method="POST" action="{{ url_for('add_insurance_claim') }}">
+            <form method="POST" action="{{ url_for('admin_bp.add_insurance_claim') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2">
                     <div class="col-md-4">
@@ -110,7 +110,7 @@
                         <td style="color:var(--green-light);font-weight:600">{{ "%.0f"|format(cl.approved_amount) }}</td>
                         <td><span style="padding:2px 6px;border-radius:4px;font-size:.6rem;background:{{ colors.get(cl.status, 'var(--bg-hover)') }};color:#000">{{ cl.status }}</span></td>
                         <td>
-                            <form method="POST" action="{{ url_for('update_insurance_claim', cid=cl.id) }}" style="display:flex;gap:3px">
+                            <form method="POST" action="{{ url_for('admin_bp.update_insurance_claim', cid=cl.id) }}" style="display:flex;gap:3px">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <select name="status" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.65rem;width:90px">
                                     {% for s in ['submitted','in_review','approved','rejected','paid','closed'] %}

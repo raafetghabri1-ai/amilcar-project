@@ -45,7 +45,7 @@
 
             <!-- Reply -->
             {% if ticket.status not in ('closed',) %}
-            <form method="POST" action="{{ url_for('reply_ticket', tid=ticket.id) }}" style="margin-top:12px">
+            <form method="POST" action="{{ url_for('team_bp.reply_ticket', tid=ticket.id) }}" style="margin-top:12px">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-2">
                     <div class="col-10"><textarea name="message" class="form-control form-control-sm" rows="2" placeholder="Répondre..." required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></textarea></div>
@@ -60,7 +60,7 @@
     <div class="col-lg-4">
         <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
             <h5 style="color:var(--gold);margin-bottom:12px">⚙️ Gérer</h5>
-            <form method="POST" action="{{ url_for('update_ticket', tid=ticket.id) }}">
+            <form method="POST" action="{{ url_for('team_bp.update_ticket', tid=ticket.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-2">
                     <label style="color:var(--text-muted);font-size:.7rem">Statut</label>
