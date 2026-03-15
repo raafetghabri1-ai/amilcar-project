@@ -7670,7 +7670,7 @@ def client_portal(token):
         docs = conn.execute("""SELECT vd.*, c.plate FROM vehicle_documents vd 
             JOIN cars c ON vd.car_id=c.id WHERE c.customer_id=? 
             ORDER BY vd.created_at DESC""", (customer['id'],)).fetchall()
-        vip = conn.execute("SELECT * FROM vip_levels WHERE name=?", (customer.get('vip_level', ''),)).fetchone()
+        vip = conn.execute("SELECT * FROM vip_levels WHERE name=?", (customer['vip_level'] or '',)).fetchone()
     return render_template("client_portal.html", customer=customer, cars=cars, 
                           appointments=appointments, invoices=invoices, contracts=contracts,
                           docs=docs, vip=vip, token=token)
@@ -9156,7 +9156,7 @@ def wallet_view(customer_id):
             return redirect("/customers")
         transactions = conn.execute("""SELECT * FROM wallet_transactions
             WHERE customer_id=? ORDER BY created_at DESC LIMIT 50""", (customer_id,)).fetchall()
-        balance = customer.get('wallet_balance', 0) or 0
+        balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
     return render_template("wallet.html", customer=customer, transactions=transactions, balance=balance)
 
 @app.route("/wallet/topup", methods=["POST"])
@@ -9388,9 +9388,9 @@ def client_app_dashboard():
         treatments = conn.execute("""SELECT t.*, ca.brand, ca.model FROM treatments t
             LEFT JOIN cars ca ON t.car_id=ca.id WHERE t.customer_id=?
             ORDER BY t.applied_date DESC LIMIT 5""", (client_id,)).fetchall()
-        balance = customer.get('wallet_balance', 0) or 0
-        loyalty = customer.get('loyalty_level', 'bronze')
-        points = customer.get('loyalty_points_total', 0) or 0
+        balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
+        loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
+        points = customer['loyalty_points_total'] or 0 if customer['loyalty_points_total'] else 0
         shop = conn.execute("SELECT key, value FROM settings").fetchall()
         shop = {s['key']: s['value'] for s in shop}
     return render_template("client_app_dashboard.html", customer=customer, appointments=appointments,
@@ -10819,9 +10819,9 @@ def espace_client_fidelite():
     client_id = session['client_id']
     with get_db() as conn:
         customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
-        points = customer.get('loyalty_points_total', 0) or 0
-        loyalty = customer.get('loyalty_level', 'bronze') or 'bronze'
-        balance = customer.get('wallet_balance', 0) or 0
+        points = customer['loyalty_points_total'] or 0 if customer['loyalty_points_total'] else 0
+        loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
+        balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
         wallet = conn.execute("""SELECT * FROM wallet_transactions WHERE customer_id=?
             ORDER BY created_at DESC LIMIT 15""", (client_id,)).fetchall()
         treatments = conn.execute("""SELECT t.*, ca.brand, ca.model FROM treatments t

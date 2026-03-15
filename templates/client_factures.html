@@ -45,8 +45,8 @@
 </div>
 
 <div class="container-c">
-    {% set total_paid = invoices|selectattr('status','equalto','paid')|map(attribute='total')|sum %}
-    {% set total_unpaid = invoices|rejectattr('status','equalto','paid')|map(attribute='total')|sum %}
+    {% set total_paid = invoices|selectattr('status','equalto','paid')|map(attribute='amount')|sum %}
+    {% set total_unpaid = invoices|rejectattr('status','equalto','paid')|map(attribute='amount')|sum %}
 
     <div class="summary-bar">
         <div class="summary-box">
@@ -64,19 +64,19 @@
         <div class="inv-top">
             <div>
                 <div class="inv-num">Facture #{{ inv.id }}</div>
-                <div class="inv-date">{{ inv.date }}</div>
+                <div class="inv-date">{{ inv.appt_date or inv.created_at or '' }}</div>
                 {% if inv.brand %}<div class="inv-car">🚗 {{ inv.brand }} {{ inv.model }} — {{ inv.plate }}</div>{% endif %}
             </div>
             <span class="badge-s {{ 'badge-paid' if inv.status=='paid' else 'badge-unpaid' if inv.status=='unpaid' else 'badge-partial' }}">
                 {{ 'Payée' if inv.status=='paid' else 'Non payée' if inv.status=='unpaid' else 'Partielle' }}
             </span>
         </div>
-        {% if inv.service_details %}
-        <div style="color:var(--muted);font-size:.72rem;margin-top:4px">{{ inv.service_details[:80] }}</div>
+        {% if inv.service %}
+        <div style="color:var(--muted);font-size:.72rem;margin-top:4px">{{ inv.service }}</div>
         {% endif %}
         <div class="inv-footer">
             <span style="color:var(--muted);font-size:.72rem">Total</span>
-            <span class="inv-total">{{ '{:,.0f}'.format(inv.total or 0) }} DT</span>
+            <span class="inv-total">{{ '{:,.0f}'.format(inv.amount or 0) }} DT</span>
         </div>
     </div>
     {% else %}
