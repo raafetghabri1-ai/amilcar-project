@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %} — WhatsApp Hub{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">💬 WhatsApp Business Hub</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Communication automatisée avec vos clients</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:var(--gold);font-size:1.8rem;font-weight:700">{{ stats.total }}</div>
+            <small style="color:var(--text-muted)">Total messages</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#4ade80;font-size:1.8rem;font-weight:700">{{ stats.sent }}</div>
+            <small style="color:var(--text-muted)">Envoyés</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#f59e0b;font-size:1.8rem;font-weight:700">{{ stats.pending }}</div>
+            <small style="color:var(--text-muted)">En attente</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#8b5cf6;font-size:1.8rem;font-weight:700">{{ stats.today }}</div>
+            <small style="color:var(--text-muted)">Aujourd'hui</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Send Message -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:#25D366;margin-bottom:14px">📱 Envoyer un message</h5>
+            <form method="POST" action="/whatsapp_hub_send">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Client</label>
+                    <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                    </select>
+                    <input type="text" id="customerSearch" class="form-control form-control-sm mt-1" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="🔍 Rechercher client...">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Modèle</label>
+                    <select name="template_name" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="">Message personnalisé</option>
+                        {% for t in templates %}
+                        <option value="{{ t.name }}">{{ t.icon }} {{ t.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Ou message libre</label>
+                    <textarea name="custom_message" rows="3" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Votre message..."></textarea>
+                </div>
+                <button type="submit" class="btn w-100" style="background:#25D366;color:#fff;font-weight:600">💬 Envoyer</button>
+            </form>
+        </div>
+
+        <!-- Bulk Send -->
+        <div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:#25D366;margin-bottom:14px">📢 Envoi groupé</h5>
+            <form method="POST" action="/whatsapp_bulk">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <select name="template_name" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        {% for t in templates %}<option value="{{ t.name }}">{{ t.icon }} {{ t.label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <select name="target" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="tomorrow_rdv">📅 RDV de demain</option>
+                        <option value="birthday_month">🎂 Anniversaires du mois</option>
+                        <option value="all">👥 Tous les clients</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn w-100" style="background:#128C7E;color:#fff;font-weight:600">📢 Envoyer au groupe</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Messages Log -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📋 Historique des messages</h5>
+            {% for l in logs %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:12px;border-left:4px solid {{ '#25D366' if l.status=='sent' else '#f59e0b' if l.status=='pending' else '#ef4444' }}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ l.customer_name or 'Client' }}</strong>
+                        <span style="color:var(--text-muted);font-size:.7rem;margin-left:6px">{{ l.phone }}</span>
+                        <span style="background:{{ '#25D366' if l.status=='sent' else '#f59e0b' }};color:#fff;padding:2px 8px;border-radius:10px;font-size:.55rem;margin-left:6px">{{ l.status }}</span>
+                        <br><small style="color:var(--text-muted)">{{ l.message_text[:80] }}{% if l.message_text|length > 80 %}...{% endif %}</small>
+                    </div>
+                    <small style="color:var(--text-muted);font-size:.6rem;white-space:nowrap">{{ l.created_at[:16] if l.created_at else '' }}</small>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucun message envoyé.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} — Prévision Stock{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📦 Prévision Intelligente du Stock</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Anticipez vos besoins en produits — basé sur 30 jours d'historique</p>
+
+<!-- Alert Summary -->
+{% set critical = forecasts|selectattr('status', 'equalto', 'critical')|list %}
+{% set warning = forecasts|selectattr('status', 'equalto', 'warning')|list %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-center" style="background:var(--bg-card);border:2px solid {{ '#ef4444' if critical else 'var(--border-color)' }};border-radius:var(--radius);padding:16px">
+            <div style="color:#ef4444;font-size:1.8rem;font-weight:700">{{ critical|length }}</div>
+            <small style="color:var(--text-muted)">🚨 Stock critique (&lt;7 jours)</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#f59e0b;font-size:1.8rem;font-weight:700">{{ warning|length }}</div>
+            <small style="color:var(--text-muted)">⚠️ Stock faible (&lt;14 jours)</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#4ade80;font-size:1.8rem;font-weight:700">{{ forecasts|length - critical|length - warning|length }}</div>
+            <small style="color:var(--text-muted)">✅ Stock OK</small>
+        </div>
+    </div>
+</div>
+
+<!-- Forecasts Table -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+            <thead>
+                <tr style="border-color:var(--border-color)">
+                    <th style="color:var(--gold)">Produit</th>
+                    <th style="color:var(--gold);text-align:center">Stock</th>
+                    <th style="color:var(--gold);text-align:center">Usage/jour</th>
+                    <th style="color:var(--gold);text-align:center">Usage 30j</th>
+                    <th style="color:var(--gold);text-align:center">Jours restants</th>
+                    <th style="color:var(--gold);text-align:center">Commande suggérée</th>
+                    <th style="color:var(--gold);text-align:center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in forecasts %}
+                <tr style="border-color:var(--border-color);{{ 'background:rgba(239,68,68,.1)' if f.status=='critical' else 'background:rgba(245,158,11,.05)' if f.status=='warning' else '' }}">
+                    <td><strong>{{ f.name }}</strong></td>
+                    <td class="text-center">{{ f.stock }} {{ f.unit }}</td>
+                    <td class="text-center">{{ f.daily_avg }}</td>
+                    <td class="text-center">{{ f.usage_30d }}</td>
+                    <td class="text-center">
+                        <span style="color:{{ '#ef4444' if f.days_left <= 7 else '#f59e0b' if f.days_left <= 14 else '#4ade80' }};font-weight:700">
+                            {{ f.days_left if f.days_left < 999 else '∞' }} j
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        {% if f.recommended > 0 %}
+                        <span style="color:var(--gold);font-weight:600">{{ f.recommended }} {{ f.unit }}</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span style="background:{{ '#ef4444' if f.status=='critical' else '#f59e0b' if f.status=='warning' else '#4ade80' }};color:{{ '#fff' if f.status=='critical' else '#000' }};padding:3px 10px;border-radius:10px;font-size:.65rem;font-weight:600">
+                            {{ '🚨 Critique' if f.status=='critical' else '⚠️ Faible' if f.status=='warning' else '✅ OK' }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px">Aucun produit en stock.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

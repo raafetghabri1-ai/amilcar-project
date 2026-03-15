@@ -1143,6 +1143,19 @@ def create_tables():
         ("ALTER TABLE cars ADD COLUMN qr_token TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN upsell_suggestions TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN upsell_accepted TEXT DEFAULT ''", None),
+        # Phase 15 migrations
+        ("ALTER TABLE customers ADD COLUMN wallet_balance REAL DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN birthday TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN nps_score INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN loyalty_level TEXT DEFAULT 'bronze'", None),
+        ("ALTER TABLE customers ADD COLUMN loyalty_points_total INTEGER DEFAULT 0", None),
+        ("ALTER TABLE employees ADD COLUMN commission_rate REAL DEFAULT 0", None),
+        ("ALTER TABLE employees ADD COLUMN points INTEGER DEFAULT 0", None),
+        ("ALTER TABLE employees ADD COLUMN badges TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN estimated_minutes INTEGER DEFAULT 60", None),
+        ("ALTER TABLE appointments ADD COLUMN actual_start TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN actual_end TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN assigned_employee_id INTEGER DEFAULT 0", None),
     ]
     for sql, _ in migrations:
         try:
@@ -1496,12 +1509,195 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_smart_reminders_due ON smart_reminders(due_date)",
         "CREATE INDEX IF NOT EXISTS idx_pack_configs_status ON pack_configurations(status)",
         "CREATE INDEX IF NOT EXISTS idx_cars_qr ON cars(qr_token)",
+        # Phase 15 indexes
+        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_customer ON wallet_transactions(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_type ON wallet_transactions(transaction_type)",
+        "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_service ON dynamic_pricing_rules(service_id)",
+        "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_active ON dynamic_pricing_rules(is_active)",
+        "CREATE INDEX IF NOT EXISTS idx_employee_scores_employee ON employee_gamification(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_employee_scores_month ON employee_gamification(month)",
+        "CREATE INDEX IF NOT EXISTS idx_nps_surveys_customer ON nps_surveys(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_nps_surveys_date ON nps_surveys(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_service_timer_appt ON service_timer(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_stock_forecasts_product ON stock_forecasts(product_id)",
+        "CREATE INDEX IF NOT EXISTS idx_monthly_goals_month ON monthly_goals(month)",
+        "CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_customer ON whatsapp_logs(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_loyalty_challenges_status ON loyalty_challenges(status)",
     ]
     for idx in indexes:
         try:
             cursor.execute(idx)
         except:
             pass
+
+    # ─── Phase 15: Revenue Intelligence & Client Excellence Tables ───
+
+    # Wallet Transactions
+    cursor.execute('''CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        transaction_type TEXT NOT NULL,
+        amount REAL NOT NULL,
+        balance_after REAL DEFAULT 0,
+        description TEXT DEFAULT '',
+        reference_type TEXT DEFAULT '',
+        reference_id INTEGER DEFAULT 0,
+        created_by TEXT DEFAULT 'system',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Dynamic Pricing Rules
+    cursor.execute('''CREATE TABLE IF NOT EXISTS dynamic_pricing_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_id INTEGER DEFAULT 0,
+        rule_name TEXT NOT NULL,
+        rule_type TEXT NOT NULL,
+        days_of_week TEXT DEFAULT '',
+        hours_range TEXT DEFAULT '',
+        season_start TEXT DEFAULT '',
+        season_end TEXT DEFAULT '',
+        price_modifier REAL DEFAULT 0,
+        modifier_type TEXT DEFAULT 'percentage',
+        min_price REAL DEFAULT 0,
+        max_price REAL DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        priority INTEGER DEFAULT 0,
+        vehicle_types TEXT DEFAULT 'all',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Employee Gamification
+    cursor.execute('''CREATE TABLE IF NOT EXISTS employee_gamification (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id INTEGER NOT NULL,
+        month TEXT NOT NULL,
+        services_completed INTEGER DEFAULT 0,
+        revenue_generated REAL DEFAULT 0,
+        avg_rating REAL DEFAULT 0,
+        upsells_achieved INTEGER DEFAULT 0,
+        on_time_pct REAL DEFAULT 0,
+        total_points INTEGER DEFAULT 0,
+        rank_position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES employees(id)
+    )''')
+
+    # NPS Surveys
+    cursor.execute('''CREATE TABLE IF NOT EXISTS nps_surveys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        score INTEGER NOT NULL,
+        category TEXT DEFAULT '',
+        feedback TEXT DEFAULT '',
+        follow_up_status TEXT DEFAULT 'none',
+        follow_up_notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Service Timer
+    cursor.execute('''CREATE TABLE IF NOT EXISTS service_timer (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER NOT NULL,
+        employee_id INTEGER DEFAULT 0,
+        service_name TEXT DEFAULT '',
+        estimated_minutes INTEGER DEFAULT 60,
+        started_at TEXT DEFAULT '',
+        ended_at TEXT DEFAULT '',
+        actual_minutes INTEGER DEFAULT 0,
+        efficiency_pct REAL DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )''')
+
+    # Stock Forecasts
+    cursor.execute('''CREATE TABLE IF NOT EXISTS stock_forecasts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        product_name TEXT DEFAULT '',
+        current_stock REAL DEFAULT 0,
+        avg_daily_usage REAL DEFAULT 0,
+        days_until_empty INTEGER DEFAULT 0,
+        recommended_order REAL DEFAULT 0,
+        forecast_date TEXT DEFAULT '',
+        auto_order_threshold REAL DEFAULT 0,
+        status TEXT DEFAULT 'ok',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Monthly Goals
+    cursor.execute('''CREATE TABLE IF NOT EXISTS monthly_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month TEXT NOT NULL,
+        goal_type TEXT NOT NULL,
+        target_value REAL NOT NULL,
+        current_value REAL DEFAULT 0,
+        unit TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # WhatsApp Logs
+    cursor.execute('''CREATE TABLE IF NOT EXISTS whatsapp_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        phone TEXT NOT NULL,
+        message_type TEXT NOT NULL,
+        message_text TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        sent_at TEXT DEFAULT '',
+        appointment_id INTEGER DEFAULT 0,
+        template_name TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Loyalty Challenges
+    cursor.execute('''CREATE TABLE IF NOT EXISTS loyalty_challenges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        challenge_type TEXT NOT NULL,
+        target_value REAL NOT NULL,
+        reward_points INTEGER DEFAULT 0,
+        reward_description TEXT DEFAULT '',
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        vehicle_types TEXT DEFAULT 'all',
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Loyalty Challenge Progress
+    cursor.execute('''CREATE TABLE IF NOT EXISTS loyalty_challenge_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        challenge_id INTEGER NOT NULL,
+        customer_id INTEGER NOT NULL,
+        current_value REAL DEFAULT 0,
+        completed INTEGER DEFAULT 0,
+        completed_at TEXT DEFAULT '',
+        reward_claimed INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (challenge_id) REFERENCES loyalty_challenges(id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Flash Sales
+    cursor.execute('''CREATE TABLE IF NOT EXISTS flash_sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        service_ids TEXT DEFAULT '',
+        discount_pct REAL DEFAULT 0,
+        start_datetime TEXT NOT NULL,
+        end_datetime TEXT NOT NULL,
+        max_bookings INTEGER DEFAULT 0,
+        current_bookings INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
 
     # إدراج الخدمات الافتراضية إذا كان الجدول فارغاً
     existing = cursor.execute("SELECT COUNT(*) FROM services").fetchone()[0]

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %} — Portefeuille {{ customer.name }}{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">💳 Portefeuille Client</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">{{ customer.name }} — {{ customer.phone }}</p>
+
+<div class="row g-3">
+    <!-- Balance & Actions -->
+    <div class="col-md-4">
+        <div class="card text-center" style="background:var(--bg-card);border:2px solid var(--gold);border-radius:var(--radius);padding:30px">
+            <small style="color:var(--text-muted)">Solde actuel</small>
+            <div style="color:var(--gold);font-size:2.5rem;font-weight:800;margin:10px 0">{{ '{:,.0f}'.format(balance) }} <small style="font-size:.8rem">DH</small></div>
+        </div>
+
+        <!-- Top up -->
+        <div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h6 style="color:#4ade80;margin-bottom:12px">➕ Recharger</h6>
+            <form method="POST" action="/wallet/topup">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="customer_id" value="{{ customer.id }}">
+                <div class="mb-2">
+                    <input type="number" name="amount" step="10" min="10" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Montant (DH)">
+                </div>
+                <div class="mb-2">
+                    <input type="text" name="description" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Description (optionnel)" value="Recharge manuelle">
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+                    {% for val in [100, 200, 500, 1000] %}
+                    <button type="button" onclick="this.form.amount.value={{ val }}" class="btn btn-sm" style="background:var(--bg-input);color:var(--gold);border:1px solid var(--border-color)">{{ val }} DH</button>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn w-100" style="background:#4ade80;color:#000;font-weight:600">💰 Recharger</button>
+            </form>
+        </div>
+
+        <!-- Debit -->
+        <div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h6 style="color:#ef4444;margin-bottom:12px">➖ Débiter</h6>
+            <form method="POST" action="/wallet/debit">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="customer_id" value="{{ customer.id }}">
+                <div class="mb-2">
+                    <input type="number" name="amount" step="1" min="1" max="{{ balance }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Montant (DH)">
+                </div>
+                <div class="mb-2">
+                    <input type="text" name="description" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Description" value="Paiement service">
+                </div>
+                <button type="submit" class="btn w-100" style="background:#ef4444;color:#fff;font-weight:600">💳 Débiter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📋 Historique transactions</h5>
+            {% for t in transactions %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:12px;border-left:4px solid {{ '#4ade80' if t.transaction_type=='topup' else '#ef4444' }}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <span style="font-size:1.1rem">{{ '💰' if t.transaction_type=='topup' else '💳' }}</span>
+                        <strong style="color:var(--text-primary);margin-left:6px">{{ t.description or t.transaction_type }}</strong>
+                        <br><small style="color:var(--text-muted)">{{ t.created_at[:16] if t.created_at else '' }} • Par: {{ t.created_by }}</small>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="color:{{ '#4ade80' if t.amount > 0 else '#ef4444' }};font-weight:700;font-size:1rem">
+                            {{ '+' if t.amount > 0 else '' }}{{ '{:,.0f}'.format(t.amount) }} DH
+                        </div>
+                        <small style="color:var(--text-muted)">Solde: {{ '{:,.0f}'.format(t.balance_after) }} DH</small>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucune transaction.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

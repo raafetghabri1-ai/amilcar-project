@@ -156,6 +156,21 @@
             </ul>
         </div>
 
+        <!-- INTELLIGENCE & REVENUS -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">INTELLIGENCE <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/whatsapp_hub"><span class="icon">💬</span> WhatsApp Hub</a></li>
+                <li><a href="/nps_dashboard"><span class="icon">📊</span> NPS Satisfaction</a></li>
+                <li><a href="/employee_gamification"><span class="icon">🏆</span> Gamification</a></li>
+                <li><a href="/efficiency_report"><span class="icon">⏱️</span> Efficacité</a></li>
+                <li><a href="/stock_forecast"><span class="icon">📦</span> Prévision Stock</a></li>
+                <li><a href="/monthly_goals_view"><span class="icon">🎯</span> Objectifs Mensuels</a></li>
+                <li><a href="/loyalty_gamified"><span class="icon">🎮</span> Fidélité Gamifiée</a></li>
+                <li><a href="/client_app" target="_blank"><span class="icon">📱</span> Espace Client</a></li>
+            </ul>
+        </div>
+
         <!-- FACTURATION -->
         <div class="sidebar-section">
             <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▼</span></div>
@@ -170,7 +185,7 @@
                 {% if session.get('role') == 'admin' %}
                 <li><a href="/invoice_terms"><span class="icon">📄</span> CGV</a></li>
                 <li><a href="/coupons"><span class="icon">🏷️</span> Coupons</a></li>
-                <li><a href="/dynamic_pricing"><span class="icon">💲</span> Tarifs+</a></li>
+                <li><a href="/dynamic_pricing_pro"><span class="icon">💲</span> Tarifs Dynamiques</a></li>
                 {% endif %}
             </ul>
         </div>

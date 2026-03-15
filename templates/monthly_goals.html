@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} — Objectifs Mensuels{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🎯 Objectifs & Budget Mensuel</h2>
+<p style="color:var(--text-muted);margin-bottom:16px;font-size:.8rem">Fixez des objectifs, suivez vos performances en temps réel</p>
+
+<form method="GET" style="margin-bottom:20px;display:flex;gap:10px;align-items:center">
+    <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);max-width:180px">
+    <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">Voir</button>
+</form>
+
+<!-- Actuals -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:var(--gold);font-size:1.5rem;font-weight:700">{{ '{:,.0f}'.format(actuals.revenue) }} DH</div>
+            <small style="color:var(--text-muted)">Revenu payé</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#4ade80;font-size:1.5rem;font-weight:700">{{ actuals.appointments }}</div>
+            <small style="color:var(--text-muted)">Rendez-vous</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#8b5cf6;font-size:1.5rem;font-weight:700">{{ actuals.new_customers }}</div>
+            <small style="color:var(--text-muted)">Nouveaux clients</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#f59e0b;font-size:1.5rem;font-weight:700">{{ '{:,.0f}'.format(actuals.avg_ticket) }} DH</div>
+            <small style="color:var(--text-muted)">Ticket moyen</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Add Goal -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvel objectif</h5>
+            <form method="POST" action="/monthly_goal/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type</label>
+                    <select name="goal_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="revenue">💰 Revenu</option>
+                        <option value="appointments">📅 Rendez-vous</option>
+                        <option value="new_customers">👥 Nouveaux clients</option>
+                        <option value="avg_ticket">🎫 Ticket moyen</option>
+                        <option value="nps">📊 Score NPS</option>
+                        <option value="custom">📝 Personnalisé</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Objectif</label>
+                    <input type="number" name="target_value" step="1" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Ex: 50000">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Unité</label>
+                    <input type="text" name="unit" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="DH, RDV, clients...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Notes</label>
+                    <input type="text" name="notes" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Détails...">
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Ajouter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Goals Progress -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📊 Suivi des objectifs — {{ month }}</h5>
+            {% for g in goals %}
+            {% set actual = actuals.get(g.goal_type, 0) if g.goal_type in ['revenue','appointments','new_customers','avg_ticket'] else g.current_value %}
+            {% set pct = (actual / g.target_value * 100) if g.target_value > 0 else 0 %}
+            <div class="card mb-3" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ '💰' if g.goal_type=='revenue' else '📅' if g.goal_type=='appointments' else '👥' if g.goal_type=='new_customers' else '🎫' if g.goal_type=='avg_ticket' else '📊' if g.goal_type=='nps' else '📝' }} {{ g.goal_type|capitalize }}</strong>
+                        {% if g.notes %}<small style="color:var(--text-muted);margin-left:6px">{{ g.notes }}</small>{% endif %}
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="color:{{ '#4ade80' if pct >= 100 else 'var(--gold)' if pct >= 70 else '#f59e0b' if pct >= 40 else '#ef4444' }};font-size:1.1rem">
+                            {{ '%.0f'|format(pct) }}%
+                        </strong>
+                    </div>
+                </div>
+                <div style="background:var(--bg-input);border-radius:6px;height:10px;overflow:hidden">
+                    <div style="background:{{ '#4ade80' if pct >= 100 else 'var(--gold)' if pct >= 70 else '#f59e0b' if pct >= 40 else '#ef4444' }};height:100%;width:{{ [pct, 100]|min }}%;border-radius:6px;transition:width .5s"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px">
+                    <small style="color:var(--text-muted)">Actuel: <strong style="color:var(--text-primary)">{{ '{:,.0f}'.format(actual) }} {{ g.unit }}</strong></small>
+                    <small style="color:var(--text-muted)">Objectif: <strong style="color:var(--gold)">{{ '{:,.0f}'.format(g.target_value) }} {{ g.unit }}</strong></small>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucun objectif défini pour ce mois. Créez-en un ! 🎯</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

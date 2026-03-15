@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %} — Fidélité Gamifiée{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🎮 Fidélité Gamifiée</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Niveaux automatiques, challenges mensuels, récompenses personnalisées</p>
+
+<!-- Level Distribution -->
+<div class="row g-3 mb-4">
+    {% for l in levels %}
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:2px solid {{ '#cd7f32' if l.loyalty_level=='bronze' else '#c0c0c0' if l.loyalty_level=='silver' else 'var(--gold)' if l.loyalty_level=='gold' else '#e5e4e2' }};border-radius:var(--radius);padding:16px">
+            <div style="font-size:2rem">{{ '🥉' if l.loyalty_level=='bronze' else '🥈' if l.loyalty_level=='silver' else '🥇' if l.loyalty_level=='gold' else '💎' }}</div>
+            <h5 style="color:{{ '#cd7f32' if l.loyalty_level=='bronze' else '#c0c0c0' if l.loyalty_level=='silver' else 'var(--gold)' if l.loyalty_level=='gold' else '#e5e4e2' }};margin:6px 0">{{ l.loyalty_level|upper }}</h5>
+            <div style="color:var(--text-primary);font-size:1.5rem;font-weight:700">{{ l.count }}</div>
+            <small style="color:var(--text-muted)">clients</small>
+        </div>
+    </div>
+    {% endfor %}
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="font-size:2rem">🔄</div>
+            <a href="/loyalty_level_update" class="btn btn-sm mt-2" style="background:var(--gold);color:#000;font-weight:600">Mettre à jour les niveaux</a>
+            <small style="color:var(--text-muted);display:block;margin-top:6px;font-size:.6rem">
+                Bronze: 0-499 pts<br>Silver: 500-1999<br>Gold: 2000-4999<br>Platinum: 5000+
+            </small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Create Challenge -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">🎯 Nouveau Challenge</h5>
+            <form method="POST" action="/loyalty_challenge/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Titre</label>
+                    <input type="text" name="title" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Ex: 3 lavages en mars">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Description</label>
+                    <textarea name="description" rows="2" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Détails du challenge..."></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type</label>
+                    <select name="challenge_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="visits">📅 Nombre de visites</option>
+                        <option value="spending">💰 Montant dépensé</option>
+                        <option value="services">🛠️ Services spécifiques</option>
+                        <option value="referrals">🤝 Parrainages</option>
+                        <option value="reviews">⭐ Avis déposés</option>
+                    </select>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Objectif</label>
+                        <input type="number" name="target_value" step="1" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="3">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Points récompense</label>
+                        <input type="number" name="reward_points" value="100" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Récompense</label>
+                    <input type="text" name="reward_description" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Ex: Lavage gratuit, -20%...">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Début</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Fin</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">🎯 Lancer le challenge</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Challenges & Top Loyal -->
+    <div class="col-md-8">
+        <!-- Challenges -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">🎯 Challenges actifs</h5>
+            {% for c in challenges %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ '#4ade80' if c.status=='active' else 'var(--text-muted)' }}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ c.title }}</strong>
+                        <span style="background:{{ '#4ade80' if c.status=='active' else 'var(--bg-input)' }};color:{{ '#000' if c.status=='active' else 'var(--text-muted)' }};padding:2px 8px;border-radius:10px;font-size:.55rem;margin-left:6px">{{ c.status }}</span>
+                        {% if c.description %}<br><small style="color:var(--text-muted)">{{ c.description }}</small>{% endif %}
+                        <br><small style="color:var(--text-muted)">
+                            {{ '📅' if c.challenge_type=='visits' else '💰' if c.challenge_type=='spending' else '🛠️' if c.challenge_type=='services' else '🤝' if c.challenge_type=='referrals' else '⭐' }}
+                            Objectif: {{ c.target_value|int }} • {{ c.start_date }} → {{ c.end_date }}
+                        </small>
+                    </div>
+                    <div style="text-align:right">
+                        <span style="color:var(--gold);font-weight:600">+{{ c.reward_points }} pts</span>
+                        {% if c.reward_description %}<br><small style="color:#4ade80;font-size:.65rem">🎁 {{ c.reward_description }}</small>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:20px">Aucun challenge. Créez-en un ! 🎯</p>
+            {% endfor %}
+        </div>
+
+        <!-- Top Loyal Customers -->
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">👑 Top Clients Fidèles</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+                    <thead>
+                        <tr style="border-color:var(--border-color)">
+                            <th style="color:var(--gold)">#</th>
+                            <th style="color:var(--gold)">Client</th>
+                            <th style="color:var(--gold);text-align:center">Niveau</th>
+                            <th style="color:var(--gold);text-align:center">Points</th>
+                            <th style="color:var(--gold);text-align:right">Wallet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in top_loyal %}
+                        <tr style="border-color:var(--border-color)">
+                            <td><strong style="color:{{ 'var(--gold)' if loop.index <= 3 else 'var(--text-muted)' }}">{{ loop.index }}</strong></td>
+                            <td>{{ c.name }}</td>
+                            <td class="text-center">
+                                <span style="font-size:.8rem">{{ '💎' if c.loyalty_level=='platinum' else '🥇' if c.loyalty_level=='gold' else '🥈' if c.loyalty_level=='silver' else '🥉' }}</span>
+                            </td>
+                            <td class="text-center" style="color:var(--gold);font-weight:600">{{ c.loyalty_points_total }}</td>
+                            <td style="text-align:right">{{ '{:,.0f}'.format(c.wallet_balance or 0) }} DH</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

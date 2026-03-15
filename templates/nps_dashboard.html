@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %} — NPS & Satisfaction{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📊 NPS & Satisfaction Client</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Net Promoter Score — Mesurez la fidélité de vos clients</p>
+
+<!-- NPS Score -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:2px solid {{ '#4ade80' if nps > 50 else 'var(--gold)' if nps > 0 else '#ef4444' }};border-radius:var(--radius);padding:20px">
+            <div style="font-size:2.5rem;font-weight:800;color:{{ '#4ade80' if nps > 50 else 'var(--gold)' if nps > 0 else '#ef4444' }}">{{ nps }}</div>
+            <small style="color:var(--text-muted)">Score NPS</small>
+            <div style="margin-top:6px;font-size:.65rem;color:var(--text-muted)">
+                {{ 'Excellent' if nps > 70 else 'Très bien' if nps > 50 else 'Bien' if nps > 0 else 'À améliorer' }}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="font-size:2rem;font-weight:700;color:var(--gold)">{{ avg_score }}/10</div>
+            <small style="color:var(--text-muted)">Note moyenne</small>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="display:flex;justify-content:space-around;text-align:center">
+                <div>
+                    <div style="color:#4ade80;font-size:1.5rem;font-weight:700">{{ promoters }}</div>
+                    <small style="color:var(--text-muted)">Promoteurs (9-10)</small>
+                    <div style="background:#4ade80;height:4px;border-radius:2px;margin-top:4px;width:{{ (promoters/total*100) if total else 0 }}%"></div>
+                </div>
+                <div>
+                    <div style="color:#f59e0b;font-size:1.5rem;font-weight:700">{{ passives }}</div>
+                    <small style="color:var(--text-muted)">Passifs (7-8)</small>
+                    <div style="background:#f59e0b;height:4px;border-radius:2px;margin-top:4px;width:{{ (passives/total*100) if total else 0 }}%"></div>
+                </div>
+                <div>
+                    <div style="color:#ef4444;font-size:1.5rem;font-weight:700">{{ detractors }}</div>
+                    <small style="color:var(--text-muted)">Détracteurs (0-6)</small>
+                    <div style="background:#ef4444;height:4px;border-radius:2px;margin-top:4px;width:{{ (detractors/total*100) if total else 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Add Survey -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvelle enquête</h5>
+            <form method="POST" action="/nps_survey/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Client</label>
+                    <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Score (0-10)</label>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                        {% for i in range(11) %}
+                        <label style="cursor:pointer">
+                            <input type="radio" name="score" value="{{ i }}" style="display:none" required>
+                            <span class="nps-btn" style="display:inline-block;width:32px;height:32px;line-height:32px;text-align:center;border-radius:6px;font-size:.8rem;font-weight:600;
+                                background:{{ '#ef4444' if i<=6 else '#f59e0b' if i<=8 else '#4ade80' }};color:#fff;opacity:.6;cursor:pointer">{{ i }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Commentaire</label>
+                    <textarea name="feedback" rows="2" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Retour du client..."></textarea>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Enregistrer</button>
+            </form>
+        </div>
+
+        <!-- Alerts -->
+        {% if alerts %}
+        <div class="card mt-3" style="background:var(--bg-card);border:2px solid #ef4444;border-radius:var(--radius);padding:18px">
+            <h5 style="color:#ef4444;margin-bottom:12px">🚨 Alertes détracteurs ({{ alerts|length }})</h5>
+            {% for a in alerts %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid #ef4444;border-radius:8px;padding:10px">
+                <strong style="color:var(--text-primary)">{{ a.customer_name }}</strong>
+                <span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:10px;font-size:.6rem;margin-left:6px">{{ a.score }}/10</span>
+                {% if a.feedback %}<br><small style="color:var(--text-muted);font-style:italic">"{{ a.feedback }}"</small>{% endif %}
+                <form method="POST" action="/nps_followup/{{ a.id }}" style="margin-top:6px">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="contacted">
+                    <input type="text" name="notes" class="form-control form-control-sm mb-1" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Notes suivi...">
+                    <button type="submit" class="btn btn-sm" style="background:#f59e0b;color:#000;font-size:.7rem">📞 Contacté</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Survey History & Trend -->
+    <div class="col-md-8">
+        {% if monthly %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📈 Tendance mensuelle</h5>
+            <canvas id="npsChart" height="150"></canvas>
+        </div>
+        {% endif %}
+
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📋 Enquêtes récentes</h5>
+            {% for s in surveys %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:10px;border-left:4px solid {{ '#4ade80' if s.score >= 9 else '#f59e0b' if s.score >= 7 else '#ef4444' }}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ s.customer_name or 'Client' }}</strong>
+                        <span style="background:{{ '#4ade80' if s.score >= 9 else '#f59e0b' if s.score >= 7 else '#ef4444' }};color:{{ '#000' if s.score >= 7 else '#fff' }};padding:2px 10px;border-radius:10px;font-size:.7rem;font-weight:700;margin-left:6px">{{ s.score }}/10</span>
+                        {% if s.feedback %}<br><small style="color:var(--text-muted);font-style:italic">"{{ s.feedback[:60] }}{% if s.feedback|length > 60 %}...{% endif %}"</small>{% endif %}
+                    </div>
+                    <small style="color:var(--text-muted);font-size:.6rem">{{ s.created_at[:10] if s.created_at else '' }}</small>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucune enquête. Commencez à mesurer la satisfaction !</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if monthly %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.querySelectorAll('.nps-btn').forEach(b => {
+    b.parentElement.addEventListener('click', () => {
+        document.querySelectorAll('.nps-btn').forEach(x => x.style.opacity = '.6');
+        b.style.opacity = '1';
+        b.style.transform = 'scale(1.2)';
+    });
+});
+new Chart(document.getElementById('npsChart'), {
+    type: 'line',
+    data: {
+        labels: [{% for m in monthly %}'{{ m.month }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Note moyenne',
+            data: [{% for m in monthly %}{{ '%.1f'|format(m.avg_score) }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#c8a951', backgroundColor: 'rgba(200,169,81,.1)', fill: true, tension: .4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#a0a0b0' } } },
+        scales: {
+            x: { ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,.05)' } },
+            y: { min: 0, max: 10, ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,.05)' } }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

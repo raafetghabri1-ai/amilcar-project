@@ -8898,6 +8898,552 @@ def vehicle_full_history(car_id):
         treatments=treatments, gallery=gallery, conditions=conditions, subscriptions=subscriptions,
         product_costs=product_costs, total_revenue=total_revenue, total_visits=total_visits)
 
+# ════════════════════════════════════════════════════════════════
+# ═══  PHASE 15: Revenue Intelligence & Client Excellence  ═══
+# ════════════════════════════════════════════════════════════════
+
+# ─── 1. WhatsApp Business Hub ───
+
+@app.route("/whatsapp_hub")
+@login_required
+def whatsapp_hub():
+    with get_db() as conn:
+        logs = conn.execute("""SELECT w.*, c.name as customer_name
+            FROM whatsapp_logs w LEFT JOIN customers c ON w.customer_id=c.id
+            ORDER BY w.created_at DESC LIMIT 200""").fetchall()
+        stats = {
+            'total': conn.execute("SELECT COUNT(*) FROM whatsapp_logs").fetchone()[0],
+            'sent': conn.execute("SELECT COUNT(*) FROM whatsapp_logs WHERE status='sent'").fetchone()[0],
+            'pending': conn.execute("SELECT COUNT(*) FROM whatsapp_logs WHERE status='pending'").fetchone()[0],
+            'today': conn.execute("SELECT COUNT(*) FROM whatsapp_logs WHERE DATE(created_at)=DATE('now')").fetchone()[0],
+        }
+        templates = [
+            {'name': 'rdv_confirmation', 'label': 'Confirmation RDV', 'icon': '✅'},
+            {'name': 'rdv_reminder', 'label': 'Rappel 24h', 'icon': '⏰'},
+            {'name': 'service_ready', 'label': 'Véhicule prêt', 'icon': '🚗'},
+            {'name': 'review_request', 'label': 'Demande avis', 'icon': '⭐'},
+            {'name': 'birthday', 'label': 'Anniversaire', 'icon': '🎂'},
+            {'name': 'promotion', 'label': 'Promotion', 'icon': '🎁'},
+            {'name': 'treatment_expiry', 'label': 'Traitement expire', 'icon': '🛡️'},
+        ]
+    return render_template("whatsapp_hub.html", logs=logs, stats=stats, templates=templates)
+
+@app.route("/whatsapp_hub_send", methods=["POST"])
+@login_required
+def whatsapp_hub_send():
+    with get_db() as conn:
+        customer_id = request.form.get("customer_id", 0, type=int)
+        template = request.form.get("template_name", "")
+        custom_msg = request.form.get("custom_message", "")
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Client non trouvé", "danger")
+            return redirect("/whatsapp_hub")
+        phone = customer['phone'] or ''
+        messages = {
+            'rdv_confirmation': f"✅ Bonjour {customer['name']}, votre RDV chez AMILCAR est confirmé !",
+            'rdv_reminder': f"⏰ Rappel : votre RDV chez AMILCAR est demain. On vous attend !",
+            'service_ready': f"🚗 {customer['name']}, votre véhicule est prêt ! Venez le récupérer.",
+            'review_request': f"⭐ {customer['name']}, comment était votre expérience chez AMILCAR ? Donnez-nous votre avis !",
+            'birthday': f"🎂 Joyeux anniversaire {customer['name']} ! -20% sur votre prochain soin.",
+            'promotion': f"🎁 {customer['name']}, offre spéciale AMILCAR ! Profitez-en maintenant.",
+            'treatment_expiry': f"🛡️ {customer['name']}, votre traitement arrive à expiration. Renouvelez-le !",
+        }
+        msg_text = custom_msg if custom_msg else messages.get(template, f"Message AMILCAR pour {customer['name']}")
+        conn.execute("""INSERT INTO whatsapp_logs (customer_id, phone, message_type, message_text, status, template_name)
+            VALUES (?,?,?,?,?,?)""", (customer_id, phone, template or 'custom', msg_text, 'pending', template))
+        conn.commit()
+    flash(f"Message WhatsApp préparé pour {customer['name']}", "success")
+    return redirect("/whatsapp_hub")
+
+@app.route("/whatsapp_bulk", methods=["POST"])
+@login_required
+def whatsapp_bulk():
+    template = request.form.get("template_name", "")
+    target = request.form.get("target", "all")
+    with get_db() as conn:
+        if target == "tomorrow_rdv":
+            from datetime import date, timedelta
+            tomorrow = (date.today() + timedelta(days=1)).isoformat()
+            customers = conn.execute("""SELECT DISTINCT c.id, c.name, c.phone FROM customers c
+                JOIN appointments a ON a.customer_id=c.id WHERE a.date=? AND a.status='pending'""", (tomorrow,)).fetchall()
+        elif target == "birthday_month":
+            from datetime import date
+            month = date.today().strftime('%m')
+            customers = conn.execute("SELECT id, name, phone FROM customers WHERE substr(birthday,6,2)=?", (month,)).fetchall()
+        else:
+            customers = conn.execute("SELECT id, name, phone FROM customers WHERE phone != ''").fetchall()
+        count = 0
+        for c in customers:
+            if c['phone']:
+                msg = f"Bonjour {c['name']}, message AMILCAR"
+                conn.execute("""INSERT INTO whatsapp_logs (customer_id, phone, message_type, message_text, status, template_name)
+                    VALUES (?,?,?,?,?,?)""", (c['id'], c['phone'], template or 'bulk', msg, 'pending', template))
+                count += 1
+        conn.commit()
+    flash(f"{count} messages WhatsApp préparés", "success")
+    return redirect("/whatsapp_hub")
+
+# ─── 2. Tarification Dynamique Pro ───
+
+@app.route("/dynamic_pricing_pro")
+@login_required
+def dynamic_pricing_pro():
+    with get_db() as conn:
+        rules = conn.execute("""SELECT dp.*, s.name as service_name FROM dynamic_pricing_rules dp
+            LEFT JOIN services s ON dp.service_id=s.id ORDER BY dp.priority DESC, dp.created_at DESC""").fetchall()
+        services = conn.execute("SELECT * FROM services ORDER BY name").fetchall()
+        flash_sales = conn.execute("SELECT * FROM flash_sales ORDER BY created_at DESC LIMIT 20").fetchall()
+    return render_template("dynamic_pricing.html", rules=rules, services=services, flash_sales=flash_sales)
+
+@app.route("/dynamic_pricing_pro/add", methods=["POST"])
+@login_required
+def dynamic_pricing_pro_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO dynamic_pricing_rules
+            (service_id, rule_name, rule_type, days_of_week, hours_range, season_start, season_end,
+             price_modifier, modifier_type, min_price, max_price, vehicle_types, priority)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (request.form.get("service_id", 0, type=int), request.form["rule_name"],
+             request.form["rule_type"], request.form.get("days_of_week", ""),
+             request.form.get("hours_range", ""), request.form.get("season_start", ""),
+             request.form.get("season_end", ""), request.form.get("price_modifier", 0, type=float),
+             request.form.get("modifier_type", "percentage"), request.form.get("min_price", 0, type=float),
+             request.form.get("max_price", 0, type=float), request.form.get("vehicle_types", "all"),
+             request.form.get("priority", 0, type=int)))
+        conn.commit()
+    flash("Règle de tarification ajoutée", "success")
+    return redirect("/dynamic_pricing_pro")
+
+@app.route("/flash_sale/add", methods=["POST"])
+@login_required
+def flash_sale_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO flash_sales (name, service_ids, discount_pct, start_datetime, end_datetime, max_bookings)
+            VALUES (?,?,?,?,?,?)""",
+            (request.form["name"], request.form.get("service_ids", ""),
+             request.form.get("discount_pct", 0, type=float),
+             request.form["start_datetime"], request.form["end_datetime"],
+             request.form.get("max_bookings", 0, type=int)))
+        conn.commit()
+    flash("Vente flash créée !", "success")
+    return redirect("/dynamic_pricing")
+
+# ─── 3. Gamification Employés ───
+
+@app.route("/employee_gamification")
+@login_required
+def employee_gamification_view():
+    from datetime import date
+    month = request.args.get("month", date.today().strftime("%Y-%m"))
+    with get_db() as conn:
+        employees = conn.execute("SELECT * FROM employees WHERE is_active=1 ORDER BY name").fetchall()
+        leaderboard = []
+        for emp in employees:
+            stats = conn.execute("""SELECT COUNT(*) as completed,
+                COALESCE(SUM(CASE WHEN a.total_price > 0 THEN a.total_price ELSE 0 END), 0) as revenue
+                FROM appointments a WHERE a.assigned_employee_id=? AND a.status='Terminé'
+                AND strftime('%%Y-%%m', a.date)=?""", (emp['id'], month)).fetchone()
+            avg_rating = conn.execute("""SELECT AVG(n.score) FROM nps_surveys n
+                JOIN appointments a ON n.appointment_id=a.id
+                WHERE a.assigned_employee_id=? AND strftime('%%Y-%%m', n.created_at)=?""",
+                (emp['id'], month)).fetchone()[0] or 0
+            timer_stats = conn.execute("""SELECT AVG(efficiency_pct) as avg_eff
+                FROM service_timer WHERE employee_id=? AND strftime('%%Y-%%m', created_at)=?""",
+                (emp['id'], month)).fetchone()
+            efficiency = timer_stats['avg_eff'] if timer_stats and timer_stats['avg_eff'] else 0
+            points = (stats['completed'] * 10) + int(stats['revenue'] / 100) + int(avg_rating * 5) + int(efficiency / 2)
+            leaderboard.append({
+                'id': emp['id'], 'name': emp['name'], 'role': emp.get('role', ''),
+                'completed': stats['completed'], 'revenue': stats['revenue'],
+                'avg_rating': round(avg_rating, 1), 'efficiency': round(efficiency, 1),
+                'points': points, 'badges': emp.get('badges', ''),
+                'commission_rate': emp.get('commission_rate', 0),
+                'commission': round(stats['revenue'] * (emp.get('commission_rate', 0) / 100), 2),
+            })
+        leaderboard.sort(key=lambda x: x['points'], reverse=True)
+        for i, e in enumerate(leaderboard):
+            e['rank'] = i + 1
+    return render_template("employee_gamification.html", leaderboard=leaderboard, month=month)
+
+@app.route("/employee_badge/<int:emp_id>", methods=["POST"])
+@login_required
+def employee_badge_add(emp_id):
+    badge = request.form.get("badge", "")
+    with get_db() as conn:
+        emp = conn.execute("SELECT badges FROM employees WHERE id=?", (emp_id,)).fetchone()
+        if emp:
+            current = emp['badges'] or ''
+            new_badges = f"{current},{badge}" if current else badge
+            conn.execute("UPDATE employees SET badges=? WHERE id=?", (new_badges, emp_id))
+            conn.commit()
+    flash(f"Badge '{badge}' attribué !", "success")
+    return redirect("/employee_gamification")
+
+# ─── 4. NPS & Satisfaction ───
+
+@app.route("/nps_dashboard")
+@login_required
+def nps_dashboard():
+    with get_db() as conn:
+        surveys = conn.execute("""SELECT n.*, c.name as customer_name, c.phone
+            FROM nps_surveys n LEFT JOIN customers c ON n.customer_id=c.id
+            ORDER BY n.created_at DESC LIMIT 100""").fetchall()
+        total = len(surveys)
+        if total > 0:
+            promoters = sum(1 for s in surveys if s['score'] >= 9)
+            passives = sum(1 for s in surveys if 7 <= s['score'] <= 8)
+            detractors = sum(1 for s in surveys if s['score'] <= 6)
+            nps = int(((promoters - detractors) / total) * 100)
+            avg_score = sum(s['score'] for s in surveys) / total
+        else:
+            promoters = passives = detractors = 0
+            nps = 0
+            avg_score = 0
+        monthly = conn.execute("""SELECT strftime('%%Y-%%m', created_at) as month,
+            AVG(score) as avg_score, COUNT(*) as count FROM nps_surveys
+            GROUP BY month ORDER BY month DESC LIMIT 6""").fetchall()
+        alerts = conn.execute("""SELECT n.*, c.name as customer_name, c.phone
+            FROM nps_surveys n LEFT JOIN customers c ON n.customer_id=c.id
+            WHERE n.score <= 6 AND n.follow_up_status='none'
+            ORDER BY n.created_at DESC""").fetchall()
+    return render_template("nps_dashboard.html", surveys=surveys, nps=nps, avg_score=round(avg_score, 1),
+        promoters=promoters, passives=passives, detractors=detractors, total=total,
+        monthly=monthly, alerts=alerts)
+
+@app.route("/nps_survey/add", methods=["POST"])
+@login_required
+def nps_survey_add():
+    with get_db() as conn:
+        customer_id = request.form.get("customer_id", 0, type=int)
+        score = request.form.get("score", 0, type=int)
+        feedback = request.form.get("feedback", "")
+        appointment_id = request.form.get("appointment_id", 0, type=int)
+        category = 'promoter' if score >= 9 else 'passive' if score >= 7 else 'detractor'
+        conn.execute("""INSERT INTO nps_surveys (customer_id, appointment_id, score, category, feedback)
+            VALUES (?,?,?,?,?)""", (customer_id, appointment_id, score, category, feedback))
+        conn.execute("UPDATE customers SET nps_score=? WHERE id=?", (score, customer_id))
+        conn.commit()
+    flash("Enquête NPS enregistrée", "success")
+    return redirect("/nps_dashboard")
+
+@app.route("/nps_followup/<int:survey_id>", methods=["POST"])
+@login_required
+def nps_followup(survey_id):
+    with get_db() as conn:
+        conn.execute("UPDATE nps_surveys SET follow_up_status=?, follow_up_notes=? WHERE id=?",
+            (request.form.get("status", "contacted"), request.form.get("notes", ""), survey_id))
+        conn.commit()
+    flash("Suivi mis à jour", "success")
+    return redirect("/nps_dashboard")
+
+# ─── 5. Portefeuille Client (Wallet) ───
+
+@app.route("/wallet/<int:customer_id>")
+@login_required
+def wallet_view(customer_id):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not customer:
+            flash("Client non trouvé", "danger")
+            return redirect("/customers")
+        transactions = conn.execute("""SELECT * FROM wallet_transactions
+            WHERE customer_id=? ORDER BY created_at DESC LIMIT 50""", (customer_id,)).fetchall()
+        balance = customer.get('wallet_balance', 0) or 0
+    return render_template("wallet.html", customer=customer, transactions=transactions, balance=balance)
+
+@app.route("/wallet/topup", methods=["POST"])
+@login_required
+def wallet_topup():
+    customer_id = request.form.get("customer_id", 0, type=int)
+    amount = request.form.get("amount", 0, type=float)
+    description = request.form.get("description", "Recharge manuelle")
+    if amount <= 0:
+        flash("Montant invalide", "danger")
+        return redirect(f"/wallet/{customer_id}")
+    with get_db() as conn:
+        current = conn.execute("SELECT wallet_balance FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not current:
+            flash("Client non trouvé", "danger")
+            return redirect("/customers")
+        new_balance = (current['wallet_balance'] or 0) + amount
+        conn.execute("UPDATE customers SET wallet_balance=? WHERE id=?", (new_balance, customer_id))
+        conn.execute("""INSERT INTO wallet_transactions (customer_id, transaction_type, amount, balance_after, description, created_by)
+            VALUES (?,?,?,?,?,?)""", (customer_id, 'topup', amount, new_balance, description, session.get('username', 'admin')))
+        conn.commit()
+    flash(f"+{amount} DH ajouté au portefeuille", "success")
+    return redirect(f"/wallet/{customer_id}")
+
+@app.route("/wallet/debit", methods=["POST"])
+@login_required
+def wallet_debit():
+    customer_id = request.form.get("customer_id", 0, type=int)
+    amount = request.form.get("amount", 0, type=float)
+    description = request.form.get("description", "Paiement service")
+    ref_type = request.form.get("reference_type", "")
+    ref_id = request.form.get("reference_id", 0, type=int)
+    with get_db() as conn:
+        current = conn.execute("SELECT wallet_balance FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not current:
+            flash("Client non trouvé", "danger")
+            return redirect("/customers")
+        bal = current['wallet_balance'] or 0
+        if amount > bal:
+            flash("Solde insuffisant", "danger")
+            return redirect(f"/wallet/{customer_id}")
+        new_balance = bal - amount
+        conn.execute("UPDATE customers SET wallet_balance=? WHERE id=?", (new_balance, customer_id))
+        conn.execute("""INSERT INTO wallet_transactions (customer_id, transaction_type, amount, balance_after, description, reference_type, reference_id, created_by)
+            VALUES (?,?,?,?,?,?,?,?)""", (customer_id, 'debit', -amount, new_balance, description, ref_type, ref_id, session.get('username', 'admin')))
+        conn.commit()
+    flash(f"-{amount} DH débité du portefeuille", "success")
+    return redirect(f"/wallet/{customer_id}")
+
+# ─── 6. Chronomètre de Service ───
+
+@app.route("/service_timer/<int:appointment_id>")
+@login_required
+def service_timer_view(appointment_id):
+    with get_db() as conn:
+        appt = conn.execute("""SELECT a.*, c.name as customer_name, ca.brand, ca.model, ca.plate
+            FROM appointments a
+            LEFT JOIN customers c ON a.customer_id=c.id
+            LEFT JOIN cars ca ON a.car_id=ca.id
+            WHERE a.id=?""", (appointment_id,)).fetchone()
+        if not appt:
+            flash("RDV non trouvé", "danger")
+            return redirect("/appointments")
+        timers = conn.execute("""SELECT st.*, e.name as emp_name FROM service_timer st
+            LEFT JOIN employees e ON st.employee_id=e.id
+            WHERE st.appointment_id=? ORDER BY st.created_at""", (appointment_id,)).fetchall()
+        employees = conn.execute("SELECT * FROM employees WHERE is_active=1 ORDER BY name").fetchall()
+        services = conn.execute("SELECT * FROM services ORDER BY name").fetchall()
+    return render_template("service_timer.html", appt=appt, timers=timers, employees=employees, services=services)
+
+@app.route("/service_timer/start", methods=["POST"])
+@login_required
+def service_timer_start():
+    from datetime import datetime
+    appt_id = request.form.get("appointment_id", 0, type=int)
+    with get_db() as conn:
+        svc = conn.execute("SELECT estimated_minutes FROM services WHERE name=?",
+            (request.form.get("service_name", ""),)).fetchone()
+        est = svc['estimated_minutes'] if svc and svc['estimated_minutes'] else 60
+        conn.execute("""INSERT INTO service_timer (appointment_id, employee_id, service_name, estimated_minutes, started_at)
+            VALUES (?,?,?,?,?)""", (appt_id, request.form.get("employee_id", 0, type=int),
+            request.form.get("service_name", ""), est, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        conn.execute("UPDATE appointments SET actual_start=COALESCE(NULLIF(actual_start,''), ?) WHERE id=?",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), appt_id))
+        conn.commit()
+    flash("Chronomètre démarré", "success")
+    return redirect(f"/service_timer/{appt_id}")
+
+@app.route("/service_timer/stop/<int:timer_id>", methods=["POST"])
+@login_required
+def service_timer_stop(timer_id):
+    from datetime import datetime
+    with get_db() as conn:
+        timer = conn.execute("SELECT * FROM service_timer WHERE id=?", (timer_id,)).fetchone()
+        if timer and timer['started_at'] and not timer['ended_at']:
+            now = datetime.now()
+            started = datetime.strptime(timer['started_at'], "%Y-%m-%d %H:%M:%S")
+            actual_min = int((now - started).total_seconds() / 60)
+            eff = round((timer['estimated_minutes'] / max(actual_min, 1)) * 100, 1) if timer['estimated_minutes'] else 0
+            conn.execute("""UPDATE service_timer SET ended_at=?, actual_minutes=?, efficiency_pct=? WHERE id=?""",
+                (now.strftime("%Y-%m-%d %H:%M:%S"), actual_min, eff, timer_id))
+            conn.execute("UPDATE appointments SET actual_end=? WHERE id=?",
+                (now.strftime("%Y-%m-%d %H:%M:%S"), timer['appointment_id']))
+            conn.commit()
+            flash(f"Chronométrage arrêté — {actual_min} min (efficacité {eff}%)", "success")
+            return redirect(f"/service_timer/{timer['appointment_id']}")
+    flash("Timer non trouvé", "danger")
+    return redirect("/appointments")
+
+@app.route("/efficiency_report")
+@login_required
+def efficiency_report():
+    from datetime import date, timedelta
+    month = request.args.get("month", date.today().strftime("%Y-%m"))
+    with get_db() as conn:
+        by_service = conn.execute("""SELECT service_name, COUNT(*) as count,
+            AVG(estimated_minutes) as avg_est, AVG(actual_minutes) as avg_actual,
+            AVG(efficiency_pct) as avg_eff
+            FROM service_timer WHERE strftime('%%Y-%%m', created_at)=? AND actual_minutes > 0
+            GROUP BY service_name ORDER BY avg_eff""", (month,)).fetchall()
+        by_employee = conn.execute("""SELECT e.name, COUNT(*) as count,
+            AVG(st.actual_minutes) as avg_time, AVG(st.efficiency_pct) as avg_eff
+            FROM service_timer st LEFT JOIN employees e ON st.employee_id=e.id
+            WHERE strftime('%%Y-%%m', st.created_at)=? AND st.actual_minutes > 0
+            GROUP BY st.employee_id ORDER BY avg_eff DESC""", (month,)).fetchall()
+        bottlenecks = conn.execute("""SELECT service_name, employee_id, actual_minutes, estimated_minutes, efficiency_pct
+            FROM service_timer WHERE efficiency_pct < 70 AND efficiency_pct > 0
+            AND strftime('%%Y-%%m', created_at)=? ORDER BY efficiency_pct LIMIT 20""", (month,)).fetchall()
+    return render_template("efficiency_report.html", by_service=by_service, by_employee=by_employee,
+        bottlenecks=bottlenecks, month=month)
+
+# ─── 7. Prévision Stock ───
+
+@app.route("/stock_forecast")
+@login_required
+def stock_forecast():
+    from datetime import date, timedelta
+    with get_db() as conn:
+        products = conn.execute("SELECT * FROM inventory ORDER BY name").fetchall()
+        forecasts = []
+        for p in products:
+            usage_30d = conn.execute("""SELECT COALESCE(SUM(quantity_used), 0) FROM product_usage
+                WHERE product_id=? AND DATE(created_at) >= DATE('now', '-30 days')""", (p['id'],)).fetchone()[0]
+            daily_avg = usage_30d / 30 if usage_30d else 0
+            stock = p.get('quantity', 0) or 0
+            days_left = int(stock / daily_avg) if daily_avg > 0 else 999
+            scheduled = conn.execute("""SELECT COUNT(*) FROM appointments
+                WHERE date >= DATE('now') AND date <= DATE('now', '+7 days') AND status='pending'""").fetchone()[0]
+            recommended = max(0, (daily_avg * 30) - stock)
+            status = 'critical' if days_left <= 7 else 'warning' if days_left <= 14 else 'ok'
+            forecasts.append({
+                'id': p['id'], 'name': p['name'], 'stock': stock,
+                'daily_avg': round(daily_avg, 2), 'days_left': days_left,
+                'recommended': round(recommended, 1), 'status': status,
+                'usage_30d': usage_30d, 'scheduled_appt': scheduled,
+                'unit': p.get('unit', ''),
+            })
+        forecasts.sort(key=lambda x: x['days_left'])
+    return render_template("stock_forecast.html", forecasts=forecasts)
+
+# ─── 8. Objectifs & Budget Mensuel ───
+
+@app.route("/monthly_goals_view")
+@login_required
+def monthly_goals_view():
+    from datetime import date
+    month = request.args.get("month", date.today().strftime("%Y-%m"))
+    with get_db() as conn:
+        goals = conn.execute("SELECT * FROM monthly_goals WHERE month=? ORDER BY goal_type", (month,)).fetchall()
+        actuals = {}
+        actuals['revenue'] = conn.execute("""SELECT COALESCE(SUM(amount), 0) FROM invoices
+            WHERE status='paid' AND strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
+        actuals['appointments'] = conn.execute("""SELECT COUNT(*) FROM appointments
+            WHERE strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
+        actuals['new_customers'] = conn.execute("""SELECT COUNT(*) FROM customers
+            WHERE strftime('%%Y-%%m', created_at)=?""", (month,)).fetchone()[0]
+        actuals['avg_ticket'] = conn.execute("""SELECT AVG(amount) FROM invoices
+            WHERE status='paid' AND strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0] or 0
+    return render_template("monthly_goals.html", goals=goals, actuals=actuals, month=month)
+
+@app.route("/monthly_goal/add", methods=["POST"])
+@login_required
+def monthly_goal_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO monthly_goals (month, goal_type, target_value, unit, notes)
+            VALUES (?,?,?,?,?)""",
+            (request.form["month"], request.form["goal_type"],
+             request.form.get("target_value", 0, type=float),
+             request.form.get("unit", ""), request.form.get("notes", "")))
+        conn.commit()
+    flash("Objectif ajouté", "success")
+    return redirect(f"/monthly_goals_view?month={request.form['month']}")
+
+# ─── 9. Client PWA Espace ───
+
+@app.route("/client_app")
+def client_app():
+    token = request.args.get("token", "")
+    with get_db() as conn:
+        shop = conn.execute("SELECT key, value FROM settings").fetchall()
+        shop = {s['key']: s['value'] for s in shop}
+    return render_template("client_app.html", shop=shop, token=token)
+
+@app.route("/client_app/login", methods=["POST"])
+def client_app_login():
+    phone = request.form.get("phone", "").strip()
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
+        if not customer:
+            flash("Numéro non trouvé", "danger")
+            return redirect("/client_app")
+        session['client_id'] = customer['id']
+        session['client_name'] = customer['name']
+    return redirect("/client_app/dashboard")
+
+@app.route("/client_app/dashboard")
+def client_app_dashboard():
+    client_id = session.get('client_id')
+    if not client_id:
+        return redirect("/client_app")
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
+        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
+            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+            WHERE a.customer_id=? ORDER BY a.date DESC LIMIT 10""", (client_id,)).fetchall()
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
+        wallet = conn.execute("""SELECT * FROM wallet_transactions WHERE customer_id=?
+            ORDER BY created_at DESC LIMIT 10""", (client_id,)).fetchall()
+        treatments = conn.execute("""SELECT t.*, ca.brand, ca.model FROM treatments t
+            LEFT JOIN cars ca ON t.car_id=ca.id WHERE t.customer_id=?
+            ORDER BY t.applied_date DESC LIMIT 5""", (client_id,)).fetchall()
+        balance = customer.get('wallet_balance', 0) or 0
+        loyalty = customer.get('loyalty_level', 'bronze')
+        points = customer.get('loyalty_points_total', 0) or 0
+        shop = conn.execute("SELECT key, value FROM settings").fetchall()
+        shop = {s['key']: s['value'] for s in shop}
+    return render_template("client_app_dashboard.html", customer=customer, appointments=appointments,
+        cars=cars, wallet=wallet, treatments=treatments, balance=balance,
+        loyalty=loyalty, points=points, shop=shop)
+
+# ─── 10. Fidélité Gamifiée ───
+
+@app.route("/loyalty_gamified")
+@login_required
+def loyalty_gamified():
+    with get_db() as conn:
+        challenges = conn.execute("SELECT * FROM loyalty_challenges ORDER BY created_at DESC").fetchall()
+        levels = conn.execute("""SELECT loyalty_level, COUNT(*) as count FROM customers
+            WHERE loyalty_level != '' GROUP BY loyalty_level ORDER BY
+            CASE loyalty_level WHEN 'platinum' THEN 1 WHEN 'gold' THEN 2
+            WHEN 'silver' THEN 3 ELSE 4 END""").fetchall()
+        top_loyal = conn.execute("""SELECT name, phone, loyalty_level, loyalty_points_total, wallet_balance
+            FROM customers WHERE loyalty_points_total > 0
+            ORDER BY loyalty_points_total DESC LIMIT 20""").fetchall()
+    return render_template("loyalty_gamified.html", challenges=challenges, levels=levels, top_loyal=top_loyal)
+
+@app.route("/loyalty_challenge/add", methods=["POST"])
+@login_required
+def loyalty_challenge_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO loyalty_challenges
+            (title, description, challenge_type, target_value, reward_points, reward_description, start_date, end_date, vehicle_types)
+            VALUES (?,?,?,?,?,?,?,?,?)""",
+            (request.form["title"], request.form.get("description", ""),
+             request.form["challenge_type"], request.form.get("target_value", 0, type=float),
+             request.form.get("reward_points", 0, type=int), request.form.get("reward_description", ""),
+             request.form["start_date"], request.form["end_date"],
+             request.form.get("vehicle_types", "all")))
+        conn.commit()
+    flash("Challenge créé !", "success")
+    return redirect("/loyalty_gamified")
+
+@app.route("/loyalty_level_update")
+@login_required
+def loyalty_level_update():
+    with get_db() as conn:
+        customers = conn.execute("SELECT id, loyalty_points_total FROM customers").fetchall()
+        updated = 0
+        for c in customers:
+            pts = c['loyalty_points_total'] or 0
+            if pts >= 5000:
+                level = 'platinum'
+            elif pts >= 2000:
+                level = 'gold'
+            elif pts >= 500:
+                level = 'silver'
+            else:
+                level = 'bronze'
+            conn.execute("UPDATE customers SET loyalty_level=? WHERE id=?", (level, c['id']))
+            updated += 1
+        conn.commit()
+    flash(f"{updated} niveaux de fidélité mis à jour", "success")
+    return redirect("/loyalty_gamified")
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 
