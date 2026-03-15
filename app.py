@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from flask_wtf.csrf import CSRFProtect
 from models.customer import get_all_customers, add_customer
 from models.report import total_customers, total_appointments, total_revenue
@@ -10,6 +10,7 @@ import io
 import uuid
 import time as time_module
 import re
+from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10708,19 +10709,23 @@ def espace_client_accueil():
             session.pop('client_id', None)
             return redirect('/espace-client')
         cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
-        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
-            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
-            WHERE a.customer_id=? ORDER BY a.date DESC LIMIT 10""", (client_id,)).fetchall()
+        car_ids = [c['id'] for c in cars]
+        if car_ids:
+            placeholders = ','.join('?' * len(car_ids))
+            appointments = conn.execute(f"""SELECT a.*, ca.brand, ca.model, ca.plate
+                FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+                WHERE a.car_id IN ({placeholders}) ORDER BY a.date DESC LIMIT 10""", car_ids).fetchall()
+            invoices_unpaid = conn.execute(f"""SELECT COUNT(*) FROM invoices i
+                JOIN appointments a ON i.appointment_id=a.id
+                WHERE a.car_id IN ({placeholders}) AND i.status IN ('unpaid','partial')""", car_ids).fetchone()[0]
+        else:
+            appointments = []
+            invoices_unpaid = 0
         active_count = sum(1 for a in appointments if a['status'] in ('pending', 'confirmed', 'in_progress'))
         completed_count = sum(1 for a in appointments if a['status'] in ('Terminé', 'completed', 'done'))
-        balance = customer.get('wallet_balance', 0) or 0
-        points = customer.get('loyalty_points_total', 0) or 0
-        loyalty = customer.get('loyalty_level', 'bronze') or 'bronze'
-        try:
-            invoices_unpaid = conn.execute("""SELECT COUNT(*) FROM invoices
-                WHERE customer_id=? AND status IN ('unpaid','partial')""", (client_id,)).fetchone()[0]
-        except Exception:
-            invoices_unpaid = 0
+        balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
+        points = customer['loyalty_points_total'] or 0 if customer['loyalty_points_total'] else 0
+        loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_accueil.html", customer=customer, cars=cars,
         appointments=appointments, active_count=active_count, completed_count=completed_count,
@@ -10734,7 +10739,7 @@ def espace_client_vehicules():
         cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
         car_data = []
         for car in cars:
-            appts = conn.execute("""SELECT date, service_type, status, total_price
+            appts = conn.execute("""SELECT date, service, status
                 FROM appointments WHERE car_id=? ORDER BY date DESC LIMIT 5""", (car['id'],)).fetchall()
             treatments = conn.execute("""SELECT treatment_type, applied_date, warranty_expiry
                 FROM treatments WHERE car_id=? ORDER BY applied_date DESC LIMIT 3""", (car['id'],)).fetchall()
@@ -10747,9 +10752,14 @@ def espace_client_vehicules():
 def espace_client_rdv():
     client_id = session['client_id']
     with get_db() as conn:
-        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
-            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
-            WHERE a.customer_id=? ORDER BY a.date DESC""", (client_id,)).fetchall()
+        car_ids = [c['id'] for c in conn.execute("SELECT id FROM cars WHERE customer_id=?", (client_id,)).fetchall()]
+        if car_ids:
+            placeholders = ','.join('?' * len(car_ids))
+            appointments = conn.execute(f"""SELECT a.*, ca.brand, ca.model, ca.plate
+                FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
+                WHERE a.car_id IN ({placeholders}) ORDER BY a.date DESC""", car_ids).fetchall()
+        else:
+            appointments = []
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_rdv.html", appointments=appointments, shop=shop)
 
@@ -10776,11 +10786,10 @@ def espace_client_reserver():
                     flash("Véhicule non trouvé", "danger")
                 else:
                     customer = conn.execute("SELECT name, phone FROM customers WHERE id=?", (client_id,)).fetchone()
-                    conn.execute("""INSERT INTO appointments (customer_id, car_id, date, time, service_type,
-                        status, notes, customer_name, customer_phone)
-                        VALUES (?,?,?,?,?,'pending',?,?,?)""",
-                        (client_id, car_id, date, time_slot, service_type, notes,
-                         customer['name'], customer['phone']))
+                    conn.execute("""INSERT INTO appointments (car_id, date, time, service,
+                        status)
+                        VALUES (?,?,?,?,'pending')""",
+                        (car_id, date, time_slot, service_type))
                     conn.commit()
                     flash("Rendez-vous demandé avec succès! Nous vous confirmerons bientôt.", "success")
                     return redirect("/espace-client/rendez-vous")
@@ -10791,9 +10800,16 @@ def espace_client_reserver():
 def espace_client_factures():
     client_id = session['client_id']
     with get_db() as conn:
-        invoices = conn.execute("""SELECT i.*, ca.brand, ca.model, ca.plate
-            FROM invoices i LEFT JOIN cars ca ON i.car_id=ca.id
-            WHERE i.customer_id=? ORDER BY i.date DESC""", (client_id,)).fetchall()
+        car_ids = [c['id'] for c in conn.execute("SELECT id FROM cars WHERE customer_id=?", (client_id,)).fetchall()]
+        if car_ids:
+            placeholders = ','.join('?' * len(car_ids))
+            invoices = conn.execute(f"""SELECT i.*, a.date as appt_date, a.service, ca.brand, ca.model, ca.plate
+                FROM invoices i
+                JOIN appointments a ON i.appointment_id=a.id
+                LEFT JOIN cars ca ON a.car_id=ca.id
+                WHERE a.car_id IN ({placeholders}) ORDER BY i.created_at DESC""", car_ids).fetchall()
+        else:
+            invoices = []
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_factures.html", invoices=invoices, shop=shop)
 
@@ -10822,7 +10838,7 @@ def espace_client_suivi(appointment_id):
     with get_db() as conn:
         appt = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
             FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
-            WHERE a.id=? AND a.customer_id=?""", (appointment_id, client_id)).fetchone()
+            WHERE a.id=? AND ca.customer_id=?""", (appointment_id, client_id)).fetchone()
         if not appt:
             flash("Rendez-vous non trouvé", "danger")
             return redirect("/espace-client/rendez-vous")
