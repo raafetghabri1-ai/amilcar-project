@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} - Rapports{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="page-title mb-0">RAPPORTS FINANCIERS</p>
+        <div class="d-flex gap-2">
+            <a href="/export/professional_pdf" class="btn btn-gold" style="font-size:0.72rem;padding:6px 14px">📄 PDF PROFESSIONNEL</a>
+            <a href="/export/full_report_excel" class="btn" style="border:1px solid #2d6a4f;color:#2d6a4f;font-size:0.72rem;padding:6px 14px">📊 EXPORT EXCEL</a>
+        </div>
+    </div>
+
+    <!-- Invoice Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h2 style="color:#2d6a4f">{{ total_paid }} DT</h2>
+                <p>TOTAL ENCAISSÉ</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h2 style="color:#C41E3A">{{ total_unpaid }} DT</h2>
+                <p>TOTAL IMPAYÉ</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <h2 style="color:#B8860B">{{ total_partial }} DT</h2>
+                <p>RESTE PARTIEL</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Comparison -->
+    <div class="card p-3 mb-4">
+        <p style="color:#D4AF37;letter-spacing:2px;font-size:0.8rem;margin-bottom:15px">COMPARAISON MENSUELLE</p>
+        <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>MOIS</th><th>RDV</th><th>REVENUS</th><th>DÉPENSES</th><th>BÉNÉFICE</th></tr></thead>
+            <tbody>
+            {% for m in months_data %}
+            <tr>
+                <td style="color:#D4AF37">{{ m.label }}</td>
+                <td>{{ m.appointments }}</td>
+                <td style="color:#2d6a4f">{{ m.revenue }} DT</td>
+                <td style="color:#C41E3A">{{ m.expenses }} DT</td>
+                <td class="{{ 'text-profit' if m.profit >= 0 else 'text-loss' }}">{{ m.profit }} DT</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Top Services -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <p style="color:#D4AF37;letter-spacing:2px;font-size:0.8rem;margin-bottom:15px">TOP 5 SERVICES (PAR REVENUS)</p>
+                <table class="table">
+                    <thead><tr><th>SERVICE</th><th>RDV</th><th>REVENUS</th></tr></thead>
+                    <tbody>
+                    {% for s in top_services %}
+                    <tr>
+                        <td>{{ s[0][:30] }}</td>
+                        <td>{{ s[1] }}</td>
+                        <td style="color:#2d6a4f">{{ s[2] }} DT</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Customers -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <p style="color:#D4AF37;letter-spacing:2px;font-size:0.8rem;margin-bottom:15px">TOP 5 CLIENTS</p>
+                <table class="table">
+                    <thead><tr><th>CLIENT</th><th>VISITES</th><th>TOTAL PAYÉ</th></tr></thead>
+                    <tbody>
+                    {% for c in top_customers %}
+                    <tr>
+                        <td><a href="/customer/{{ c[0] }}" style="color:#D4AF37;text-decoration:none">{{ c[1] }}</a></td>
+                        <td>{{ c[3] }}</td>
+                        <td style="color:#2d6a4f">{{ c[2] }} DT</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Methods -->
+    <div class="card p-3 mt-4">
+        <p style="color:#D4AF37;letter-spacing:2px;font-size:0.8rem;margin-bottom:15px">MÉTHODES DE PAIEMENT</p>
+        <div class="row g-3">
+        {% for pm in payment_methods %}
+        <div class="col-md-3">
+            <div class="card p-3 text-center" style="border:1px solid #333">
+                <p style="color:#D4AF37;font-size:1.2rem;margin:0">{{ pm[2] }} DT</p>
+                <p style="color:#888;font-size:0.7rem;letter-spacing:1px;margin:5px 0 0">{{ pm[0]|upper }} ({{ pm[1] }})</p>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+{% endblock %}

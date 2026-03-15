@@ -1,80 +1,146 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>AMILCAR - Appointments</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { background: #0d0d0d; color: #f0f0f0; font-family: 'Cinzel', serif; margin: 0; }
-        .hero { background: linear-gradient(135deg, #1a1a2e, #0d0d0d); border-bottom: 2px solid #D4AF37; padding: 60px 0; text-align: center; }
-        .hero h1 { color: #D4AF37; font-size: 3.5rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
-        .hero .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.9rem; margin-top: 8px; }
-        .navbar { background: #1a1a2e !important; border-bottom: 1px solid #D4AF37; }
-        .nav-link { color: #D4AF37 !important; letter-spacing: 2px; font-size: 0.8rem; padding: 15px 20px !important; }
-        .nav-link:hover { color: #C41E3A !important; }
-        .table { color: #f0f0f0; }
-        .table thead { background: #1a1a2e; color: #D4AF37; letter-spacing: 2px; font-size: 0.8rem; border-bottom: 1px solid #D4AF37; }
-        .table tbody tr { border-bottom: 1px solid #222; }
-        .table tbody tr:hover { background: #1a1a2e; }
-        .btn-gold { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 10px 20px; border-radius: 4px; }
-        .btn-gold:hover { background: #C41E3A; color: white; }
-        .page-title { color: #D4AF37; letter-spacing: 4px; font-size: 1rem; margin-bottom: 20px; }
-        .badge-pending { background: #C41E3A; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 1px; }
-    </style>
-</head>
-<body>
-    <div class="hero">
-        <h1>AMILCAR</h1>
-        <p class="tagline">WHERE CARS BECOME ART</p>
+{% extends "base.html" %}
+{% block title %} - Rendez-vous{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="page-title mb-0">RENDEZ-VOUS</p>
+        <a href="/add_appointment" class="btn btn-gold">+ NOUVEAU RENDEZ-VOUS</a>
     </div>
-    <nav class="navbar">
-        <div class="container">
-            <div class="navbar-nav mx-auto d-flex flex-row">
-                <a class="nav-link" href="/">HOME</a>
-                <a class="nav-link" href="/customers">CLIENTS</a>
-                <a class="nav-link" href="/appointments">APPOINTMENTS</a>
-                <a class="nav-link" href="/invoices">INVOICES</a>
-                <a class="nav-link" href="/quotes">QUOTES</a>
-                <a class="nav-link" href="/daily">TODAY</a>
-            </div>
+    <form method="GET" action="/appointments" class="d-flex gap-2 mb-4 align-items-end flex-wrap">
+        <div>
+            <label class="form-label" style="font-size:0.65rem;color:#888;letter-spacing:1px">STATUT</label>
+            <select name="status" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';min-width:120px">
+                <option value="">TOUS</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>EN ATTENTE</option>
+                <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>EN COURS</option>
+                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>TERMINÉ</option>
+                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ANNULÉ</option>
+            </select>
         </div>
-    </nav>
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <p class="page-title mb-0">APPOINTMENTS</p>
-            <a href="/add_appointment" class="btn btn-gold">+ NEW APPOINTMENT</a>
+        <div>
+            <label class="form-label" style="font-size:0.65rem;color:#888;letter-spacing:1px">DU</label>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
         </div>
-        <table class="table">
-            <thead><tr><th>#</th><th>CLIENT</th><th>CAR</th><th>DATE</th><th>SERVICE</th><th>STATUS</th><th>ACTION</th></tr></thead>
-            <tbody>
-            {% for a in appointments %}
-            <tr>
-                <td>{{ a[0] }}</td>
-                <td>{{ a[1] }}</td>
-                <td>{{ a[2] }} {{ a[3] }}</td>
-                <td>{{ a[4] }}</td>
-                <td>{{ a[5] }}</td>
-                <td>
-                {% if a[6] == "pending" %}
-                <span class="badge-pending">PENDING</span>
-                {% elif a[6] == "completed" %}
-                <span style="background:#2d6a4f;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem">COMPLETED</span>
-                {% else %}
-                <span style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem">CANCELLED</span>
-                {% endif %}
-                </td>
-                <td><a href="/delete_appointment/{{ a[0] }}" style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗</a></td>
-                <td>
-                {% if a[6] == "pending" %}
-                <a href="/update_appointment/{{ a[0] }}/completed" class="btn btn-gold" style="font-size:0.7rem;padding:5px 10px;margin-right:4px">✓ DONE</a>
-                <a href="/update_appointment/{{ a[0] }}/cancelled" style="background:#C41E3A;color:white;padding:5px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none">✗ CANCEL</a>
-                {% endif %}
-                </td>
-            </tr>
+        <div>
+            <label class="form-label" style="font-size:0.65rem;color:#888;letter-spacing:1px">AU</label>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
+        </div>
+        <button type="submit" class="btn btn-gold">FILTRER</button>
+        {% if status_filter or date_from or date_to %}
+        <a href="/appointments" class="btn" style="border:1px solid #555;color:#888">EFFACER</a>
+        {% endif %}
+    </form>
+    <table class="table">
+        <thead><tr><th>#</th><th>CLIENT</th><th>VOITURE</th><th>DATE</th><th>HEURE</th><th>SERVICE</th><th>TECH</th><th>STATUT</th><th>ACTION</th></tr></thead>
+        <tbody>
+        {% for a in appointments %}
+        <tr>
+            <td>{{ a[0] }}</td>
+            <td>{{ a[1] }}</td>
+            <td>{{ a[2] }} {{ a[3] }}</td>
+            <td>{{ a[4] }}</td>
+            <td>{% if a[8] %}<span style="color:#D4AF37;font-size:0.8rem">{{ a[8] }}</span>{% else %}—{% endif %}</td>
+            <td>{{ a[5] }}</td>
+            <td>{% if a[7] %}<span style="color:#D4AF37;font-size:0.75rem">{{ a[7] }}</span>{% else %}—{% endif %}</td>
+            <td>
+            {% if a[6] == "pending" %}
+            <span class="badge-pending">EN ATTENTE</span>
+            {% elif a[6] == "in_progress" %}
+            <span style="background:#1B6B93;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;letter-spacing:1px">EN COURS</span>
+            {% elif a[6] == "completed" %}
+            <span class="badge-completed">TERMINÉ</span>
+            {% else %}
+            <span style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem">ANNULÉ</span>
+            {% endif %}
+            </td>
+            <td>
+            {% if a[6] == "pending" %}
+            <form method="POST" action="/update_appointment/{{ a[0] }}/in_progress" class="form-action-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn" style="background:#1B6B93;color:white;font-size:0.65rem;padding:4px 8px;border:none;border-radius:4px;margin-right:3px">▶ DÉMARRER</button>
+            </form>
+            <form method="POST" action="/update_appointment/{{ a[0] }}/cancelled" class="form-action-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-action-cancel">✗</button>
+            </form>
+            {% elif a[6] == "in_progress" %}
+            <form method="POST" action="/update_appointment/{{ a[0] }}/completed" class="form-action-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-gold" style="font-size:0.65rem;padding:4px 8px;margin-right:3px">✓ TERMINÉ</button>
+            </form>
+            {% endif %}
+            <a href="/edit_appointment/{{ a[0] }}" class="action-edit" style="margin:0 4px">✎</a>
+            <a href="/gallery/{{ a[0] }}" style="color:#888;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Photos">📷</a>
+            {% if a[6] == 'completed' %}
+            <a href="#" onclick="openRating({{ a[0] }})" style="color:#D4AF37;text-decoration:none;margin:0 4px;font-size:0.85rem" title="Évaluer">★</a>
+            {% endif %}
+            {% if a[6] == 'pending' %}
+            <a href="/whatsapp_reminder/{{ a[0] }}" target="_blank" style="background:#25D366;color:white;padding:2px 6px;border-radius:4px;font-size:0.65rem;text-decoration:none;margin:0 2px" title="WhatsApp">📱</a>
+            {% endif %}
+            <form method="POST" action="/delete_appointment/{{ a[0] }}" class="form-action-inline" onsubmit="return confirm('SUPPRIMER ?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-action-delete">✗</button>
+            </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination" style="gap:5px">
+            {% for p in range(1, total_pages + 1) %}
+            <li>
+                <a href="/appointments?status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ p }}" class="btn {% if p == page %}btn-gold{% else %}btn-page{% endif %}">{{ p }}</a>
+            </li>
             {% endfor %}
-            </tbody>
-        </table>
+        </ul>
+    </nav>
+    {% endif %}
+
+<!-- Rating Modal -->
+<div id="ratingModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#1a1a2e;border:2px solid #D4AF37;border-radius:12px;padding:30px;max-width:400px;width:90%;text-align:center">
+        <p style="color:#D4AF37;font-size:0.9rem;letter-spacing:3px;margin-bottom:15px">ÉVALUER LE SERVICE</p>
+        <form id="ratingForm" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="ratingStars" style="margin:15px 0;cursor:pointer">
+                {% for i in range(1, 6) %}
+                <span class="rating-star" data-val="{{ i }}" style="font-size:2rem;color:#333;transition:color 0.2s" onmouseover="hoverStars({{ i }})" onmouseout="resetStars()" onclick="selectStar({{ i }})">★</span>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="rating" id="ratingValue" value="0">
+            <textarea name="comment" class="form-control mb-3" rows="2" placeholder="Commentaire (optionnel)" style="background:#0d0d1a;color:#f0f0f0;border:1px solid #333;font-size:0.8rem"></textarea>
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="submit" class="btn btn-gold">ENVOYER</button>
+                <button type="button" class="btn" style="border:1px solid #555;color:#888" onclick="closeRating()">ANNULER</button>
+            </div>
+        </form>
     </div>
-</body>
-</html>
+</div>
+<script>
+let selectedRating = 0;
+function openRating(id) {
+    document.getElementById('ratingForm').action = '/rate_appointment/' + id;
+    selectedRating = 0;
+    resetStars();
+    document.getElementById('ratingValue').value = 0;
+    document.getElementById('ratingModal').style.display = 'flex';
+}
+function closeRating() { document.getElementById('ratingModal').style.display = 'none'; }
+function hoverStars(n) {
+    document.querySelectorAll('.rating-star').forEach(function(s) {
+        s.style.color = parseInt(s.dataset.val) <= n ? '#D4AF37' : '#333';
+    });
+}
+function resetStars() {
+    document.querySelectorAll('.rating-star').forEach(function(s) {
+        s.style.color = parseInt(s.dataset.val) <= selectedRating ? '#D4AF37' : '#333';
+    });
+}
+function selectStar(n) {
+    selectedRating = n;
+    document.getElementById('ratingValue').value = n;
+    resetStars();
+}
+</script>
+{% endblock %}

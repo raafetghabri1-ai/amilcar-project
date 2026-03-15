@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %} - Packs{% endblock %}
+{% block content %}
+<h3 class="page-title mb-4">📦 PACKS & FORFAITS</h3>
+
+{% if session.get('role') == 'admin' %}
+<div class="card p-4 mb-4">
+    <p class="section-title">CRÉER UN PACK</p>
+    <form method="POST" action="/add_package">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">NOM DU PACK</label>
+                <input type="text" name="name" class="form-control" required placeholder="ex. Pack Premium">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">DESCRIPTION</label>
+                <input type="text" name="description" class="form-control" placeholder="Description courte">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">PRIX PACK (DT)</label>
+                <input type="number" name="package_price" class="form-control" step="0.01" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">SERVICES INCLUS</label>
+                {% for name, price in services %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="services" value="{{ name }}" id="svc_{{ loop.index }}" style="background:#1a1a2e;border:1px solid #555">
+                    <label class="form-check-label" for="svc_{{ loop.index }}" style="font-size:0.75rem;color:#d0d0d0">{{ name }} {% if price %}({{ price }} DT){% endif %}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-gold w-100">+</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% if packages %}
+<div class="row g-4">
+    {% for pkg in packages %}
+    <div class="col-md-4">
+        <div class="card p-3" style="border-left:3px solid #D4AF37">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p style="color:#D4AF37;font-size:1rem;letter-spacing:2px;font-weight:700;margin:0">{{ pkg[1] }}</p>
+                    {% if pkg[2] %}<p style="color:#888;font-size:0.7rem;margin:3px 0">{{ pkg[2] }}</p>{% endif %}
+                </div>
+                {% if session.get('role') == 'admin' %}
+                <form method="POST" action="/delete_package/{{ pkg[0] }}" onsubmit="return confirm('Supprimer ce pack ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-action-delete">✕</button>
+                </form>
+                {% endif %}
+            </div>
+            <hr style="border-color:rgba(212,175,55,0.2)">
+            <p style="color:#888;font-size:0.65rem;letter-spacing:1px;margin:0">SERVICES INCLUS</p>
+            {% for svc in pkg[3].split(',') %}
+            <span style="display:inline-block;background:rgba(212,175,55,0.1);color:#D4AF37;padding:2px 8px;border-radius:4px;font-size:0.65rem;margin:3px 2px 0 0">{{ svc }}</span>
+            {% endfor %}
+            <div class="d-flex justify-content-between mt-3">
+                <div>
+                    <span style="color:#888;font-size:0.65rem;text-decoration:line-through">{{ pkg[4]|round|int }} DT</span>
+                </div>
+                <div>
+                    <span style="color:#D4AF37;font-size:1.2rem;font-weight:900">{{ pkg[5]|round|int }} DT</span>
+                    {% set savings = ((pkg[4] - pkg[5]) / pkg[4] * 100)|round|int if pkg[4] > 0 else 0 %}
+                    {% if savings > 0 %}
+                    <span style="background:#2d6a4f;color:white;padding:2px 6px;border-radius:4px;font-size:0.55rem;margin-left:5px">-{{ savings }}%</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p style="text-align:center;color:#888;letter-spacing:2px;margin:40px 0">AUCUN PACK CRÉÉ</p>
+{% endif %}
+{% endblock %}

@@ -1,24 +1,11 @@
-from database.db import connect
+from database.db import get_db
 
-def add_customer(name, phone):
-    conn = connect()
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        INSERT INTO customers (name, phone)
-        VALUES (?, ?)
-    ''', (name, phone))
-
-    conn.commit()
-    conn.close()
-    print(f"تم إضافة العميل {name} بنجاح ✅")
+def add_customer(name, phone, notes=''):
+    with get_db() as conn:
+        conn.execute('INSERT INTO customers (name, phone, notes) VALUES (?, ?, ?)',
+            (name, phone, notes))
+        conn.commit()
 
 def get_all_customers():
-    conn = connect()
-    cursor = conn.cursor()
-
-    cursor.execute('SELECT * FROM customers')
-    customers = cursor.fetchall()
-
-    conn.close()
-    return customers
+    with get_db() as conn:
+        return conn.execute('SELECT * FROM customers').fetchall()

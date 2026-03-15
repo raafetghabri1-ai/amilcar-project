@@ -1,108 +1,286 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>AMILCAR Auto Care</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { background: #0d0d0d; color: #f0f0f0; font-family: 'Cinzel', serif; margin: 0; }
-        .hero { background: linear-gradient(135deg, #1a1a2e, #0d0d0d); border-bottom: 2px solid #D4AF37; padding: 60px 0; text-align: center; }
-        .hero h1 { color: #D4AF37; font-size: 3.5rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
-        .hero .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.9rem; margin-top: 8px; }
-        .hero .sub { color: #555; font-size: 0.7rem; letter-spacing: 3px; margin-top: 4px; }
-        .navbar { background: #1a1a2e !important; border-bottom: 1px solid #D4AF37; }
-        .nav-link { color: #D4AF37 !important; letter-spacing: 2px; font-size: 0.8rem; padding: 15px 20px !important; }
-        .nav-link:hover { color: #C41E3A !important; }
-        .stat-card { background: #1a1a2e; border: 1px solid #D4AF37; border-radius: 8px; padding: 40px 20px; text-align: center; }
-        .stat-card h2 { color: #D4AF37; font-size: 3rem; font-weight: 900; margin: 0; }
-        .stat-card p { color: #888; letter-spacing: 3px; font-size: 0.7rem; margin-top: 8px; }
-        .btn-gold { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 12px; border-radius: 4px; }
-        .btn-gold:hover { background: #C41E3A; color: white; }
-        .divider { border-color: #D4AF37; opacity: 0.3; margin: 40px 0; }
-    </style>
-</head>
-<body>
-    <div class="hero">
-        <h1>AMILCAR</h1>
-        <p class="tagline">WHERE CARS BECOME ART</p>
-        <p class="sub">AUTO CARE &mdash; MAHRES, SFAX</p>
+{% extends "base.html" %}
+{% block title %} - Tableau de Bord{% endblock %}
+{% block hero_extra %}<p class="sub">SOIN AUTOMOBILE &mdash; MAHRES, SFAX</p>{% endblock %}
+{% block content %}
+    <!-- Welcome + Quick Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="page-title mb-0">Tableau de Bord</h3>
+        <div class="d-flex gap-2">
+            <a href="/add_customer" class="btn btn-gold" style="font-size:0.72rem;padding:8px 14px">+ CLIENT</a>
+            <a href="/add_appointment" class="btn btn-gold" style="font-size:0.72rem;padding:8px 14px">+ RDV</a>
+        </div>
     </div>
-    <nav class="navbar">
-        <div class="container">
-            <div class="navbar-nav mx-auto d-flex flex-row">
-                <a class="nav-link" href="/">HOME</a>
-                <a class="nav-link" href="/customers">CLIENTS</a>
-                <a class="nav-link" href="/appointments">APPOINTMENTS</a>
-                <a class="nav-link" href="/invoices">INVOICES</a>
-                <a class="nav-link" href="/quotes">QUOTES</a>
-                <a class="nav-link" href="/daily">TODAY</a>
-                <a class="nav-link" href="/monthly">MONTHLY</a>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2>{{ stats.customers }}</h2>
+                <p>CLIENTS</p>
             </div>
         </div>
-    </nav>
-    <div class="container mt-5">
-        <div class="row g-4">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h2>{{ stats.customers }}</h2>
-                    <p>CLIENTS</p>
-                </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2>{{ stats.appointments }}</h2>
+                <p>RENDEZ-VOUS</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h2>{{ stats.appointments }}</h2>
-                    <p>APPOINTMENTS</p>
-                </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2>{{ stats.revenue }}</h2>
+                <p>REVENUS (DT)</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h2>{{ stats.revenue }}</h2>
-                    <p>REVENUE (DT)</p>
-                </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2 style="color:#C41E3A;-webkit-text-fill-color:#C41E3A">{{ stats.expenses }}</h2>
+                <p>DÉPENSES (DT)</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h2>{{ stats.quotes }}</h2>
-                    <p>PENDING QUOTES</p>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="-webkit-text-fill-color:unset;background:none">{{ stats.profit }}</h2>
+                <p>BÉNÉFICE NET</p>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6">
+            <div class="stat-card">
+                <h2>{{ stats.quotes }}</h2>
+                <p>DEVIS EN ATTENTE</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Info -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid #D4AF37">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">AUJOURD'HUI</p>
+                <p style="color:#D4AF37;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ stats.today_appointments }} <span style="font-size:0.75rem;color:#888;font-weight:400">rendez-vous</span> — {{ stats.today_revenue }} DT</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid #C41E3A">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">FACTURES IMPAYÉES</p>
+                <p style="color:#C41E3A;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ stats.unpaid_total }} DT</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid #2d6a4f">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">DEMAIN</p>
+                <p style="color:#2d6a4f;font-size:1.3rem;font-weight:800;margin:5px 0 0">{{ tomorrow_appointments|length }} <span style="font-size:0.75rem;color:#888;font-weight:400">rendez-vous</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid #8B6914">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">MEILLEUR CLIENT</p>
+                <p style="color:#D4AF37;font-size:1rem;font-weight:700;margin:5px 0 0">{{ stats.top_customer }}</p>
+                <p style="color:#888;font-size:0.75rem;margin:2px 0 0">{{ stats.top_customer_amount }} DT</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid #1B6B93">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">VOITURE LA PLUS FRÉQUENTE</p>
+                <p style="color:#1B6B93;font-size:1rem;font-weight:700;margin:5px 0 0">{{ stats.most_visited_car }}</p>
+                <p style="color:#888;font-size:0.75rem;margin:2px 0 0">{{ stats.most_visited_count }} visites</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3" style="border-left:3px solid {% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %}">
+                <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">TAUX DE PAIEMENT</p>
+                <div style="margin:6px 0 0;display:flex;align-items:center;gap:12px">
+                    <span style="color:{% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %};font-size:1.3rem;font-weight:800">{{ stats.pay_rate }}%</span>
+                    <div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                        <div style="width:{{ stats.pay_rate }}%;height:100%;background:{% if stats.pay_rate >= 70 %}#2d6a4f{% elif stats.pay_rate >= 40 %}#B8860B{% else %}#C41E3A{% endif %};border-radius:3px;transition:width 1s ease"></div>
+                    </div>
                 </div>
             </div>
         </div>
-        <hr class="divider">
-        {% if pending_appointments %}
-        <div style="background:#1a1a2e;border:1px solid #C41E3A;border-radius:8px;padding:20px;margin-bottom:30px;">
-            <p style="color:#C41E3A;letter-spacing:3px;font-size:0.85rem;margin-bottom:15px;">⚠ PENDING APPOINTMENTS ({{ pending_appointments|length }})</p>
-            <table class="table" style="color:#f0f0f0;margin:0;">
-                <thead style="background:#0d0d0d;color:#D4AF37;letter-spacing:2px;font-size:0.75rem;">
-                    <tr><th>CLIENT</th><th>CAR</th><th>DATE</th><th>SERVICE</th></tr>
+    </div>
+
+    <!-- Tomorrow's appointments -->
+    {% if tomorrow_appointments %}
+    <div class="card p-4 mb-4" style="border:1px solid rgba(212,175,55,0.15)">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span style="font-size:1.1rem">📅</span>
+            <span style="color:var(--gold);font-weight:700;font-size:0.95rem">RENDEZ-VOUS DE DEMAIN ({{ tomorrow_appointments|length }})</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table" style="margin:0">
+                <thead><tr><th>CLIENT</th><th>VOITURE</th><th>SERVICE</th></tr></thead>
+                <tbody>
+                {% for a in tomorrow_appointments %}
+                <tr>
+                    <td style="font-weight:600">{{ a[1] }}</td>
+                    <td>{{ a[2] }} {{ a[3] }}</td>
+                    <td>{{ a[4] }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pending appointments -->
+    {% if pending_appointments %}
+    <div class="pending-alert">
+        <p class="pending-alert-title">⚠ RENDEZ-VOUS EN ATTENTE ({{ pending_appointments|length }})</p>
+        <div class="table-responsive">
+            <table class="table" style="margin:0;">
+                <thead>
+                    <tr><th>CLIENT</th><th>VOITURE</th><th>DATE</th><th>SERVICE</th></tr>
                 </thead>
                 <tbody>
                 {% for a in pending_appointments %}
-                <tr style="border-bottom:1px solid #222;">
-                    <td>{{ a[1] }}</td>
+                <tr>
+                    <td style="font-weight:600">{{ a[1] }}</td>
                     <td>{{ a[2] }} {{ a[3] }}</td>
                     <td>{{ a[4] }}</td>
                     <td>{{ a[5] }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
-            </table>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <a href="/add_customer" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVEAU CLIENT</a>
         </div>
-        {% endif %}
-        <div class="row g-3">
-            <div class="col-md-3">
-                <a href="/add_customer" class="btn btn-gold w-100">+ NEW CLIENT</a>
+        <div class="col-md-3 col-6">
+            <a href="/add_appointment" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVEAU RDV</a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="/add_invoice" class="btn btn-gold w-100" style="font-size:0.75rem">+ NOUVELLE FACTURE</a>
+        </div>
+        <div class="col-md-3 col-6">
+            <a href="/quotes" class="btn btn-gold w-100" style="font-size:0.75rem">VOIR LES DEVIS</a>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            <div class="card p-3">
+                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">📊 REVENUS CETTE SEMAINE</p>
+                <canvas id="weeklyChart" height="180"></canvas>
             </div>
-            <div class="col-md-3">
-                <a href="/add_appointment" class="btn btn-gold w-100">+ NEW APPOINTMENT</a>
+        </div>
+        <div class="col-lg-4">
+            <div class="card p-3">
+                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">📈 COMPARAISON 12 MOIS</p>
+                <canvas id="monthlyCompChart" height="180"></canvas>
             </div>
-            <div class="col-md-3">
-                <a href="/add_invoice" class="btn btn-gold w-100">+ NEW INVOICE</a>
-            </div>
-            <div class="col-md-3">
-                <a href="/quotes" class="btn btn-gold w-100">VIEW QUOTES</a>
+        </div>
+        <div class="col-lg-4">
+            <div class="card p-3" id="forecastCard">
+                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">🔮 PRÉVISIONS FIN DE MOIS</p>
+                <div id="forecastData" style="text-align:center;padding:10px 0">
+                    <p style="color:#888;font-size:0.8rem">Chargement...</p>
+                </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">REVENUS vs DÉPENSES — 6 MOIS</p>
+                <canvas id="revenueChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card p-3">
+                <p style="color:#D4AF37;font-weight:700;font-size:0.8rem;margin-bottom:12px">SERVICES</p>
+                <canvas id="servicesChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card p-3">
+                <p style="color:#C41E3A;font-weight:700;font-size:0.8rem;margin-bottom:12px">DÉPENSES PAR CATÉGORIE</p>
+                <canvas id="expensesChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+var chartFont = {family:'Inter',size:10};
+var gridColor = 'rgba(255,255,255,0.04)';
+
+// Weekly Revenue
+fetch('/api/weekly_revenue').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('weeklyChart'),{
+        type:'bar',
+        data:{labels:data.map(d=>d.day),datasets:[
+            {label:'Revenus (DT)',data:data.map(d=>d.revenue),backgroundColor:'rgba(212,175,55,0.6)',borderColor:'#D4AF37',borderWidth:1,borderRadius:4},
+            {label:'RDV',data:data.map(d=>d.appointments),type:'line',borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,yAxisID:'y1'}
+        ]},
+        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
+            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#C41E3A'},grid:{display:false}}}}
+    });
+});
+
+// Monthly Comparison (12 months)
+fetch('/api/monthly_comparison').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('monthlyCompChart'),{
+        type:'line',
+        data:{labels:data.map(d=>d.label),datasets:[
+            {label:'Revenus',data:data.map(d=>d.revenue),borderColor:'#D4AF37',backgroundColor:'rgba(212,175,55,0.1)',tension:0.3,fill:true},
+            {label:'Dépenses',data:data.map(d=>d.expenses),borderColor:'#C41E3A',backgroundColor:'rgba(196,30,58,0.1)',tension:0.3,fill:true},
+            {label:'Bénéfice',data:data.map(d=>d.profit),borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,fill:true}
+        ]},
+        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
+            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}}}}
+    });
+});
+
+// Profit Forecast
+fetch('/api/profit_forecast').then(r=>r.json()).then(data=>{
+    var fc = document.getElementById('forecastData');
+    var profitColor = data.forecast_profit >= 0 ? '#2d6a4f' : '#C41E3A';
+    fc.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">'
+        +'<div><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">REVENUS PRÉVUS</p><p style="color:#D4AF37;font-size:1.2rem;font-weight:800;margin:4px 0">'+data.forecast_revenue+' DT</p></div>'
+        +'<div><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">DÉPENSES PRÉVUES</p><p style="color:#C41E3A;font-size:1.2rem;font-weight:800;margin:4px 0">'+data.forecast_expenses+' DT</p></div>'
+        +'<div style="grid-column:span 2"><p style="color:#888;font-size:0.6rem;letter-spacing:1px;margin:0">BÉNÉFICE ESTIMÉ</p><p style="color:'+profitColor+';font-size:1.5rem;font-weight:900;margin:4px 0">'+data.forecast_profit+' DT</p></div>'
+        +'<div style="grid-column:span 2"><p style="color:#888;font-size:0.65rem;margin:0">Moy. journalière: <b style=color:#D4AF37>'+data.avg_daily_revenue+' DT</b> | Jours restants: <b>'+data.days_remaining+'</b></p></div>'
+        +'</div>';
+});
+
+// Main charts (6-month revenue/expenses)
+fetch('/api/chart_data').then(r=>r.json()).then(data=>{
+    new Chart(document.getElementById('revenueChart'),{
+        type:'bar',
+        data:{labels:data.months,datasets:[
+            {label:'Revenus (DT)',data:data.revenue,backgroundColor:'rgba(212,175,55,0.6)',borderColor:'#D4AF37',borderWidth:1,borderRadius:4},
+            {label:'Dépenses (DT)',data:data.expenses,backgroundColor:'rgba(196,30,58,0.4)',borderColor:'#C41E3A',borderWidth:1,borderRadius:4},
+            {label:'Rendez-vous',data:data.appointments,type:'line',borderColor:'#2d6a4f',backgroundColor:'rgba(45,106,79,0.1)',tension:0.3,yAxisID:'y1'}
+        ]},
+        options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0',font:chartFont}}},
+            scales:{x:{ticks:{color:'#888',font:chartFont},grid:{color:gridColor}},y:{ticks:{color:'#D4AF37'},grid:{color:gridColor}},y1:{position:'right',ticks:{color:'#C41E3A'},grid:{display:false}}}}
+    });
+    if(data.services.labels.length>0){
+        new Chart(document.getElementById('servicesChart'),{
+            type:'doughnut',
+            data:{labels:data.services.labels,datasets:[{data:data.services.data,backgroundColor:['#D4AF37','#C41E3A','#2d6a4f','#B8B8B8','#8B6914','#555']}]},
+            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#9a9ab0',font:chartFont,padding:10}}}}
+        });
+    }
+    if(data.expense_categories && data.expense_categories.labels.length>0){
+        new Chart(document.getElementById('expensesChart'),{
+            type:'doughnut',
+            data:{labels:data.expense_categories.labels,datasets:[{data:data.expense_categories.data,backgroundColor:['#C41E3A','#8B0000','#B22222','#DC143C','#FF4444','#CC3333']}]},
+            options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#9a9ab0',font:chartFont,padding:10}}}}
+        });
+    }
+});
+</script>
+{% endblock %}

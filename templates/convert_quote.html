@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %} - Convert Quote{% endblock %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card p-4">
+                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">CONVERT QUOTE TO APPOINTMENT</h4>
+                <div class="mb-4 p-3" style="background:#1a1a2e;border:1px solid #333;border-radius:6px;">
+                    <p style="color:#888;font-size:0.75rem;letter-spacing:2px;margin-bottom:8px">ORIGINAL QUOTE</p>
+                    <p style="color:#f0f0f0;margin:0"><strong>{{ quote[1] }}</strong> — {{ quote[2] }}</p>
+                    <p style="color:#D4AF37;margin:4px 0 0">{{ quote[3] }} {% if quote[6] %}— {{ quote[6] }} DT{% endif %}</p>
+                </div>
+                <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">CLIENT NAME</label>
+                            <input type="text" name="name" class="form-control" value="{{ quote[1] }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">PHONE</label>
+                            <input type="tel" name="phone" class="form-control" value="{{ quote[2] }}" required>
+                        </div>
+                    </div>
+                    <hr style="border-color:#333;margin:20px 0">
+                    <p style="color:#D4AF37;font-size:0.8rem;letter-spacing:2px;margin-bottom:15px">CAR DETAILS</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">BRAND</label>
+                            <input type="text" name="brand" class="form-control" placeholder="e.g. BMW" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">MODEL</label>
+                            <input type="text" name="model" class="form-control" placeholder="e.g. Serie 3" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">PLATE</label>
+                            <input type="text" name="plate" class="form-control" placeholder="e.g. 123 TN 4567" required>
+                        </div>
+                    </div>
+                    <hr style="border-color:#333;margin:20px 0">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">SERVICE</label>
+                            <input type="text" name="service" class="form-control" value="{{ quote[3] }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">PRICE (DT)</label>
+                            <input type="number" name="price" class="form-control" value="{{ quote[6] or '' }}" step="0.1">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-gold flex-grow-1">✓ CONVERT TO APPOINTMENT</button>
+                        <a href="/quotes" class="btn" style="border:1px solid #555;color:#888;padding:10px 20px">CANCEL</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

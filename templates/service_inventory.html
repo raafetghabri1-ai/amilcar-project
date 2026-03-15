@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %} - Inventaire & Services{% endblock %}
+{% block content %}
+<h3 class="page-title mb-4">🔗 LIAISON INVENTAIRE / SERVICES</h3>
+
+{% if session.get('role') == 'admin' %}
+<div class="card p-4 mb-4">
+    <p class="section-title">AJOUTER UNE LIAISON</p>
+    <form method="POST" action="/add_service_inventory">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">SERVICE</label>
+                <select name="service_name" class="form-select" required>
+                    <option value="">— Choisir un service —</option>
+                    {% for name, price in services %}
+                    <option value="{{ name }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">ARTICLE D'INVENTAIRE</label>
+                <select name="inventory_id" class="form-select" required>
+                    <option value="">— Choisir un article —</option>
+                    {% for item in items %}
+                    <option value="{{ item[0] }}">{{ item[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">QUANTITÉ REQUISE</label>
+                <input type="number" name="quantity_used" class="form-control" min="1" value="1" required>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-gold w-100">+ LIER</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% if links %}
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>SERVICE</th>
+                <th>ARTICLE</th>
+                <th>QTÉ REQUISE</th>
+                <th>STOCK ACTUEL</th>
+                <th>ÉTAT</th>
+                {% if session.get('role') == 'admin' %}<th></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for link in links %}
+            <tr>
+                <td style="color:#D4AF37;font-weight:600">{{ link[1] }}</td>
+                <td>{{ link[2] }}</td>
+                <td>{{ link[3] }}</td>
+                <td>—</td>
+                <td>—</td>
+                {% if session.get('role') == 'admin' %}
+                <td>
+                    <form method="POST" action="/delete_service_inventory/{{ link[0] }}" onsubmit="return confirm('Supprimer cette liaison ?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-action-delete">✕</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p style="text-align:center;color:#888;letter-spacing:2px;margin:40px 0">AUCUNE LIAISON CONFIGURÉE</p>
+{% endif %}
+{% endblock %}

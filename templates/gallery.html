@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %} - Galerie{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="page-title mb-0">📷 GALERIE — Rendez-vous #{{ appt[0] }}</p>
+        <a href="/appointments" class="btn" style="border:1px solid #555;color:#888;font-size:0.75rem">← RETOUR</a>
+    </div>
+    <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between">
+            <div>
+                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">CLIENT </span>
+                <p style="color:#D4AF37;margin:0">{{ appt[1] }}</p>
+            </div>
+            <div>
+                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">VOITURE</span>
+                <p style="color:#D4AF37;margin:0">{{ appt[2] }} {{ appt[3] }}</p>
+            </div>
+            <div>
+                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">SERVICE</span>
+                <p style="color:#f0f0f0;margin:0">{{ appt[5] }}</p>
+            </div>
+            <div>
+                <span style="color:#888;font-size:0.7rem;letter-spacing:1px">DATE</span>
+                <p style="color:#f0f0f0;margin:0">{{ appt[4] }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BEFORE Photos -->
+    <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 style="color:#C41E3A;letter-spacing:3px;margin:0">AVANT</h5>
+            <form method="POST" action="/upload_photos/{{ appt[0] }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="photo_type" value="before">
+                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333;font-size:0.7rem;max-width:250px">
+                <button type="submit" class="btn btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
+            </form>
+        </div>
+        {% if before %}
+        <div class="row">
+            {% for photo in before %}
+            <div class="col-md-3 col-6 mb-3">
+                <div style="position:relative">
+                    <img src="/static/uploads/{{ photo }}" alt="Before" style="width:100%;border-radius:6px;border:2px solid #333;cursor:pointer" onclick="window.open(this.src)">
+                    <form method="POST" action="/delete_photo/{{ appt[0] }}" style="position:absolute;top:5px;right:5px">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="photo" value="{{ photo }}">
+                        <input type="hidden" name="photo_type" value="before">
+                        <button type="submit" class="btn" style="background:rgba(196,30,58,0.8);color:white;font-size:0.6rem;padding:2px 6px;border:none;border-radius:3px" onclick="return confirm('Supprimer ?')">✗</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:#555;text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
+        {% endif %}
+    </div>
+
+    <!-- AFTER Photos -->
+    <div class="card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 style="color:#2d6a4f;letter-spacing:3px;margin:0">APRÈS</h5>
+            <form method="POST" action="/upload_photos/{{ appt[0] }}" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="photo_type" value="after">
+                <input type="file" name="photos" multiple accept="image/*" class="form-control" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333;font-size:0.7rem;max-width:250px">
+                <button type="submit" class="btn btn-gold" style="font-size:0.7rem;padding:4px 12px">TÉLÉCHARGER</button>
+            </form>
+        </div>
+        {% if after %}
+        <div class="row">
+            {% for photo in after %}
+            <div class="col-md-3 col-6 mb-3">
+                <div style="position:relative">
+                    <img src="/static/uploads/{{ photo }}" alt="After" style="width:100%;border-radius:6px;border:2px solid #2d6a4f;cursor:pointer" onclick="window.open(this.src)">
+                    <form method="POST" action="/delete_photo/{{ appt[0] }}" style="position:absolute;top:5px;right:5px">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="photo" value="{{ photo }}">
+                        <input type="hidden" name="photo_type" value="after">
+                        <button type="submit" class="btn" style="background:rgba(196,30,58,0.8);color:white;font-size:0.6rem;padding:2px 6px;border:none;border-radius:3px" onclick="return confirm('Supprimer ?')">✗</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:#555;text-align:center;font-size:0.8rem;letter-spacing:1px">Aucune photo</p>
+        {% endif %}
+    </div>
+
+    {% if before and after %}
+    <div class="card p-3">
+        <h5 style="color:#D4AF37;letter-spacing:3px;text-align:center;margin-bottom:15px">AVANT vs APRÈS — COMPARAISON INTERACTIVE</h5>
+        <div style="position:relative;width:100%;max-width:700px;margin:0 auto;overflow:hidden;border-radius:8px;border:2px solid #D4AF37;aspect-ratio:4/3;user-select:none" id="slider-container">
+            <img src="/static/uploads/{{ after[0] }}" style="width:100%;height:100%;object-fit:cover;display:block" alt="Après">
+            <div id="slider-before" style="position:absolute;top:0;left:0;width:50%;height:100%;overflow:hidden">
+                <img src="/static/uploads/{{ before[0] }}" style="width:700px;max-width:none;height:100%;object-fit:cover" alt="Avant">
+            </div>
+            <div id="slider-line" style="position:absolute;top:0;left:50%;width:3px;height:100%;background:#D4AF37;cursor:ew-resize;z-index:10">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:#D4AF37;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,0,0,0.5)">
+                    <span style="color:#0d0d1a;font-weight:900;font-size:0.8rem">⇔</span>
+                </div>
+            </div>
+            <span style="position:absolute;top:10px;left:10px;background:rgba(196,30,58,0.85);color:white;padding:3px 10px;border-radius:4px;font-size:0.6rem;letter-spacing:2px;z-index:5">AVANT</span>
+            <span style="position:absolute;top:10px;right:10px;background:rgba(45,106,79,0.85);color:white;padding:3px 10px;border-radius:4px;font-size:0.6rem;letter-spacing:2px;z-index:5">APRÈS</span>
+        </div>
+        <script>
+        (function(){
+            const container = document.getElementById('slider-container');
+            const beforeDiv = document.getElementById('slider-before');
+            const line = document.getElementById('slider-line');
+            let dragging = false;
+            function move(x) {
+                const rect = container.getBoundingClientRect();
+                let pos = (x - rect.left) / rect.width * 100;
+                pos = Math.max(2, Math.min(98, pos));
+                beforeDiv.style.width = pos + '%';
+                line.style.left = pos + '%';
+            }
+            line.addEventListener('mousedown', function(e) { dragging = true; e.preventDefault(); });
+            container.addEventListener('mousedown', function(e) { dragging = true; move(e.clientX); });
+            document.addEventListener('mousemove', function(e) { if (dragging) move(e.clientX); });
+            document.addEventListener('mouseup', function() { dragging = false; });
+            line.addEventListener('touchstart', function(e) { dragging = true; e.preventDefault(); });
+            container.addEventListener('touchstart', function(e) { dragging = true; move(e.touches[0].clientX); });
+            document.addEventListener('touchmove', function(e) { if (dragging) move(e.touches[0].clientX); });
+            document.addEventListener('touchend', function() { dragging = false; });
+        })();
+        </script>
+    </div>
+    {% endif %}
+{% endblock %}

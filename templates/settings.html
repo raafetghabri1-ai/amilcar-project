@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %} - Paramètres{% endblock %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">PARAMÈTRES</h4>
+                <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">NOM DU COMMERCE</label>
+                        <input type="text" name="shop_name" class="form-control" value="{{ settings.get('shop_name', 'AMILCAR') }}" required maxlength="60">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SLOGAN</label>
+                        <input type="text" name="shop_tagline" class="form-control" value="{{ settings.get('shop_tagline', '') }}" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ADRESSE</label>
+                        <input type="text" name="shop_address" class="form-control" value="{{ settings.get('shop_address', '') }}" maxlength="150">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">TÉLÉPHONE</label>
+                        <input type="text" name="shop_phone" class="form-control" value="{{ settings.get('shop_phone', '') }}" maxlength="20">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">TAUX DE TAXE (%)</label>
+                        <input type="number" name="tax_rate" class="form-control" value="{{ settings.get('tax_rate', '0') }}" step="0.1" min="0" max="100">
+                        <small style="color:#888;font-size:0.7rem">Mettre 0 pour aucune taxe. Appliqué sur les factures imprimées.</small>
+                    </div>
+                    <hr style="border-color:#333;margin:20px 0">
+                    <h5 style="color:#D4AF37;letter-spacing:2px;font-size:0.85rem;margin-bottom:15px">EMAIL (SMTP)</h5>
+                    <div class="mb-3">
+                        <label class="form-label">HÔTE SMTP</label>
+                        <input type="text" name="smtp_host" class="form-control" value="{{ settings.get('smtp_host', '') }}" placeholder="smtp.gmail.com" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">PORT SMTP</label>
+                        <input type="number" name="smtp_port" class="form-control" value="{{ settings.get('smtp_port', '587') }}" placeholder="587">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">UTILISATEUR SMTP</label>
+                        <input type="text" name="smtp_user" class="form-control" value="{{ settings.get('smtp_user', '') }}" placeholder="votre@email.com" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">MOT DE PASSE SMTP</label>
+                        <input type="password" name="smtp_pass" class="form-control" value="{{ settings.get('smtp_pass', '') }}" placeholder="Mot de passe app">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">EMAIL EXPÉDITEUR</label>
+                        <input type="text" name="smtp_from" class="form-control" value="{{ settings.get('smtp_from', '') }}" placeholder="noreply@commerce.com" maxlength="100">
+                        <small style="color:#888;font-size:0.7rem">Laisser vide pour utiliser l'utilisateur SMTP</small>
+                    </div>
+                    <hr style="border-color:#333;margin:20px 0">
+                    <h5 style="color:#D4AF37;letter-spacing:2px;font-size:0.85rem;margin-bottom:15px">📱 SMS (API)</h5>
+                    <div class="mb-3">
+                        <label class="form-label">URL API SMS</label>
+                        <input type="url" name="sms_api_url" class="form-control" value="{{ settings.get('sms_api_url', '') }}" placeholder="https://api.sms-provider.com/send" maxlength="200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CLÉ API SMS</label>
+                        <input type="password" name="sms_api_key" class="form-control" value="{{ settings.get('sms_api_key', '') }}" placeholder="Votre clé API">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">NOM EXPÉDITEUR SMS</label>
+                        <input type="text" name="sms_sender" class="form-control" value="{{ settings.get('sms_sender', 'AMILCAR') }}" placeholder="AMILCAR" maxlength="20">
+                        <small style="color:#888;font-size:0.7rem">Compatible avec toute API SMS (Twilio, Vonage, etc.)</small>
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100">ENREGISTRER</button>
+                </form>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">💾 SAUVEGARDES</h4>
+                <form method="POST" action="/auto_backup_settings">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="auto_backup" class="form-check-input" id="autoBackup" {% if settings.get('auto_backup', '0') == '1' %}checked{% endif %} style="accent-color:#D4AF37">
+                        <label class="form-check-label" for="autoBackup">SAUVEGARDE AUTOMATIQUE QUOTIDIENNE</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CONSERVER (JOURS)</label>
+                        <input type="number" name="backup_keep_days" class="form-control" value="{{ settings.get('backup_keep_days', '7') }}" min="1" max="30">
+                        <small style="color:#888;font-size:0.7rem">Les sauvegardes plus anciennes seront automatiquement supprimées</small>
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100 mb-3">ENREGISTRER</button>
+                </form>
+                <hr style="border-color:#333">
+                <form method="POST" action="/run_backup">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-gold w-100 mb-3">🔄 SAUVEGARDER MAINTENANT</button>
+                </form>
+                <a href="/backup" class="btn w-100" style="border:1px solid #D4AF37;color:#D4AF37">⤓ TÉLÉCHARGER LA BASE</a>
+                <div id="backupList" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+{% block scripts %}
+<script>
+fetch('/list_backups').then(r=>r.json()).then(data=>{
+    if(!data.length)return;
+    let html='<p style="color:#D4AF37;font-size:0.7rem;letter-spacing:2px;margin-bottom:8px">SAUVEGARDES EXISTANTES</p>';
+    data.forEach(b=>{
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06)">';
+        html+='<span style="font-size:0.75rem;color:#888">'+b.name+'</span>';
+        html+='<span style="font-size:0.7rem;color:#555">'+b.size+'</span>';
+        html+='<a href="'+b.path+'" style="color:#D4AF37;font-size:0.7rem;text-decoration:none">⤓</a></div>';
+    });
+    document.getElementById('backupList').innerHTML=html;
+});
+</script>
+{% endblock %}
+{% endblock %}

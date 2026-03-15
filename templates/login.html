@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR - Connexion</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+        .login-page::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(212,175,55,0.03) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 50%, rgba(196,30,58,0.03) 0%, transparent 50%);
+            animation: loginBg 15s ease-in-out infinite alternate;
+        }
+        @keyframes loginBg {
+            from { transform: translate(0, 0); }
+            to { transform: translate(-5%, 3%); }
+        }
+        .login-card {
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .login-logo {
+            display: block;
+            max-height: 80px;
+            margin: 0 auto 12px;
+            filter: drop-shadow(0 4px 12px rgba(212,175,55,0.2));
+        }
+        .login-title {
+            color: var(--text-primary);
+            font-family: var(--font-display);
+            text-align: center;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            margin-bottom: 6px;
+        }
+        .login-subtitle {
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            margin-bottom: 32px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <img src="/static/logo.png" alt="AMILCAR" class="login-logo">
+            <p class="login-title">CONNEXION</p>
+            <p class="login-subtitle">Bienvenue chez AMILCAR Auto Care</p>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages" style="margin-bottom:16px">
+                {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-3">
+                    <label class="form-label">NOM D'UTILISATEUR</label>
+                    <input type="text" name="username" class="form-control" required autofocus placeholder="Entrer votre identifiant">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">MOT DE PASSE</label>
+                    <div class="position-relative">
+                        <input type="password" name="password" id="pwd" class="form-control" required style="padding-right:45px" placeholder="••••••••">
+                        <span onclick="togglePwd('pwd', this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-muted);font-size:1.1rem;user-select:none">👁</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-gold w-100" style="padding:12px;font-size:0.85rem">CONNEXION</button>
+            </form>
+        </div>
+    </div>
+    <script>
+    function togglePwd(id, el) {
+        var f = document.getElementById(id);
+        if (f.type === 'password') { f.type = 'text'; el.textContent = '🔒'; }
+        else { f.type = 'password'; el.textContent = '👁'; }
+    }
+    </script>
+</body>
+</html>

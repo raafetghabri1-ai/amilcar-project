@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %} - Stock{% endblock %}
+{% block content %}
+<h3 class="page-title mb-4">📦 GESTION DU STOCK</h3>
+
+{% if low_stock %}
+<div class="pending-alert mb-4">
+    <p class="pending-alert-title">⚠ STOCK FAIBLE ({{ low_stock|length }} produits)</p>
+    <table class="table" style="margin:0">
+        <thead><tr><th>PRODUIT</th><th>CATÉGORIE</th><th>QTÉ</th><th>MINIMUM</th></tr></thead>
+        <tbody>
+        {% for i in low_stock %}
+        <tr>
+            <td>{{ i[1] }}</td>
+            <td>{{ i[2] }}</td>
+            <td style="color:#C41E3A;font-weight:700">{{ i[3] }}</td>
+            <td>{{ i[4] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="card p-4 mb-4">
+    <p class="section-title">AJOUTER UN PRODUIT</p>
+    <form method="POST" action="/add_inventory">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">NOM DU PRODUIT</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">CATÉGORIE</label>
+                <select name="category" class="form-control">
+                    {% for cat in categories %}
+                    <option>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">QTÉ</label>
+                <input type="number" name="quantity" class="form-control" value="0" min="0">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">MIN</label>
+                <input type="number" name="min_quantity" class="form-control" value="5" min="0">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">PRIX UNIT. (DT)</label>
+                <input type="number" name="unit_price" class="form-control" step="0.01" value="0">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">FOURNISSEUR</label>
+                <input type="text" name="supplier" class="form-control">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="btn btn-gold w-100">+</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<table class="table table-hover">
+    <thead>
+        <tr><th>PRODUIT</th><th>CATÉGORIE</th><th>QTÉ</th><th>MIN</th><th>PRIX UNIT.</th><th>FOURNISSEUR</th><th>MIS À JOUR</th><th>ACTIONS</th></tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+    <tr>
+        <td>{{ item[1] }}</td>
+        <td>{{ item[2] }}</td>
+        <td style="{% if item[3] <= item[4] %}color:#C41E3A;font-weight:700{% endif %}">{{ item[3] }}</td>
+        <td>{{ item[4] }}</td>
+        <td>{{ item[5] }} DT</td>
+        <td>{{ item[6] }}</td>
+        <td style="font-size:0.7rem;color:#888">{{ item[7][:10] if item[7] else '' }}</td>
+        <td>
+            <button class="btn-action-green" onclick="document.getElementById('edit-{{item[0]}}').style.display = document.getElementById('edit-{{item[0]}}').style.display === 'none' ? 'table-row' : 'none'">✏</button>
+            <form method="POST" action="/delete_inventory/{{ item[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer ce produit ?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-action-delete">✕</button>
+            </form>
+        </td>
+    </tr>
+    <tr id="edit-{{item[0]}}" style="display:none;background:rgba(212,175,55,0.03)">
+        <td colspan="8">
+            <form method="POST" action="/update_inventory/{{ item[0] }}" class="d-flex gap-2 align-items-center p-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="number" name="quantity" class="form-control" style="width:80px" value="{{ item[3] }}" min="0">
+                <input type="number" name="min_quantity" class="form-control" style="width:80px" value="{{ item[4] }}" min="0">
+                <input type="number" name="unit_price" class="form-control" style="width:100px" value="{{ item[5] }}" step="0.01">
+                <input type="text" name="supplier" class="form-control" style="width:150px" value="{{ item[6] }}">
+                <button type="submit" class="btn btn-gold">SAUVEGARDER</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if not items %}
+<p style="text-align:center;color:#888;letter-spacing:2px;margin:40px 0">AUCUN PRODUIT EN STOCK</p>
+{% endif %}
+{% endblock %}

@@ -1,66 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>AMILCAR - Clients</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { background: #0d0d0d; color: #f0f0f0; font-family: 'Cinzel', serif; margin: 0; }
-        .hero { background: linear-gradient(135deg, #1a1a2e, #0d0d0d); border-bottom: 2px solid #D4AF37; padding: 60px 0; text-align: center; }
-        .hero h1 { color: #D4AF37; font-size: 3.5rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
-        .hero .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.9rem; margin-top: 8px; }
-        .navbar { background: #1a1a2e !important; border-bottom: 1px solid #D4AF37; }
-        .nav-link { color: #D4AF37 !important; letter-spacing: 2px; font-size: 0.8rem; padding: 15px 20px !important; }
-        .nav-link:hover { color: #C41E3A !important; }
-        .table { color: #f0f0f0; }
-        .table thead { background: #1a1a2e; color: #D4AF37; letter-spacing: 2px; font-size: 0.8rem; border-bottom: 1px solid #D4AF37; }
-        .table tbody tr { border-bottom: 1px solid #222; }
-        .table tbody tr:hover { background: #1a1a2e; }
-        .btn-gold { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 10px 20px; border-radius: 4px; }
-        .btn-gold:hover { background: #C41E3A; color: white; }
-        .page-title { color: #D4AF37; letter-spacing: 4px; font-size: 1rem; margin-bottom: 20px; }
-    </style>
-</head>
-<body>
-    <div class="hero">
-        <h1>AMILCAR</h1>
-        <p class="tagline">WHERE CARS BECOME ART</p>
+{% extends "base.html" %}
+{% block title %} - Clients{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="page-title mb-0">LISTE DES CLIENTS</p>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/export/customers_excel" class="btn" style="border:1px solid #D4AF37;color:#D4AF37;font-size:0.7rem;padding:6px 12px">⤓ EXPORT</a>
+            <button type="button" class="btn" style="border:1px solid #2d6a4f;color:#2d6a4f;font-size:0.7rem;padding:6px 12px" onclick="document.getElementById('importModal').style.display='block'">⤒ IMPORT</button>
+            <a href="/add_customer" class="btn btn-gold">+ NOUVEAU CLIENT</a>
+            <a href="/add_car" class="btn btn-gold">+ AJOUTER VOITURE</a>
+        </div>
     </div>
-    <nav class="navbar">
-        <div class="container">
-            <div class="navbar-nav mx-auto d-flex flex-row">
-                <a class="nav-link" href="/">HOME</a>
-                <a class="nav-link" href="/customers">CLIENTS</a>
-                <a class="nav-link" href="/appointments">APPOINTMENTS</a>
-                <a class="nav-link" href="/invoices">INVOICES</a>
-                <a class="nav-link" href="/quotes">QUOTES</a>
-                <a class="nav-link" href="/daily">TODAY</a>
-            </div>
+    <form method="GET" action="/customers" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Rechercher par nom ou téléphone..." value="{{ search }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
+            <button type="submit" class="btn btn-gold">RECHERCHER</button>
         </div>
+    </form>
+    <table class="table">
+        <thead><tr><th>#</th><th>NOM</th><th>TÉLÉPHONE</th><th>EMAIL</th><th>ACTION</th></tr></thead>
+        <tbody>
+        {% for customer in customers %}
+        <tr>
+            <td>{{ customer[0] }}</td>
+            <td><a href="/customer/{{ customer[0] }}" style="color:#D4AF37;text-decoration:none">{{ customer[1] }}</a></td>
+            <td>{{ customer[2] }}</td>
+            <td style="font-size:0.8rem;color:#888">{{ customer[4] if customer|length > 4 and customer[4] else '—' }}</td>
+            <td>
+                <form method="POST" action="/delete_customer/{{ customer[0] }}" class="form-action-inline" onsubmit="return confirm('SUPPRIMER ce client et toutes les données associées ?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-action-delete">✗ SUPPRIMER</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination" style="gap:5px">
+            {% for p in range(1, total_pages + 1) %}
+            <li>
+                <a href="/customers?q={{ search }}&page={{ p }}" class="btn {% if p == page %}btn-gold{% endif %}" style="font-size:0.75rem;padding:5px 12px;{% if p != page %}color:#888;border:1px solid #333;{% endif %}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul>
     </nav>
-    <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <p class="page-title mb-0">CLIENT LIST</p>
-            <div>
-                <a href="/add_customer" class="btn btn-gold me-2">+ NEW CLIENT</a>
-                <a href="/add_car" class="btn btn-gold">+ ADD CAR</a>
-            </div>
-        </div>
-        <form method="GET" action="/customers" class="mb-4">
-            <div class="input-group">
-                <input type="text" name="q" class="form-control" placeholder="Search by name or phone..." value="{{ search }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #D4AF37;font-family:'Cinzel';">
-                <button type="submit" class="btn btn-gold">SEARCH</button>
+    {% endif %}
+<!-- Import Modal -->
+<div id="importModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center">
+    <div style="background:var(--bg-card);border:1px solid #D4AF37;border-radius:10px;padding:25px;max-width:450px;width:90%;margin:auto;position:relative;top:50%;transform:translateY(-50%)">
+        <h5 style="color:#D4AF37;letter-spacing:2px;margin-bottom:15px">⇧ IMPORTER DES CLIENTS</h5>
+        <p style="color:#888;font-size:0.75rem;margin-bottom:15px">Format CSV avec séparateur <b>;</b><br>Colonnes : Nom ; Téléphone ; Email ; Notes<br>ou : ID ; Nom ; Téléphone ; Email ; Notes</p>
+        <form method="POST" action="/import/customers" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="file" name="file" accept=".csv,.txt" class="form-control mb-3" required>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-gold flex-fill">IMPORTER</button>
+                <button type="button" class="btn flex-fill" style="border:1px solid #555;color:#888" onclick="document.getElementById('importModal').style.display='none'">ANNULER</button>
             </div>
         </form>
-        <table class="table">
-            <thead><tr><th>#</th><th>NAME</th><th>PHONE</th><th>ACTION</th></tr></thead>
-            <tbody>
-            {% for customer in customers %}
-            <tr><td>{{ customer[0] }}</td><td><a href="/customer/{{ customer[0] }}" style="color:#D4AF37;text-decoration:none">{{ customer[1] }}</a></td><td>{{ customer[2] }}</td><td><a href="/delete_customer/{{ customer[0] }}" style="background:#C41E3A;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem;text-decoration:none" onclick="return confirm('DELETE?')" >✗ DELETE</a></td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

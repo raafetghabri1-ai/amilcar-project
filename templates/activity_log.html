@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %} - Activity Log{% endblock %}
+{% block content %}
+    <p class="page-title">ACTIVITY LOG</p>
+    <table class="table">
+        <thead><tr><th>#</th><th>USER</th><th>ACTION</th><th>DETAIL</th><th>TIME</th></tr></thead>
+        <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log[0] }}</td>
+            <td><span style="color:#D4AF37">{{ log[1] }}</span></td>
+            <td>{{ log[2] }}</td>
+            <td style="color:#888;font-size:0.85rem">{{ log[3] or '—' }}</td>
+            <td style="color:#555;font-size:0.8rem">{{ log[4] }}</td>
+        </tr>
+        {% endfor %}
+        {% if not logs %}
+        <tr><td colspan="5" style="text-align:center;color:#555;padding:30px">NO ACTIVITY YET</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+    {% if total_pages > 1 %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination" style="gap:5px">
+            {% for p in range(1, total_pages + 1) %}
+            <li>
+                <a href="/activity_log?page={{ p }}" class="btn {% if p == page %}btn-gold{% else %}btn-page{% endif %}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+{% endblock %}

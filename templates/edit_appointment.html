@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %} - Modifier Rendez-vous{% endblock %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">MODIFIER RENDEZ-VOUS</h4>
+                <div class="mb-3 p-3" style="background:#1a1a2e;border:1px solid #333;border-radius:6px;">
+                    <p style="color:#888;font-size:0.7rem;letter-spacing:2px;margin-bottom:5px">CLIENT & VOITURE</p>
+                    <p style="color:#f0f0f0;margin:0"><strong>{{ appt[9] }}</strong> — {{ appt[10] }} {{ appt[11] }}</p>
+                </div>
+                <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">DATE</label>
+                        <input type="date" name="date" class="form-control" value="{{ appt[2] }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">HEURE</label>
+                        <input type="time" name="time" class="form-control" value="{{ appt[8] if appt|length > 8 and appt[8] else '' }}" style="background:#1a1a2e;color:#f0f0f0;border:1px solid #333">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SERVICE</label>
+                        <select name="service" class="form-control" required>
+                            {% for name, price in services %}
+                            <option value="{{ name }}{% if price %} - {{ price }} DT{% endif %}" {% if appt[3].startswith(name) %}selected{% endif %}>{{ name }}{% if price %} — {{ price }} DT{% endif %}</option>
+                            {% endfor %}
+                            <option value="{{ appt[3] }}" selected>{{ appt[3] }} (actuel)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ASSIGNÉ À</label>
+                        <select name="assigned_to" class="form-control">
+                            <option value="">— Non Assigné —</option>
+                            {% for t in technicians %}
+                            <option value="{{ t[0] }}" {% if appt|length > 5 and appt[5] == t[0] %}selected{% endif %}>{{ t[1] if t[1] else t[0] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-gold flex-grow-1">ENREGISTRER</button>
+                        <a href="/appointments" class="btn" style="border:1px solid #555;color:#888;padding:10px 20px">ANNULER</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

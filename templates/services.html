@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %} - Services{% endblock %}
+{% block content %}
+    <p class="page-title">SERVICE CATALOG</p>
+    <div class="card p-4 mb-4">
+        <p style="color:#D4AF37;letter-spacing:2px;font-size:0.8rem;margin-bottom:15px">ADD NEW SERVICE</p>
+        <form method="POST" action="/add_service" class="d-flex gap-2 align-items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="flex-grow-1">
+                <label class="form-label">NAME</label>
+                <input type="text" name="name" class="form-control" required maxlength="60" placeholder="Service name...">
+            </div>
+            <div>
+                <label class="form-label">PRICE (DT)</label>
+                <input type="number" name="price" class="form-control" step="0.01" min="0" value="0" style="width:120px">
+            </div>
+            <button type="submit" class="btn btn-gold">+ ADD</button>
+        </form>
+    </div>
+    <table class="table">
+        <thead><tr><th>#</th><th>SERVICE</th><th>PRICE</th><th>STATUS</th><th>ACTION</th></tr></thead>
+        <tbody>
+        {% for s in services %}
+        <tr>
+            <form method="POST" action="/edit_service/{{ s[0] }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <td>{{ s[0] }}</td>
+            <td><input type="text" name="name" value="{{ s[1] }}" class="form-control" style="background:#1a1a2e;border:1px solid #333;color:#f0f0f0;font-size:0.85rem" required></td>
+            <td><input type="number" name="price" value="{{ s[2] }}" step="0.01" min="0" class="form-control" style="width:100px;background:#1a1a2e;border:1px solid #333;color:#f0f0f0;font-size:0.85rem"></td>
+            <td>
+                <label style="color:#888;font-size:0.75rem;cursor:pointer">
+                    <input type="checkbox" name="active" value="1" {% if s[3] %}checked{% endif %} style="accent-color:#D4AF37"> Active
+                </label>
+            </td>
+            <td>
+                <button type="submit" class="btn btn-gold" style="font-size:0.65rem;padding:4px 10px">SAVE</button>
+            </form>
+                <form method="POST" action="/delete_service/{{ s[0] }}" class="form-action-inline" onsubmit="return confirm('Delete this service?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-action-delete">✗</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

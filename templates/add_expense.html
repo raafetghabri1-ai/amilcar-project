@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %} - Nouvelle Dépense{% endblock %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4 class="mb-4" style="color:#D4AF37;letter-spacing:3px">NOUVELLE DÉPENSE</h4>
+                <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">DATE</label>
+                        <input type="date" name="date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CATÉGORIE</label>
+                        <select name="category" class="form-control" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">DESCRIPTION</label>
+                        <input type="text" name="description" class="form-control" placeholder="Détails optionnels">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">MONTANT (DT)</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
+                    </div>
+                    <button type="submit" class="btn btn-gold w-100">AJOUTER DÉPENSE</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

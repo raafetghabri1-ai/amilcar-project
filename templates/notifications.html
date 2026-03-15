@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %} — Notifications{% endblock %}
+{% block content %}
+<h2 style="color:#D4AF37;text-align:center;margin-bottom:30px;font-family:Cinzel">🔔 NOTIFICATIONS</h2>
+
+{% if session.get('role') == 'admin' %}
+<div class="d-flex justify-content-end mb-3 gap-2 flex-wrap">
+    <form method="POST" action="/send_email_reminders" onsubmit="return confirm('Envoyer des rappels par email aux clients de demain ?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-gold" style="font-size:0.8rem;padding:8px 16px">📧 RAPPELS EMAIL</button>
+    </form>
+    <form method="POST" action="/send_sms_reminders" onsubmit="return confirm('Envoyer des SMS de rappel aux clients de demain ?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-gold" style="font-size:0.8rem;padding:8px 16px">💬 RAPPELS SMS</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Tomorrow's Appointments -->
+<div style="background:#1a1a2e;border:1px solid #D4AF37;border-radius:10px;padding:20px;margin-bottom:20px">
+    <h4 style="color:#D4AF37;font-family:Cinzel">📅 RENDEZ-VOUS DE DEMAIN ({{ tomorrow }})</h4>
+    {% if tomorrow_appts %}
+    <div class="table-responsive">
+        <table class="table table-dark table-hover" style="font-size:0.8rem">
+            <thead><tr style="color:#D4AF37">
+                <th>HEURE</th><th>CLIENT</th><th>TÉLÉPHONE</th><th>VOITURE</th><th>SERVICE</th><th>STATUT</th><th>WHATSAPP</th>
+            </tr></thead>
+            <tbody>
+            {% for a in tomorrow_appts %}
+            <tr>
+                <td>{{ a[2] or '—' }}</td>
+                <td>{{ a[8] }}</td>
+                <td><a href="tel:{{ a[9] }}" style="color:#4895ef">{{ a[9] }}</a></td>
+                <td>{{ a[5] }} {{ a[6] }} — {{ a[7] }}</td>
+                <td>{{ a[3] }}</td>
+                <td><span class="badge bg-{{ 'warning' if a[4]=='pending' else 'info' if a[4]=='in_progress' else 'success' }}">{{ a[4] }}</span></td>
+                <td><a href="/whatsapp_reminder/{{ a[0] }}" target="_blank" class="btn" style="background:#25D366;color:white;font-size:0.65rem;padding:3px 8px;border-radius:4px">📱 WhatsApp</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#888;text-align:center">Aucun rendez-vous demain</p>
+    {% endif %}
+</div>
+
+<!-- Upcoming 3 Days -->
+<div style="background:#1a1a2e;border:1px solid #333;border-radius:10px;padding:20px;margin-bottom:20px">
+    <h4 style="color:#D4AF37;font-family:Cinzel">📆 PROCHAINS 3 JOURS</h4>
+    {% if upcoming_3 %}
+    <div class="table-responsive">
+        <table class="table table-dark table-hover" style="font-size:0.8rem">
+            <thead><tr style="color:#D4AF37">
+                <th>DATE</th><th>HEURE</th><th>CLIENT</th><th>TÉLÉPHONE</th><th>VOITURE</th><th>SERVICE</th>
+            </tr></thead>
+            <tbody>
+            {% for a in upcoming_3 %}
+            <tr>
+                <td>{{ a[1] }}</td>
+                <td>{{ a[2] or '—' }}</td>
+                <td>{{ a[8] }}</td>
+                <td><a href="tel:{{ a[9] }}" style="color:#4895ef">{{ a[9] }}</a></td>
+                <td>{{ a[5] }} {{ a[6] }}</td>
+                <td>{{ a[3] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#888;text-align:center">Aucun rendez-vous dans les 3 prochains jours</p>
+    {% endif %}
+</div>
+
+<!-- Unpaid Invoices -->
+<div style="background:#1a1a2e;border:1px solid #C41E3A;border-radius:10px;padding:20px;margin-bottom:20px">
+    <h4 style="color:#C41E3A;font-family:Cinzel">💰 FACTURES IMPAYÉES</h4>
+    {% if unpaid %}
+    <div class="table-responsive">
+        <table class="table table-dark table-hover" style="font-size:0.8rem">
+            <thead><tr style="color:#C41E3A">
+                <th>#</th><th>CLIENT</th><th>TÉLÉPHONE</th><th>SERVICE</th><th>DATE</th><th>MONTANT</th><th></th>
+            </tr></thead>
+            <tbody>
+            {% for u in unpaid %}
+            <tr>
+                <td>{{ u[0] }}</td>
+                <td>{{ u[4] }}</td>
+                <td><a href="tel:{{ u[5] }}" style="color:#4895ef">{{ u[5] }}</a></td>
+                <td>{{ u[3] }}</td>
+                <td>{{ u[2] }}</td>
+                <td style="color:#C41E3A;font-weight:bold">{{ u[1] }} DT</td>
+                <td><a href="/whatsapp_unpaid/{{ u[0] }}" target="_blank" class="btn" style="background:#25D366;color:white;font-size:0.65rem;padding:3px 8px;border-radius:4px">📱</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#2d6a4f;text-align:center">✅ Aucune facture impayée</p>
+    {% endif %}
+</div>
+
+<!-- Maintenance Reminders -->
+<div style="background:#1a1a2e;border:1px solid #2d6a4f;border-radius:10px;padding:20px;margin-bottom:20px">
+    <h4 style="color:#2d6a4f;font-family:Cinzel">🔧 RAPPELS D'ENTRETIEN (90 jours)</h4>
+    {% if reminders %}
+    <div class="table-responsive">
+        <table class="table table-dark table-hover" style="font-size:0.8rem">
+            <thead><tr style="color:#2d6a4f">
+                <th>CLIENT</th><th>TÉLÉPHONE</th><th>VOITURE</th><th>DERNIER SERVICE</th><th>DATE</th>
+            </tr></thead>
+            <tbody>
+            {% for r in reminders %}
+            <tr>
+                <td>{{ r[3] }}</td>
+                <td><a href="tel:{{ r[4] }}" style="color:#4895ef">{{ r[4] }}</a></td>
+                <td>{{ r[0] }} {{ r[1] }} — {{ r[2] }}</td>
+                <td>{{ r[5] }}</td>
+                <td>{{ r[6] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:#888;text-align:center">Aucun rappel d'entretien cette semaine</p>
+    {% endif %}
+</div>
+{% endblock %}

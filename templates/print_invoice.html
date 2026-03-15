@@ -1,73 +1,202 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>AMILCAR - Invoice #{{ inv[0] }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>{{ settings.get('shop_name', 'AMILCAR') }} - Facture #{{ inv[0] }}</title>
     <style>
-        body { background: white; color: #0d0d0d; font-family: 'Cinzel', serif; margin: 0; padding: 40px; }
-        .header { text-align: center; border-bottom: 3px solid #D4AF37; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { color: #D4AF37; font-size: 3rem; font-weight: 900; letter-spacing: 6px; margin: 0; }
-        .header .tagline { color: #C41E3A; letter-spacing: 4px; font-size: 0.85rem; }
-        .header .sub { color: #888; font-size: 0.7rem; letter-spacing: 3px; }
-        .invoice-title { font-size: 1.2rem; letter-spacing: 4px; color: #1a1a2e; margin: 20px 0; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .info-block h6 { color: #888; letter-spacing: 2px; font-size: 0.7rem; margin-bottom: 6px; }
-        .info-block p { color: #0d0d0d; font-size: 0.85rem; margin: 2px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        thead { background: #1a1a2e; color: #D4AF37; }
-        th { padding: 12px; text-align: left; letter-spacing: 2px; font-size: 0.75rem; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
-        .total-row { background: #f9f9f9; font-weight: 700; }
-        .total-row td { color: #D4AF37; font-size: 1rem; }
-        .footer { text-align: center; margin-top: 40px; border-top: 1px solid #D4AF37; padding-top: 20px; color: #888; font-size: 0.7rem; letter-spacing: 2px; }
-        .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; letter-spacing: 2px; }
-        .status-paid { background: #2d6a4f; color: white; }
-        .status-unpaid { background: #C41E3A; color: white; }
-        .btn-print { background: #D4AF37; color: #0d0d0d; border: none; font-family: 'Cinzel'; letter-spacing: 2px; font-weight: 700; padding: 10px 30px; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: Helvetica, Arial, sans-serif; color: #222; margin: 0; padding: 0; font-size: 12px; }
+        .page-wrap { max-width: 680px; margin: 0 auto; }
+
+        /* Header */
+        .header-table { width: 100%; border-bottom: 3px solid #B8962E; margin-bottom: 20px; padding-bottom: 15px; }
+        .header-table td { vertical-align: middle; }
+        .header-logo { width: 90px; }
+        .header-logo img { width: 85px; height: auto; }
+        .header-text { text-align: right; }
+        .brand-name { font-size: 26px; font-weight: bold; color: #B8962E; letter-spacing: 4px; margin: 0; }
+        .brand-tagline { font-size: 10px; color: #999; letter-spacing: 3px; margin: 2px 0 0; }
+        .brand-sub { font-size: 9px; color: #aaa; letter-spacing: 2px; margin: 2px 0 0; }
+
+        /* Invoice title */
+        .inv-title { text-align: center; font-size: 16px; font-weight: bold; color: #B8962E; letter-spacing: 5px; margin: 20px 0 15px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+
+        /* Info boxes */
+        .info-table { width: 100%; margin-bottom: 20px; }
+        .info-table td { vertical-align: top; padding: 0 8px; }
+        .info-cell { border: 1px solid #ddd; padding: 12px 15px; background-color: #fafafa; }
+        .info-label { font-size: 9px; color: #B8962E; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
+        .info-value { font-size: 12px; color: #333; margin: 3px 0; }
+        .info-value-bold { font-size: 13px; color: #222; font-weight: bold; margin: 3px 0; }
+
+        /* Service table */
+        .svc-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .svc-table thead td { background-color: #1a1a2e; color: #B8962E; font-size: 10px; font-weight: bold; letter-spacing: 2px; padding: 10px 14px; }
+        .svc-table tbody td { padding: 12px 14px; font-size: 12px; color: #333; border-bottom: 1px solid #eee; }
+        .svc-table .subtotal-row td { font-size: 12px; color: #555; border-bottom: 1px solid #eee; padding: 10px 14px; }
+        .svc-table .tax-row td { font-size: 12px; color: #555; border-bottom: 1px solid #eee; padding: 10px 14px; }
+        .svc-table .total-row td { background-color: #f5f2e8; font-size: 15px; font-weight: bold; color: #B8962E; border-top: 2px solid #B8962E; border-bottom: none; padding: 14px; }
+        .svc-table .paid-row td { font-size: 12px; color: #2d6a4f; padding: 8px 14px; border-bottom: 1px solid #eee; }
+        .svc-table .remaining-row td { font-size: 13px; font-weight: bold; color: #C41E3A; padding: 10px 14px; }
+        .align-right { text-align: right; }
+
+        /* Status */
+        .status-table { width: 100%; margin-top: 15px; }
+        .status-cell { border: 1px solid #ddd; padding: 10px 18px; background-color: #fafafa; }
+        .status-left { font-size: 9px; color: #999; letter-spacing: 2px; }
+        .status-paid { background-color: #2d6a4f; color: white; padding: 4px 14px; font-size: 10px; font-weight: bold; letter-spacing: 2px; }
+        .status-unpaid { background-color: #C41E3A; color: white; padding: 4px 14px; font-size: 10px; font-weight: bold; letter-spacing: 2px; }
+        .status-partial { background-color: #B8962E; color: white; padding: 4px 14px; font-size: 10px; font-weight: bold; letter-spacing: 2px; }
+
+        /* Footer */
+        .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 2px solid #B8962E; }
+        .footer p { font-size: 9px; color: #999; letter-spacing: 2px; margin: 3px 0; }
+        .footer .thanks { font-size: 10px; color: #B8962E; letter-spacing: 3px; margin-top: 8px; font-weight: bold; }
+
+        /* Print button - browser only */
+        .btn-print { display: block; margin: 0 auto 15px; background-color: #B8962E; color: #1a1a2e; border: none; font-weight: bold; letter-spacing: 2px; padding: 10px 30px; cursor: pointer; font-size: 13px; }
         @media print { .btn-print { display: none; } }
     </style>
 </head>
 <body>
-    <button class="btn-print" onclick="window.print()">🖨 PRINT</button>
-    <div class="header">
-        <h1>AMILCAR</h1>
-        <p class="tagline">WHERE CARS BECOME ART</p>
-        <p class="sub">AUTO CARE — MAHRES, SFAX</p>
-    </div>
-    <p class="invoice-title">INVOICE #{{ inv[0] }}</p>
-    <div class="info-row">
-        <div class="info-block">
-            <h6>CLIENT</h6>
-            <p>{{ inv[6] }}</p>
-            <p>📞 {{ inv[7] }}</p>
+    <button class="btn-print" onclick="window.print()">IMPRIMER</button>
+    <div class="page-wrap">
+        <!-- Header -->
+        <table class="header-table" cellpadding="0" cellspacing="0">
+            <tr>
+                <td class="header-logo">
+                    <img src="/static/logo.png" alt="{{ settings.get('shop_name', 'AMILCAR') }}">
+                </td>
+                <td class="header-text">
+                    <p class="brand-name">{{ settings.get('shop_name', 'AMILCAR') }}</p>
+                    <p class="brand-tagline">{{ settings.get('shop_tagline', 'LÀ OÙ LES VOITURES DEVIENNENT DE L\'ART') }}</p>
+                    <p class="brand-sub">SOIN AUTOMOBILE — {{ settings.get('shop_address', 'MAHRES, SFAX, TUNISIA') }}</p>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Invoice Number -->
+        <p class="inv-title">FACTURE #{{ inv[0] }}</p>
+
+        <!-- Client & Car Info -->
+        <table class="info-table" cellpadding="0" cellspacing="0">
+            <tr>
+                <td style="width:50%; padding-right:8px;">
+                    <div class="info-cell">
+                        <p class="info-label">CLIENT</p>
+                        <p class="info-value-bold">{{ inv[6] }}</p>
+                        <p class="info-value">Tél : {{ inv[7] }}</p>
+                    </div>
+                </td>
+                <td style="width:50%; padding-left:8px;">
+                    <div class="info-cell">
+                        <p class="info-label">VOITURE</p>
+                        <p class="info-value-bold">{{ inv[8] }} {{ inv[9] }}</p>
+                        <p class="info-value">Immat : {{ inv[10] }}</p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        {% set tax_rate = settings.get('tax_rate', '0')|float %}
+        {% set subtotal = inv[2] %}
+        {% set disc_type = inv[13] if inv|length > 13 else '' %}
+        {% set disc_val = inv[14] if inv|length > 14 else 0 %}
+        {% if disc_type == 'percent' %}
+            {% set discount_amount = (subtotal * disc_val / 100)|round(2) %}
+        {% elif disc_type == 'fixed' %}
+            {% set discount_amount = disc_val %}
+        {% else %}
+            {% set discount_amount = 0 %}
+        {% endif %}
+        {% set after_discount = subtotal - discount_amount %}
+        {% set tax_amount = (after_discount * tax_rate / 100)|round(2) %}
+        {% set total_with_tax = after_discount + tax_amount %}
+
+        <!-- Service Table -->
+        <table class="svc-table" cellpadding="0" cellspacing="0">
+            <thead>
+                <tr>
+                    <td>SERVICE</td>
+                    <td>DATE</td>
+                    <td class="align-right">MONTANT</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ inv[5] }}</td>
+                    <td>{{ inv[4] }}</td>
+                    <td class="align-right">{{ "%.2f"|format(subtotal) }} DT</td>
+                </tr>
+                {% if discount_amount > 0 %}
+                <tr class="subtotal-row">
+                    <td colspan="2">REMISE {% if disc_type == 'percent' %}({{ "%.1f"|format(disc_val) }}%){% endif %}</td>
+                    <td class="align-right" style="color:#2d6a4f">-{{ "%.2f"|format(discount_amount) }} DT</td>
+                </tr>
+                {% endif %}
+                {% if tax_rate > 0 %}
+                <tr class="subtotal-row">
+                    <td colspan="2">SOUS-TOTAL</td>
+                    <td class="align-right">{{ "%.2f"|format(after_discount) }} DT</td>
+                </tr>
+                <tr class="tax-row">
+                    <td colspan="2">TVA ({{ "%.1f"|format(tax_rate) }}%)</td>
+                    <td class="align-right">{{ "%.2f"|format(tax_amount) }} DT</td>
+                </tr>
+                {% endif %}
+                <tr class="total-row">
+                    <td colspan="2">TOTAL</td>
+                    <td class="align-right">{{ "%.2f"|format(total_with_tax) }} DT</td>
+                </tr>
+                {% if inv[3] == 'partial' and inv[11] > 0 %}
+                <tr class="paid-row">
+                    <td colspan="2">PAYÉ</td>
+                    <td class="align-right">{{ "%.2f"|format(inv[11]) }} DT</td>
+                </tr>
+                <tr class="remaining-row">
+                    <td colspan="2">RESTE</td>
+                    <td class="align-right">{{ "%.2f"|format(total_with_tax - inv[11]) }} DT</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Status -->
+        <table class="status-table" cellpadding="0" cellspacing="0">
+            <tr>
+                <td>
+                    <div class="status-cell">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="status-left">STATUT DE PAIEMENT</td>
+                                <td class="align-right">
+                                    <span class="{% if inv[3] == 'paid' %}status-paid{% elif inv[3] == 'partial' %}status-partial{% else %}status-unpaid{% endif %}">
+                                        {% if inv[3] == 'paid' %}PAYÉ{% elif inv[3] == 'partial' %}PARTIEL{% else %}IMPAYÉ{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if inv[12] %}
+                            <tr>
+                                <td class="status-left" style="padding-top:8px;">MODE DE PAIEMENT</td>
+                                <td class="align-right" style="padding-top:8px; font-size:11px; color:#555;">
+                                    {{ inv[12]|upper }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>{{ settings.get('shop_name', 'AMILCAR') }} SOIN AUTOMOBILE — {{ settings.get('shop_address', 'MAHRES, SFAX, TUNISIA') }}</p>
+            {% if settings.get('shop_phone') %}
+            <p>Tél : {{ settings.get('shop_phone') }}</p>
+            {% endif %}
+            <p class="thanks">Merci d'avoir choisi {{ settings.get('shop_name', 'AMILCAR') }}</p>
         </div>
-        <div class="info-block">
-            <h6>CAR</h6>
-            <p>{{ inv[8] }} {{ inv[9] }}</p>
-            <p>🔖 {{ inv[10] }}</p>
-        </div>
-        <div class="info-block">
-            <h6>DATE</h6>
-            <p>{{ inv[4] }}</p>
-        </div>
-        <div class="info-block">
-            <h6>STATUS</h6>
-            <span class="status {% if inv[3] == 'paid' %}status-paid{% else %}status-unpaid{% endif %}">
-                {{ inv[3]|upper }}
-            </span>
-        </div>
-    </div>
-    <table>
-        <thead><tr><th>SERVICE</th><th>AMOUNT</th></tr></thead>
-        <tbody>
-            <tr><td>{{ inv[5] }}</td><td>{{ inv[2] }} DT</td></tr>
-            <tr class="total-row"><td>TOTAL</td><td>{{ inv[2] }} DT</td></tr>
-        </tbody>
-    </table>
-    <div class="footer">
-        <p>AMILCAR AUTO CARE — MAHRES, SFAX, TUNISIA</p>
-        <p>Thank you for choosing AMILCAR</p>
     </div>
 </body>
 </html>

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %} - Search{% endblock %}
+{% block content %}
+    <p class="page-title">SEARCH RESULTS {% if q %}— "{{ q }}" ({{ total }} results){% endif %}</p>
+    <form method="GET" action="/search" class="d-flex gap-2 mb-4">
+        <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Search clients, cars, appointments..." style="max-width:400px" autofocus>
+        <button type="submit" class="btn btn-gold">SEARCH</button>
+    </form>
+    {% if q and q|length >= 2 %}
+    {% if results.customers %}
+    <p class="section-title">CLIENTS ({{ results.customers|length }})</p>
+    <table class="table mb-4">
+        <thead><tr><th>#</th><th>NAME</th><th>PHONE</th><th></th></tr></thead>
+        <tbody>
+        {% for c in results.customers %}
+        <tr>
+            <td>{{ c[0] }}</td>
+            <td>{{ c[1] }}</td>
+            <td>{{ c[2] }}</td>
+            <td><a href="/customer/{{ c[0] }}" class="btn btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if results.cars %}
+    <p class="section-title">CARS ({{ results.cars|length }})</p>
+    <table class="table mb-4">
+        <thead><tr><th>BRAND</th><th>MODEL</th><th>PLATE</th><th>OWNER</th><th></th></tr></thead>
+        <tbody>
+        {% for c in results.cars %}
+        <tr>
+            <td>{{ c[1] }}</td>
+            <td>{{ c[2] }}</td>
+            <td>{{ c[3] }}</td>
+            <td>{{ c[4] }}</td>
+            <td><a href="/car/{{ c[0] }}" class="btn btn-gold" style="font-size:0.65rem;padding:3px 10px">VIEW</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if results.appointments %}
+    <p class="section-title">APPOINTMENTS ({{ results.appointments|length }})</p>
+    <table class="table mb-4">
+        <thead><tr><th>#</th><th>CLIENT</th><th>CAR</th><th>DATE</th><th>SERVICE</th><th>STATUS</th></tr></thead>
+        <tbody>
+        {% for a in results.appointments %}
+        <tr>
+            <td>{{ a[0] }}</td>
+            <td>{{ a[1] }}</td>
+            <td>{{ a[2] }}</td>
+            <td>{{ a[3] }}</td>
+            <td>{{ a[4] }}</td>
+            <td>
+            {% if a[5] == 'pending' %}<span class="badge-pending">PENDING</span>
+            {% elif a[5] == 'completed' %}<span class="badge-completed">COMPLETED</span>
+            {% else %}<span style="background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:0.7rem">CANCELLED</span>{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if results.invoices %}
+    <p class="section-title">INVOICES ({{ results.invoices|length }})</p>
+    <table class="table mb-4">
+        <thead><tr><th>#</th><th>CLIENT</th><th>SERVICE</th><th>AMOUNT</th><th>STATUS</th></tr></thead>
+        <tbody>
+        {% for inv in results.invoices %}
+        <tr>
+            <td>{{ inv[0] }}</td>
+            <td>{{ inv[1] }}</td>
+            <td>{{ inv[2] }}</td>
+            <td class="amount">{{ inv[3] }} DT</td>
+            <td>
+            {% if inv[4] == 'paid' %}<span class="badge-paid">PAID</span>
+            {% else %}<span class="badge-unpaid">UNPAID</span>{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if total == 0 %}
+    <p style="color:#555;letter-spacing:2px;font-size:0.85rem;text-align:center;padding:40px 0">NO RESULTS FOUND</p>
+    {% endif %}
+    {% endif %}
+{% endblock %}

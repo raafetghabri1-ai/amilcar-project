@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %} - Utilisateurs{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <p class="page-title mb-0">GESTION DES UTILISATEURS</p>
+        <a href="/add_user" class="btn btn-gold">+ NOUVEL UTILISATEUR</a>
+    </div>
+    <table class="table">
+        <thead><tr><th>#</th><th>NOM D'UTILISATEUR</th><th>NOM COMPLET</th><th>RÔLE</th><th>ACTION</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+            <td>{{ u[0] }}</td>
+            <td>{{ u[1] }}</td>
+            <td>{% if u[3] %}<span style="color:#D4AF37">{{ u[3] }}</span>{% else %}—{% endif %}</td>
+            <td>
+            {% if u[2] == 'admin' %}
+            <span style="background:#D4AF37;color:#0d0d0d;padding:4px 10px;border-radius:4px;font-size:0.7rem;letter-spacing:1px">ADMIN</span>
+            {% else %}
+            <span style="background:#1a1a2e;color:#888;padding:4px 10px;border-radius:4px;font-size:0.7rem;letter-spacing:1px;border:1px solid #333">EMPLOYÉ</span>
+            {% endif %}
+            </td>
+            <td>
+            {% if u[0] != session.user_id %}
+            <form method="POST" action="/delete_user/{{ u[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer cet utilisateur ?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-action-delete">✗</button>
+            </form>
+            {% else %}
+            <span style="color:#555;font-size:0.7rem">ACTUEL</span>
+            {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

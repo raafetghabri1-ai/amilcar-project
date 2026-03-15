@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR{% block title %}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="hero">
+        <img src="/static/logo.png" alt="AMILCAR" class="logo">
+        <h1>AMILCAR</h1>
+        <p class="tagline">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</p>
+        {% block hero_extra %}{% endblock %}
+    </div>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-nav mx-auto d-flex flex-row flex-wrap justify-content-center">
+                <a class="nav-link" href="/">🏠 ACCUEIL</a>
+                <a class="nav-link" href="/customers">👥 CLIENTS</a>
+                <a class="nav-link" href="/appointments">📅 RENDEZ-VOUS</a>
+                <a class="nav-link" href="/calendar">📆 CALENDRIER</a>
+                <a class="nav-link" href="/invoices">📄 FACTURES</a>
+                <a class="nav-link" href="/quotes">📋 DEVIS</a>
+                <a class="nav-link" href="/expenses">💸 DÉPENSES</a>
+                <a class="nav-link" href="/daily">📊 AUJOURD'HUI</a>
+                <a class="nav-link" href="/monthly">📈 MENSUEL</a>
+                <a class="nav-link nav-highlight" href="/reports">📑 RAPPORTS</a>
+                <a class="nav-link nav-highlight" href="/kpi">🎯 KPI</a>
+                <a class="nav-link" href="/notifications" style="position:relative">🔔{% if notif_count %}<span class="notif-badge">{{ notif_count }}</span>{% endif %}</a>
+                {% if session.get('role') == 'admin' %}
+                <a class="nav-link nav-admin" href="/users">👤 UTILISATEURS</a>
+                <a class="nav-link nav-admin" href="/services">⚙ SERVICES</a>
+                <a class="nav-link nav-admin" href="/packages">📦 PACKS</a>
+                <a class="nav-link nav-admin" href="/service_inventory">🔗 LIAISON</a>
+                <a class="nav-link nav-admin" href="/technician_performance">🏆 PERF</a>
+                <a class="nav-link" href="/activity_log" style="color:var(--text-muted)">📝 JOURNAL</a>
+                <a class="nav-link nav-admin" href="/backup">💾</a>
+                {% endif %}
+                <a class="nav-link" href="/maintenance_reminders">🔧</a>
+                <a class="nav-link" href="/loyalty">🎁</a>
+                <a class="nav-link" href="/inventory">📦</a>
+            </div>
+            <div class="navbar-util">
+                <div class="nav-search-wrap">
+                    <form action="/search" method="GET">
+                        <input type="text" name="q" id="searchInput" placeholder="Rechercher..." autocomplete="off">
+                    </form>
+                    <div id="searchResults"></div>
+                </div>
+                <span class="nav-user">{{ session.get('username', '')|upper }}</span>
+                {% if session.get('role') == 'admin' %}<span class="nav-role">ADMIN</span>{% endif %}
+                {% if session.get('role') == 'admin' %}<a href="/settings" class="nav-util-link">⚙</a>{% endif %}
+                <a href="/change_password" class="nav-util-link">🔑</a>
+                <a onclick="toggleTheme()" class="nav-util-link" style="cursor:pointer" id="themeBtn">🌙</a>
+                <a href="/logout" class="nav-util-link nav-logout">DÉCONNEXION</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container main-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+    {% block scripts %}{% endblock %}
+    <script>
+    /* Theme */
+    (function() {
+        var t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        var btn = document.getElementById('themeBtn');
+        if (btn) btn.textContent = t === 'light' ? '🌞' : '🌙';
+    })();
+    function toggleTheme() {
+        var c = document.documentElement.getAttribute('data-theme') || 'dark';
+        var n = c === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', n);
+        localStorage.setItem('theme', n);
+        var btn = document.getElementById('themeBtn');
+        if (btn) btn.textContent = n === 'light' ? '🌞' : '🌙';
+    }
+    /* Active nav */
+    (function(){
+        var path = location.pathname;
+        document.querySelectorAll('.nav-link').forEach(function(link){
+            if (link.getAttribute('href') === path) link.classList.add('active');
+        });
+    })();
+    /* Search autocomplete */
+    (function(){
+        var input = document.getElementById('searchInput');
+        var box = document.getElementById('searchResults');
+        if (!input || !box) return;
+        var timer = null;
+        input.addEventListener('input', function(){
+            clearTimeout(timer);
+            var q = input.value.trim();
+            if (q.length < 2) { box.style.display = 'none'; return; }
+            timer = setTimeout(function(){
+                fetch('/api/search?q=' + encodeURIComponent(q))
+                .then(function(r){ return r.json(); })
+                .then(function(data){
+                    if (!data.length) { box.style.display = 'none'; return; }
+                    var html = '';
+                    data.forEach(function(r){
+                        var icon = r.type === 'client' ? '👤' : '🚗';
+                        html += '<a href="'+r.url+'" class="search-item">'
+                            + '<span>'+icon+'</span> <span class="search-label">'+r.label+'</span> <span class="search-sub">'+r.sub+'</span></a>';
+                    });
+                    box.innerHTML = html;
+                    box.style.display = 'block';
+                });
+            }, 250);
+        });
+        document.addEventListener('click', function(e){
+            if (!box.contains(e.target) && e.target !== input) box.style.display = 'none';
+        });
+    })();
+    </script>
+</body>
+</html>

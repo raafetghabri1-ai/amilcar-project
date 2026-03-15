@@ -1,2 +1,11 @@
 __pycache__/
 *.db
+.secret_key
+*.backup
+*.backup2
+*.bak
+backups/
+convert_*.py
+seed_data.py
+backup.py
+.venv/

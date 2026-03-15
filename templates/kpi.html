@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %} - KPI{% endblock %}
+{% block content %}
+<h3 class="page-title mb-4">📊 INDICATEURS DE PERFORMANCE — {{ month_label|upper }}</h3>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2>{{ kpi.revenue|round|int }} DT</h2>
+            <p>REVENUS CE MOIS</p>
+            <span style="color:{% if kpi.revenue_growth >= 0 %}#2d6a4f{% else %}#C41E3A{% endif %};font-size:0.7rem">
+                {% if kpi.revenue_growth >= 0 %}▲{% else %}▼{% endif %} {{ kpi.revenue_growth }}% vs mois dernier
+            </span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2>{{ kpi.avg_daily }} DT</h2>
+            <p>REVENUS MOYENS / JOUR</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2>{{ kpi.completion_rate }}%</h2>
+            <p>TAUX D'ACHÈVEMENT</p>
+            <span style="color:#888;font-size:0.7rem">{{ kpi.appointments }} rendez-vous</span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2>{{ kpi.return_rate }}%</h2>
+            <p>TAUX DE RETOUR CLIENT</p>
+            <span style="color:#888;font-size:0.7rem">{{ kpi.new_customers }} nouveaux</span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card p-3" style="border-left:3px solid #D4AF37">
+            <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">NOTE MOYENNE</p>
+            <p style="color:#D4AF37;font-size:1.6rem;margin:5px 0 0">
+                {% for i in range(5) %}
+                    {% if i < kpi.avg_rating|round|int %}⭐{% else %}☆{% endif %}
+                {% endfor %}
+                <span style="font-size:0.8rem;color:#888">{{ kpi.avg_rating }}/5 ({{ kpi.rating_count }} avis)</span>
+            </p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3" style="border-left:3px solid {% if kpi.revenue_growth >= 0 %}#2d6a4f{% else %}#C41E3A{% endif %}">
+            <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">CROISSANCE REVENUS</p>
+            <p style="color:{% if kpi.revenue_growth >= 0 %}#2d6a4f{% else %}#C41E3A{% endif %};font-size:1.6rem;margin:5px 0 0">
+                {% if kpi.revenue_growth >= 0 %}+{% endif %}{{ kpi.revenue_growth }}%
+            </p>
+            <span style="color:#888;font-size:0.65rem">{{ kpi.prev_revenue|round|int }} DT → {{ kpi.revenue|round|int }} DT</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3" style="border-left:3px solid #1B6B93">
+            <p style="color:#888;font-size:0.65rem;letter-spacing:2px;margin:0">RENDEZ-VOUS vs MOIS DERNIER</p>
+            <p style="color:#1B6B93;font-size:1.6rem;margin:5px 0 0">{{ kpi.appointments }}
+                <span style="font-size:0.8rem;color:#888">(était {{ kpi.prev_appointments }})</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if kpi.top_techs %}
+<p class="section-title">🏆 TOP TECHNICIENS CE MOIS</p>
+<table class="table">
+    <thead><tr><th>TECHNICIEN</th><th>TRAVAUX</th><th>REVENUS</th></tr></thead>
+    <tbody>
+    {% for t in kpi.top_techs %}
+    <tr>
+        <td style="color:#D4AF37">{{ t[0] }}</td>
+        <td>{{ t[1] }}</td>
+        <td style="color:#D4AF37;font-weight:700">{{ t[2]|round|int }} DT</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}
