@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %} — VIN Decoder{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔍 VIN Decoder & Intelligence Véhicule</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Décodage automatique du numéro de châssis</p>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">🔎 Décoder un VIN</h5>
+            <form method="POST" action="{{ url_for('vin_decode') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label style="color:var(--text-muted);font-size:.75rem">Véhicule (optionnel)</label>
+                    <select name="car_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="0">— Décoder seulement —</option>
+                        {% for c in cars %}
+                        <option value="{{ c.id }}" {{ 'selected' if c.id == car_id }}>{{ c.plate }} — {{ c.brand }} {{ c.model }} ({{ c.customer_name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label style="color:var(--text-muted);font-size:.75rem">Numéro VIN (17 caractères)</label>
+                    <input type="text" name="vin" class="form-control" placeholder="Ex: WBAJB0C55JB084264" maxlength="17" minlength="17" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-family:monospace;font-size:1.1rem;letter-spacing:2px;text-transform:uppercase">
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:700;font-size:1rem;padding:10px">🔍 Décoder</button>
+            </form>
+
+            {% if result %}
+            <div class="mt-4 p-3" style="background:var(--bg-hover);border-radius:var(--radius);border-left:4px solid var(--gold)">
+                <h5 style="color:var(--green-light);margin-bottom:12px">✅ Résultat</h5>
+                <div class="row g-2" style="font-size:.85rem">
+                    <div class="col-6"><span style="color:var(--text-muted)">VIN:</span><br><strong style="font-family:monospace">{{ result.vin }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Marque:</span><br><strong style="color:var(--gold)">{{ result.make }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Pays:</span><br><strong>{{ result.country }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Année:</span><br><strong>{{ result.year }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Carrosserie:</span><br><strong>{{ result.body }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Carburant:</span><br><strong>{{ result.fuel }}</strong></div>
+                    <div class="col-6"><span style="color:var(--text-muted)">Moteur:</span><br><strong>{{ result.engine }}</strong></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📋 Historique VIN décodés</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary);font-size:.78rem">
+                    <thead><tr><th>VIN</th><th>Plaque</th><th>Client</th><th>Marque</th><th>Année</th><th>Carrosserie</th><th>Date</th></tr></thead>
+                    <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td style="font-family:monospace;font-size:.7rem">{{ r.vin }}</td>
+                        <td style="font-weight:600">{{ r.plate }}</td>
+                        <td>{{ r.customer_name }}</td>
+                        <td style="color:var(--gold)">{{ r.decoded_make }}</td>
+                        <td>{{ r.decoded_year }}</td>
+                        <td>{{ r.decoded_body }}</td>
+                        <td style="color:var(--text-muted)">{{ r.created_at[:10] if r.created_at else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not records %}
+                    <tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Aucun VIN décodé</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6748,6 +6748,667 @@ def webhook_toggle(wid):
             conn.commit()
     return redirect("/api_settings")
 
+# ══════════════════════════════════════════════════════════════
+# ██  PHASE 11 — Global Excellence                           ██
+# ══════════════════════════════════════════════════════════════
+
+# ─── 1. Multi-Succursale (Branches) ───
+
+@app.route("/branches")
+@login_required
+@admin_required
+def branches():
+    with get_db() as conn:
+        all_branches = conn.execute("SELECT * FROM branches ORDER BY name").fetchall()
+        # Stats per branch
+        stats = {}
+        for b in all_branches:
+            appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE branch_id=?", (b['id'],)).fetchone()[0]
+            revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE branch_id=?", (b['id'],)).fetchone()[0]
+            staff = conn.execute("SELECT COUNT(*) FROM users WHERE branch_id=?", (b['id'],)).fetchone()[0]
+            stats[b['id']] = {'appointments': appts, 'revenue': revenue, 'staff': staff}
+        transfers = conn.execute("""
+            SELECT bt.*, b1.name as from_name, b2.name as to_name 
+            FROM branch_transfers bt 
+            JOIN branches b1 ON bt.from_branch=b1.id 
+            JOIN branches b2 ON bt.to_branch=b2.id 
+            ORDER BY bt.created_at DESC LIMIT 20
+        """).fetchall()
+    return render_template("branches.html", branches=all_branches, stats=stats, transfers=transfers)
+
+@app.route("/branch/add", methods=["POST"])
+@login_required
+@admin_required
+def add_branch():
+    name = request.form.get("name", "").strip()
+    address = request.form.get("address", "").strip()
+    phone = request.form.get("phone", "").strip()
+    manager = request.form.get("manager", "").strip()
+    if name:
+        with get_db() as conn:
+            conn.execute("INSERT INTO branches (name, address, phone, manager) VALUES (?,?,?,?)",
+                        (name, address, phone, manager))
+            conn.commit()
+        flash("Succursale ajoutée !", "success")
+    return redirect("/branches")
+
+@app.route("/branch/toggle/<int:bid>")
+@login_required
+@admin_required
+def toggle_branch(bid):
+    with get_db() as conn:
+        b = conn.execute("SELECT active FROM branches WHERE id=?", (bid,)).fetchone()
+        if b:
+            conn.execute("UPDATE branches SET active=? WHERE id=?", (0 if b[0] else 1, bid))
+            conn.commit()
+    return redirect("/branches")
+
+@app.route("/branch/transfer", methods=["POST"])
+@login_required
+@admin_required
+def branch_transfer():
+    from_b = request.form.get("from_branch", type=int)
+    to_b = request.form.get("to_branch", type=int)
+    item_type = request.form.get("item_type", "inventory")
+    item_id = request.form.get("item_id", type=int)
+    qty = request.form.get("quantity", 1, type=int)
+    notes = request.form.get("notes", "").strip()
+    if from_b and to_b and item_id and from_b != to_b:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO branch_transfers 
+                (from_branch, to_branch, item_type, item_id, quantity, notes, status, created_by) 
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (from_b, to_b, item_type, item_id, qty, notes, 'completed', session.get('user_id')))
+            if item_type == 'inventory':
+                conn.execute("UPDATE inventory SET quantity = quantity - ? WHERE id=? AND branch_id=?", (qty, item_id, from_b))
+                existing = conn.execute("SELECT id FROM inventory WHERE id=? AND branch_id=?", (item_id, to_b)).fetchone()
+                if existing:
+                    conn.execute("UPDATE inventory SET quantity = quantity + ? WHERE id=? AND branch_id=?", (qty, item_id, to_b))
+            conn.commit()
+        flash("Transfert effectué !", "success")
+    return redirect("/branches")
+
+# ─── 2. VIN Decoder ───
+
+VIN_MANUFACTURERS = {
+    '1': 'USA', '2': 'Canada', '3': 'Mexico', '4': 'USA', '5': 'USA',
+    'J': 'Japan', 'K': 'Korea', 'L': 'China', 'S': 'UK', 'V': 'France',
+    'W': 'Germany', 'Z': 'Italy', 'Y': 'Sweden/Finland',
+}
+VIN_MAKES = {
+    'WBA': 'BMW', 'WBS': 'BMW M', 'WDD': 'Mercedes-Benz', 'WDB': 'Mercedes-Benz',
+    'WAU': 'Audi', 'WVW': 'Volkswagen', 'WF0': 'Ford', 'VF1': 'Renault',
+    'VF3': 'Peugeot', 'VF7': 'Citroën', 'ZFA': 'Fiat', 'ZAR': 'Alfa Romeo',
+    'JTD': 'Toyota', 'JHM': 'Honda', 'JN1': 'Nissan', 'KMH': 'Hyundai',
+    'KNA': 'Kia', 'SAJ': 'Jaguar', 'SAL': 'Land Rover', 'YV1': 'Volvo',
+    'TMA': 'Hyundai CZ', '1G1': 'Chevrolet', '1FA': 'Ford', '2HG': 'Honda',
+    '3FA': 'Ford', '5YJ': 'Tesla', 'SCC': 'Lotus',
+}
+
+def decode_vin_local(vin):
+    """Decode VIN locally without external API"""
+    vin = vin.upper().strip()
+    if len(vin) != 17:
+        return None
+    result = {'vin': vin}
+    wmi = vin[:3]
+    result['make'] = VIN_MAKES.get(wmi, 'Inconnu')
+    result['country'] = VIN_MANUFACTURERS.get(vin[0], 'Inconnu')
+    year_code = vin[9]
+    year_map = {c: y for c, y in zip('ABCDEFGHJKLMNPRSTVWXY123456789', range(2010, 2040))}
+    result['year'] = str(year_map.get(year_code, ''))
+    engine_code = vin[7]
+    result['engine'] = f"Type-{engine_code}"
+    body_code = vin[4]
+    body_map = {'A': 'Berline', 'B': 'SUV', 'C': 'Coupé', 'D': 'Break', 'E': 'Cabriolet', 'F': 'Pick-up'}
+    result['body'] = body_map.get(body_code, 'Standard')
+    fuel_map = {'1': 'Essence', '2': 'Diesel', '3': 'Hybride', '4': 'Électrique', '5': 'GPL'}
+    result['fuel'] = fuel_map.get(vin[7], 'Essence')
+    return result
+
+@app.route("/vin_decode", methods=["GET", "POST"])
+@login_required
+def vin_decode():
+    result = None
+    car_id = request.args.get("car_id", 0, type=int)
+    if request.method == "POST":
+        vin = request.form.get("vin", "").strip().upper()
+        car_id = request.form.get("car_id", 0, type=int)
+        if len(vin) == 17:
+            result = decode_vin_local(vin)
+            if result and car_id:
+                with get_db() as conn:
+                    conn.execute("UPDATE cars SET vin=? WHERE id=?", (vin, car_id))
+                    existing = conn.execute("SELECT id FROM vin_records WHERE car_id=?", (car_id,)).fetchone()
+                    if existing:
+                        conn.execute("""UPDATE vin_records SET vin=?, decoded_make=?, decoded_model=?, 
+                            decoded_year=?, decoded_engine=?, decoded_body=?, decoded_fuel=? WHERE car_id=?""",
+                            (vin, result['make'], '', result['year'], result['engine'], result['body'], result['fuel'], car_id))
+                    else:
+                        conn.execute("""INSERT INTO vin_records 
+                            (car_id, vin, decoded_make, decoded_year, decoded_engine, decoded_body, decoded_fuel)
+                            VALUES (?,?,?,?,?,?,?)""",
+                            (car_id, vin, result['make'], result['year'], result['engine'], result['body'], result['fuel']))
+                    conn.commit()
+                flash("VIN décodé et sauvegardé !", "success")
+        else:
+            flash("VIN invalide — 17 caractères requis", "danger")
+    with get_db() as conn:
+        cars = conn.execute("""SELECT c.*, cu.name as customer_name FROM cars c 
+            JOIN customers cu ON c.customer_id=cu.id ORDER BY c.id DESC""").fetchall()
+        records = conn.execute("""SELECT vr.*, c.plate, cu.name as customer_name FROM vin_records vr 
+            JOIN cars c ON vr.car_id=c.id 
+            JOIN customers cu ON c.customer_id=cu.id 
+            ORDER BY vr.created_at DESC LIMIT 50""").fetchall()
+    return render_template("vin_decoder.html", cars=cars, result=result, car_id=car_id, records=records)
+
+# ─── 3. Timeline Client Unifiée ───
+
+@app.route("/customer_timeline/<int:cid>")
+@login_required
+def customer_timeline(cid):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (cid,)).fetchone()
+        if not customer:
+            flash("Client introuvable", "danger")
+            return redirect("/customers")
+        events = []
+        # Appointments
+        for a in conn.execute("SELECT * FROM appointments WHERE car_id IN (SELECT id FROM cars WHERE customer_id=?) ORDER BY date DESC", (cid,)).fetchall():
+            events.append({'type': 'appointment', 'icon': '📅', 'title': f"RDV — {a['service']}", 
+                'detail': f"Statut: {a['status']}", 'date': a['date'], 'ref_id': a['id']})
+        # Invoices
+        for i in conn.execute("SELECT * FROM invoices WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id IN (SELECT id FROM cars WHERE customer_id=?))", (cid,)).fetchall():
+            events.append({'type': 'invoice', 'icon': '📄', 'title': f"Facture #{i['id']} — {i['amount']} DT",
+                'detail': f"Statut: {i['status']}", 'date': i.get('created_at', ''), 'ref_id': i['id']})
+        # Communications
+        for c in conn.execute("SELECT * FROM communication_log WHERE customer_id=? ORDER BY created_at DESC", (cid,)).fetchall():
+            events.append({'type': 'communication', 'icon': '💬', 'title': f"{c['comm_type']} — {c['subject']}",
+                'detail': c.get('message', '')[:100], 'date': c['created_at'], 'ref_id': c['id']})
+        # CRM Follow-ups
+        for f in conn.execute("SELECT * FROM crm_followups WHERE customer_id=?", (cid,)).fetchall():
+            events.append({'type': 'followup', 'icon': '🔄', 'title': f"Suivi — {f['action_type']}",
+                'detail': f['notes'][:100] if f['notes'] else '', 'date': f['scheduled_date'], 'ref_id': f['id']})
+        # Ratings
+        for r in conn.execute("SELECT * FROM ratings WHERE customer_id=?", (cid,)).fetchall():
+            events.append({'type': 'rating', 'icon': '⭐', 'title': f"Évaluation — {r['score']}/5",
+                'detail': r.get('comment', ''), 'date': r.get('created_at', ''), 'ref_id': r['id']})
+        # Insurance claims
+        for ic in conn.execute("SELECT * FROM insurance_claims WHERE customer_id=?", (cid,)).fetchall():
+            events.append({'type': 'insurance', 'icon': '🏥', 'title': f"Dossier assurance #{ic['claim_number']}",
+                'detail': f"Statut: {ic['status']} — {ic['estimated_cost']} DT", 'date': ic['created_at'], 'ref_id': ic['id']})
+        # Sort by date desc
+        events.sort(key=lambda x: x.get('date', '') or '', reverse=True)
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (cid,)).fetchall()
+    return render_template("customer_timeline.html", customer=customer, events=events, cars=cars)
+
+# ─── 4. Gestion Assurance & Tiers-Payant ───
+
+@app.route("/insurance")
+@login_required
+def insurance():
+    with get_db() as conn:
+        companies = conn.execute("SELECT * FROM insurance_companies ORDER BY name").fetchall()
+        claims = conn.execute("""SELECT ic.*, cu.name as customer_name, c.plate, ins.name as insurer_name
+            FROM insurance_claims ic 
+            JOIN customers cu ON ic.customer_id=cu.id 
+            JOIN cars c ON ic.car_id=c.id 
+            JOIN insurance_companies ins ON ic.insurance_id=ins.id 
+            ORDER BY ic.created_at DESC""").fetchall()
+        stats = {
+            'total_claims': len(claims),
+            'pending': sum(1 for c in claims if c['status'] in ('submitted', 'in_review')),
+            'approved': sum(1 for c in claims if c['status'] == 'approved'),
+            'total_amount': sum(c['estimated_cost'] for c in claims),
+            'approved_amount': sum(c['approved_amount'] for c in claims if c['status'] == 'approved'),
+        }
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT c.id, c.plate, cu.name FROM cars c JOIN customers cu ON c.customer_id=cu.id ORDER BY c.plate").fetchall()
+    return render_template("insurance.html", companies=companies, claims=claims, stats=stats, customers=customers, cars=cars)
+
+@app.route("/insurance/company/add", methods=["POST"])
+@login_required
+@admin_required
+def add_insurance_company():
+    name = request.form.get("name", "").strip()
+    contact = request.form.get("contact_person", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    contract = request.form.get("contract_number", "").strip()
+    discount = request.form.get("discount_rate", 0, type=float)
+    if name:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO insurance_companies 
+                (name, contact_person, phone, email, contract_number, discount_rate) 
+                VALUES (?,?,?,?,?,?)""", (name, contact, phone, email, contract, discount))
+            conn.commit()
+        flash("Assureur ajouté !", "success")
+    return redirect("/insurance")
+
+@app.route("/insurance/claim/add", methods=["POST"])
+@login_required
+def add_insurance_claim():
+    customer_id = request.form.get("customer_id", type=int)
+    car_id = request.form.get("car_id", type=int)
+    insurance_id = request.form.get("insurance_id", type=int)
+    claim_number = request.form.get("claim_number", "").strip()
+    accident_date = request.form.get("accident_date", "")
+    description = request.form.get("description", "").strip()
+    estimated_cost = request.form.get("estimated_cost", 0, type=float)
+    if customer_id and car_id and insurance_id:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO insurance_claims 
+                (customer_id, car_id, insurance_id, claim_number, accident_date, description, estimated_cost)
+                VALUES (?,?,?,?,?,?,?)""",
+                (customer_id, car_id, insurance_id, claim_number, accident_date, description, estimated_cost))
+            conn.commit()
+        flash("Dossier créé !", "success")
+    return redirect("/insurance")
+
+@app.route("/insurance/claim/update/<int:cid>", methods=["POST"])
+@login_required
+def update_insurance_claim(cid):
+    status = request.form.get("status", "")
+    approved = request.form.get("approved_amount", 0, type=float)
+    notes = request.form.get("notes", "").strip()
+    with get_db() as conn:
+        conn.execute("UPDATE insurance_claims SET status=?, approved_amount=?, notes=? WHERE id=?",
+                    (status, approved, notes, cid))
+        conn.commit()
+    flash("Dossier mis à jour", "success")
+    return redirect("/insurance")
+
+# ─── 5. Contrôle Qualité Post-Service ───
+
+QUALITY_CHECKLIST = [
+    {'id': 'clean_exterior', 'label': 'Propreté extérieure', 'category': 'Finition'},
+    {'id': 'clean_interior', 'label': 'Propreté intérieure', 'category': 'Finition'},
+    {'id': 'no_scratches', 'label': 'Aucune rayure ajoutée', 'category': 'Finition'},
+    {'id': 'service_complete', 'label': 'Service complet effectué', 'category': 'Service'},
+    {'id': 'parts_replaced', 'label': 'Pièces changées correctement', 'category': 'Service'},
+    {'id': 'fluids_checked', 'label': 'Niveaux vérifiés', 'category': 'Service'},
+    {'id': 'test_drive', 'label': 'Essai routier effectué', 'category': 'Vérification'},
+    {'id': 'noise_check', 'label': 'Pas de bruits anormaux', 'category': 'Vérification'},
+    {'id': 'lights_ok', 'label': 'Éclairage fonctionnel', 'category': 'Vérification'},
+    {'id': 'customer_items', 'label': 'Objets client restitués', 'category': 'Remise'},
+    {'id': 'paperwork', 'label': 'Documents prêts', 'category': 'Remise'},
+    {'id': 'final_inspection', 'label': 'Inspection finale validée', 'category': 'Remise'},
+]
+
+@app.route("/quality_check/<int:appt_id>", methods=["GET", "POST"])
+@login_required
+def quality_check(appt_id):
+    import json
+    with get_db() as conn:
+        appt = conn.execute("""SELECT a.*, c.plate, cu.name as customer_name 
+            FROM appointments a JOIN cars c ON a.car_id=c.id 
+            JOIN customers cu ON c.customer_id=cu.id WHERE a.id=?""", (appt_id,)).fetchone()
+        if not appt:
+            flash("RDV introuvable", "danger")
+            return redirect("/appointments")
+        existing = conn.execute("SELECT * FROM quality_checks WHERE appointment_id=?", (appt_id,)).fetchone()
+        if request.method == "POST":
+            checklist = []
+            for item in QUALITY_CHECKLIST:
+                status = request.form.get(f"check_{item['id']}", "pending")
+                note = request.form.get(f"note_{item['id']}", "").strip()
+                checklist.append({'id': item['id'], 'label': item['label'], 'category': item['category'],
+                                'status': status, 'note': note})
+            passed = sum(1 for c in checklist if c['status'] == 'pass')
+            total = len(checklist)
+            score = int((passed / total) * 100) if total else 0
+            nps = request.form.get("nps_score", 0, type=int)
+            nps_comment = request.form.get("nps_comment", "").strip()
+            checklist_json = json.dumps(checklist)
+            if existing:
+                conn.execute("""UPDATE quality_checks SET checklist=?, overall_score=?, nps_score=?, 
+                    nps_comment=?, status=? WHERE appointment_id=?""",
+                    (checklist_json, score, nps, nps_comment, 'completed' if score >= 80 else 'needs_review', appt_id))
+            else:
+                conn.execute("""INSERT INTO quality_checks 
+                    (appointment_id, inspector_id, checklist, overall_score, nps_score, nps_comment, status)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (appt_id, session.get('user_id', 0), checklist_json, score, nps, nps_comment,
+                     'completed' if score >= 80 else 'needs_review'))
+            conn.commit()
+            flash(f"Contrôle qualité enregistré — Score: {score}%", "success")
+            return redirect(f"/quality_check/{appt_id}")
+        parsed_checklist = json.loads(existing['checklist']) if existing and existing['checklist'] else []
+    return render_template("quality_check.html", appt=appt, existing=existing,
+                          checklist=QUALITY_CHECKLIST, parsed=parsed_checklist)
+
+@app.route("/quality_dashboard")
+@login_required
+def quality_dashboard():
+    import json
+    with get_db() as conn:
+        checks = conn.execute("""SELECT qc.*, a.service, a.date, c.plate, cu.name as customer_name
+            FROM quality_checks qc 
+            JOIN appointments a ON qc.appointment_id=a.id 
+            JOIN cars c ON a.car_id=c.id 
+            JOIN customers cu ON c.customer_id=cu.id 
+            ORDER BY qc.created_at DESC LIMIT 100""").fetchall()
+        avg_score = conn.execute("SELECT AVG(overall_score) FROM quality_checks").fetchone()[0] or 0
+        avg_nps = conn.execute("SELECT AVG(nps_score) FROM quality_checks WHERE nps_score > 0").fetchone()[0] or 0
+        total = conn.execute("SELECT COUNT(*) FROM quality_checks").fetchone()[0]
+        passed = conn.execute("SELECT COUNT(*) FROM quality_checks WHERE overall_score >= 80").fetchone()[0]
+    return render_template("quality_dashboard.html", checks=checks, avg_score=avg_score, 
+                          avg_nps=avg_nps, total=total, passed=passed)
+
+# ─── 6. Gestion Documentaire Véhicule ───
+
+@app.route("/vehicle_docs/<int:car_id>")
+@login_required
+def vehicle_docs(car_id):
+    with get_db() as conn:
+        car = conn.execute("""SELECT c.*, cu.name as customer_name FROM cars c 
+            JOIN customers cu ON c.customer_id=cu.id WHERE c.id=?""", (car_id,)).fetchone()
+        if not car:
+            flash("Véhicule introuvable", "danger")
+            return redirect("/customers")
+        docs = conn.execute("SELECT * FROM vehicle_documents WHERE car_id=? ORDER BY created_at DESC", (car_id,)).fetchall()
+        from datetime import date
+        today = date.today().isoformat()
+        expiring = [d for d in docs if d['expiry_date'] and d['expiry_date'] <= today]
+    return render_template("vehicle_docs.html", car=car, docs=docs, expiring=expiring)
+
+@app.route("/vehicle_docs/add/<int:car_id>", methods=["POST"])
+@login_required
+def add_vehicle_doc(car_id):
+    doc_type = request.form.get("doc_type", "").strip()
+    doc_name = request.form.get("doc_name", "").strip()
+    expiry = request.form.get("expiry_date", "")
+    notes = request.form.get("notes", "").strip()
+    file_path = ""
+    if 'document' in request.files:
+        f = request.files['document']
+        if f and f.filename:
+            ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+            allowed = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'webp'}
+            if ext in allowed:
+                fname = secure_filename(f"{uuid.uuid4().hex[:12]}_{f.filename}")
+                os.makedirs('static/uploads/docs', exist_ok=True)
+                f.save(os.path.join('static/uploads/docs', fname))
+                file_path = f"uploads/docs/{fname}"
+    if doc_type:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO vehicle_documents (car_id, doc_type, doc_name, file_path, expiry_date, notes)
+                VALUES (?,?,?,?,?,?)""", (car_id, doc_type, doc_name, file_path, expiry, notes))
+            conn.commit()
+        flash("Document ajouté !", "success")
+    return redirect(f"/vehicle_docs/{car_id}")
+
+@app.route("/vehicle_docs/delete/<int:doc_id>/<int:car_id>", methods=["POST"])
+@login_required
+def delete_vehicle_doc(doc_id, car_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM vehicle_documents WHERE id=?", (doc_id,))
+        conn.commit()
+    flash("Document supprimé", "success")
+    return redirect(f"/vehicle_docs/{car_id}")
+
+# ─── 7. Prévision Cash Flow ───
+
+@app.route("/cashflow")
+@login_required
+@admin_required
+def cashflow():
+    from datetime import date, timedelta
+    with get_db() as conn:
+        today = date.today()
+        months = []
+        for i in range(12):
+            m = today.month + i
+            y = today.year + (m - 1) // 12
+            m = ((m - 1) % 12) + 1
+            month_str = f"{y}-{m:02d}"
+            # Projected income: scheduled appointments
+            proj_income = conn.execute("""SELECT COALESCE(SUM(s.price), 0) FROM appointments a 
+                JOIN services s ON a.service = s.name 
+                WHERE strftime('%%Y-%%m', a.date) = ? AND a.status != 'cancelled'""", (month_str,)).fetchone()[0]
+            # Unpaid invoices due this month
+            unpaid = conn.execute("""SELECT COALESCE(SUM(amount - COALESCE(paid_amount, 0)), 0) 
+                FROM invoices WHERE status IN ('unpaid', 'partial') 
+                AND strftime('%%Y-%%m', date) = ?""", (month_str,)).fetchone()[0]
+            proj_income += unpaid
+            # Actual income
+            actual_income = conn.execute("""SELECT COALESCE(SUM(amount), 0) FROM invoices 
+                WHERE status = 'paid' AND strftime('%%Y-%%m', date) = ?""", (month_str,)).fetchone()[0]
+            # Projected expenses (average of past 3 months)
+            avg_exp = conn.execute("""SELECT COALESCE(AVG(total), 0) FROM (
+                SELECT strftime('%%Y-%%m', date) as m, SUM(amount) as total 
+                FROM expenses GROUP BY m ORDER BY m DESC LIMIT 3)""").fetchone()[0]
+            # Actual expenses
+            actual_exp = conn.execute("""SELECT COALESCE(SUM(amount), 0) FROM expenses 
+                WHERE strftime('%%Y-%%m', date) = ?""", (month_str,)).fetchone()[0]
+            # Save/update projection
+            existing = conn.execute("SELECT id FROM cashflow_projections WHERE month=?", (month_str,)).fetchone()
+            if existing:
+                conn.execute("""UPDATE cashflow_projections SET projected_income=?, projected_expenses=?,
+                    actual_income=?, actual_expenses=? WHERE month=?""",
+                    (proj_income, avg_exp, actual_income, actual_exp, month_str))
+            else:
+                conn.execute("""INSERT INTO cashflow_projections 
+                    (month, projected_income, projected_expenses, actual_income, actual_expenses) 
+                    VALUES (?,?,?,?,?)""", (month_str, proj_income, avg_exp, actual_income, actual_exp))
+            months.append({
+                'month': month_str, 'proj_income': proj_income, 'proj_expenses': avg_exp,
+                'actual_income': actual_income, 'actual_expenses': actual_exp,
+                'proj_net': proj_income - avg_exp, 'actual_net': actual_income - actual_exp
+            })
+        conn.commit()
+        # Running balance
+        balance = 0
+        for m in months:
+            if m['actual_income'] > 0:
+                balance += m['actual_net']
+            else:
+                balance += m['proj_net']
+            m['balance'] = balance
+    return render_template("cashflow.html", months=months)
+
+# ─── 8. Programme VIP & Niveaux ───
+
+DEFAULT_VIP_LEVELS = [
+    {'name': 'Bronze', 'min_spend': 0, 'discount': 0, 'perks': 'Newsletter exclusif', 'color': '#CD7F32', 'icon': '🥉'},
+    {'name': 'Silver', 'min_spend': 500, 'discount': 5, 'perks': 'Lavage gratuit après 3 visites', 'color': '#C0C0C0', 'icon': '🥈'},
+    {'name': 'Gold', 'min_spend': 2000, 'discount': 10, 'perks': 'Remise 10% + Priorité RDV', 'color': '#FFD700', 'icon': '🥇'},
+    {'name': 'Platinum', 'min_spend': 5000, 'discount': 15, 'perks': 'Remise 15% + VIP Lounge + Véhicule courtoisie', 'color': '#E5E4E2', 'icon': '👑'},
+]
+
+@app.route("/vip_program")
+@login_required
+def vip_program():
+    with get_db() as conn:
+        levels = conn.execute("SELECT * FROM vip_levels ORDER BY min_spend ASC").fetchall()
+        if not levels:
+            for lv in DEFAULT_VIP_LEVELS:
+                conn.execute("""INSERT INTO vip_levels (name, min_spend, discount_percent, perks, color, icon, sort_order)
+                    VALUES (?,?,?,?,?,?,?)""", (lv['name'], lv['min_spend'], lv['discount'], lv['perks'], lv['color'], lv['icon'], DEFAULT_VIP_LEVELS.index(lv)))
+            conn.commit()
+            levels = conn.execute("SELECT * FROM vip_levels ORDER BY min_spend ASC").fetchall()
+        # Calculate customer VIP levels
+        customers = conn.execute("""SELECT cu.*, COALESCE(SUM(i.amount), 0) as total_spent 
+            FROM customers cu 
+            LEFT JOIN cars c ON c.customer_id = cu.id 
+            LEFT JOIN appointments a ON a.car_id = c.id 
+            LEFT JOIN invoices i ON i.appointment_id = a.id AND i.status = 'paid' 
+            GROUP BY cu.id ORDER BY total_spent DESC""").fetchall()
+        # Assign VIP levels
+        vip_customers = []
+        level_counts = {l['name']: 0 for l in levels}
+        for cu in customers:
+            spent = cu['total_spent']
+            assigned = levels[0]
+            for lv in levels:
+                if spent >= lv['min_spend']:
+                    assigned = lv
+            level_counts[assigned['name']] = level_counts.get(assigned['name'], 0) + 1
+            vip_customers.append({'customer': cu, 'level': assigned, 'spent': spent})
+            # Update customer vip_level
+            conn.execute("UPDATE customers SET vip_level=?, total_spent=? WHERE id=?", 
+                        (assigned['name'], spent, cu['id']))
+        conn.commit()
+    return render_template("vip_program.html", levels=levels, vip_customers=vip_customers, level_counts=level_counts)
+
+@app.route("/vip_level/edit", methods=["POST"])
+@login_required
+@admin_required
+def edit_vip_level():
+    lid = request.form.get("level_id", type=int)
+    min_spend = request.form.get("min_spend", 0, type=float)
+    discount = request.form.get("discount_percent", 0, type=float)
+    perks = request.form.get("perks", "").strip()
+    if lid:
+        with get_db() as conn:
+            conn.execute("UPDATE vip_levels SET min_spend=?, discount_percent=?, perks=? WHERE id=?",
+                        (min_spend, discount, perks, lid))
+            conn.commit()
+        flash("Niveau mis à jour", "success")
+    return redirect("/vip_program")
+
+# ─── 9. Vue Mobile Technicien ───
+
+@app.route("/tech_mobile")
+@login_required
+def tech_mobile():
+    from datetime import date
+    today = date.today().isoformat()
+    user_id = session.get('user_id')
+    with get_db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        user_name = user['full_name'] or user['username'] if user else ''
+        # Today's work orders
+        orders = conn.execute("""SELECT a.*, c.plate, c.brand, c.model, cu.name as customer_name, cu.phone
+            FROM appointments a 
+            JOIN cars c ON a.car_id=c.id 
+            JOIN customers cu ON c.customer_id=cu.id 
+            WHERE a.date=? AND (a.assigned_to=? OR a.assigned_to=?)
+            ORDER BY a.time ASC""", (today, user_name, str(user_id))).fetchall()
+        # Time tracking
+        time_entry = conn.execute("SELECT * FROM time_tracking WHERE user_id=? AND date=?", (user_id, today)).fetchone()
+        # Stats
+        completed_today = sum(1 for o in orders if o['status'] == 'completed')
+        pending = sum(1 for o in orders if o['status'] == 'pending')
+    return render_template("tech_mobile.html", orders=orders, user=user, time_entry=time_entry,
+                          completed=completed_today, pending=pending, today=today)
+
+@app.route("/tech_mobile/update_status/<int:appt_id>", methods=["POST"])
+@login_required
+def tech_update_status(appt_id):
+    status = request.form.get("status", "")
+    valid_statuses = ['pending', 'in_progress', 'completed', 'cancelled']
+    if status in valid_statuses:
+        with get_db() as conn:
+            conn.execute("UPDATE appointments SET status=? WHERE id=?", (status, appt_id))
+            conn.commit()
+        flash(f"Statut mis à jour: {status}", "success")
+    return redirect("/tech_mobile")
+
+@app.route("/tech_mobile/clock", methods=["POST"])
+@login_required
+def tech_clock():
+    from datetime import date, datetime
+    action = request.form.get("action", "")
+    user_id = session.get('user_id')
+    today = date.today().isoformat()
+    now = datetime.now().strftime("%H:%M")
+    with get_db() as conn:
+        entry = conn.execute("SELECT * FROM time_tracking WHERE user_id=? AND date=?", (user_id, today)).fetchone()
+        if action == "clock_in":
+            if not entry:
+                conn.execute("INSERT INTO time_tracking (user_id, date, clock_in) VALUES (?,?,?)", (user_id, today, now))
+            else:
+                conn.execute("UPDATE time_tracking SET clock_in=? WHERE id=?", (now, entry['id']))
+        elif action == "clock_out" and entry:
+            conn.execute("UPDATE time_tracking SET clock_out=? WHERE id=?", (now, entry['id']))
+        conn.commit()
+    return redirect("/tech_mobile")
+
+# ─── 10. Centre de Notifications Intelligent ───
+
+@app.route("/notifications")
+@login_required
+def notifications_center_view():
+    user_id = session.get('user_id')
+    with get_db() as conn:
+        notifs = conn.execute("""SELECT * FROM notifications_center 
+            WHERE user_id=? OR user_id=0 
+            ORDER BY created_at DESC LIMIT 100""", (user_id,)).fetchall()
+        unread = conn.execute("""SELECT COUNT(*) FROM notifications_center 
+            WHERE (user_id=? OR user_id=0) AND is_read=0""", (user_id,)).fetchone()[0]
+        # Auto-generate notifications
+        from datetime import date, timedelta
+        today = date.today().isoformat()
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        # Low stock alerts
+        low_stock = conn.execute("SELECT COUNT(*) FROM inventory WHERE quantity <= min_quantity AND min_quantity > 0").fetchone()[0]
+        if low_stock > 0:
+            existing = conn.execute("""SELECT id FROM notifications_center 
+                WHERE notif_type='stock' AND DATE(created_at)=? AND user_id=?""", (today, user_id)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO notifications_center (user_id, title, message, notif_type, link) 
+                    VALUES (?,?,?,?,?)""", (user_id, f"⚠️ {low_stock} article(s) en stock bas",
+                    "Vérifiez l'inventaire", "stock", "/inventory"))
+        # Tomorrow's appointments
+        tmrw_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE date=? AND status='pending'", (tomorrow,)).fetchone()[0]
+        if tmrw_count > 0:
+            existing = conn.execute("""SELECT id FROM notifications_center 
+                WHERE notif_type='appointment' AND DATE(created_at)=? AND user_id=?""", (today, user_id)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO notifications_center (user_id, title, message, notif_type, link) 
+                    VALUES (?,?,?,?,?)""", (user_id, f"📅 {tmrw_count} RDV demain",
+                    "Préparez les ressources", "appointment", "/appointments"))
+        # Overdue invoices
+        overdue = conn.execute("""SELECT COUNT(*) FROM invoices 
+            WHERE status IN ('unpaid', 'partial') AND date < ?""", (today,)).fetchone()[0]
+        if overdue > 0:
+            existing = conn.execute("""SELECT id FROM notifications_center 
+                WHERE notif_type='payment' AND DATE(created_at)=? AND user_id=?""", (today, user_id)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO notifications_center (user_id, title, message, notif_type, link) 
+                    VALUES (?,?,?,?,?)""", (user_id, f"💰 {overdue} facture(s) en retard",
+                    "Relancez les paiements", "payment", "/ar_aging"))
+        # Expiring documents
+        week_later = (date.today() + timedelta(days=7)).isoformat()
+        exp_docs = conn.execute("SELECT COUNT(*) FROM vehicle_documents WHERE expiry_date BETWEEN ? AND ?", (today, week_later)).fetchone()[0]
+        if exp_docs > 0:
+            existing = conn.execute("""SELECT id FROM notifications_center 
+                WHERE notif_type='document' AND DATE(created_at)=? AND user_id=?""", (today, user_id)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO notifications_center (user_id, title, message, notif_type, link) 
+                    VALUES (?,?,?,?,?)""", (user_id, f"📄 {exp_docs} document(s) expire(nt) bientôt",
+                    "Vérifiez les documents véhicules", "document", "/customers"))
+        conn.commit()
+    return render_template("notification_center.html", notifs=notifs, unread=unread)
+
+@app.route("/notifications/read/<int:nid>")
+@login_required
+def mark_notification_read(nid):
+    with get_db() as conn:
+        conn.execute("UPDATE notifications_center SET is_read=1 WHERE id=?", (nid,))
+        conn.commit()
+    link = request.args.get("redirect", "/notifications")
+    return redirect(link)
+
+@app.route("/notifications/read_all")
+@login_required
+def mark_all_notifications_read():
+    user_id = session.get('user_id')
+    with get_db() as conn:
+        conn.execute("UPDATE notifications_center SET is_read=1 WHERE user_id=? OR user_id=0", (user_id,))
+        conn.commit()
+    return redirect("/notifications")
+
+@app.route("/api/notifications/count")
+@login_required
+def api_notification_count():
+    user_id = session.get('user_id')
+    with get_db() as conn:
+        count = conn.execute("""SELECT COUNT(*) FROM notifications_center 
+            WHERE (user_id=? OR user_id=0) AND is_read=0""", (user_id,)).fetchone()[0]
+    return jsonify({'count': count})
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

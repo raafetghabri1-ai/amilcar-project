@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %} — Documents {{ car.plate }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+    <div>
+        <h2 style="color:var(--gold);margin-bottom:4px">📄 Dossier Documentaire</h2>
+        <p style="color:var(--text-muted);font-size:.8rem;margin:0">{{ car.plate }} — {{ car.brand }} {{ car.model }} — {{ car.customer_name }}</p>
+    </div>
+    <a href="/customer_detail/{{ car.customer_id }}" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold)">← Client</a>
+</div>
+
+{% if expiring %}
+<div class="alert mb-3" style="background:rgba(239,68,68,.15);border:1px solid var(--red);border-radius:var(--radius);padding:12px">
+    <strong style="color:var(--red)">⚠️ {{ expiring|length }} document(s) expiré(s) !</strong>
+    {% for d in expiring %}
+    <span style="margin-left:8px;font-size:.8rem;color:var(--text-muted)">{{ d.doc_type }} ({{ d.expiry_date }})</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Upload -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📤 Ajouter un document</h5>
+    <form method="POST" action="{{ url_for('add_vehicle_doc', car_id=car.id) }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="doc_type" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="">Type...</option>
+                    <option value="Carte Grise">📋 Carte Grise</option>
+                    <option value="Assurance">🛡️ Assurance</option>
+                    <option value="Contrôle Technique">🔧 Contrôle Technique</option>
+                    <option value="Vignette">📛 Vignette</option>
+                    <option value="Permis">📄 Permis Conduire</option>
+                    <option value="Facture">📄 Facture Achat</option>
+                    <option value="PV Accident">📋 PV Accident</option>
+                    <option value="Autre">📁 Autre</option>
+                </select>
+            </div>
+            <div class="col-md-2"><input type="text" name="doc_name" class="form-control form-control-sm" placeholder="Nom" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><input type="date" name="expiry_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-3"><input type="file" name="document" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">Ajouter</button></div>
+            <div class="col-12"><input type="text" name="notes" class="form-control form-control-sm" placeholder="Notes..." style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+        </div>
+    </form>
+</div>
+
+<!-- Documents Grid -->
+<div class="row g-3">
+    {% set type_icons = {'Carte Grise':'📋','Assurance':'🛡️','Contrôle Technique':'🔧','Vignette':'📛','Permis':'📄','Facture':'📄','PV Accident':'📋','Autre':'📁'} %}
+    {% for d in docs %}
+    <div class="col-md-4">
+        <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;{{ 'border-left:4px solid var(--red)' if d.expiry_date and d.expiry_date <= today else '' }}">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+                <div>
+                    <span style="font-size:1.5rem">{{ type_icons.get(d.doc_type, '📁') }}</span>
+                    <h6 style="color:var(--gold);margin:4px 0 0">{{ d.doc_type }}</h6>
+                </div>
+                <form method="POST" action="{{ url_for('delete_vehicle_doc', doc_id=d.id, car_id=car.id) }}" onsubmit="return confirm('Supprimer ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm" style="background:var(--red);color:#fff;font-size:.6rem">🗑</button>
+                </form>
+            </div>
+            {% if d.doc_name %}<div style="font-weight:600;font-size:.85rem">{{ d.doc_name }}</div>{% endif %}
+            {% if d.expiry_date %}
+            <div style="font-size:.75rem;margin-top:4px;{{ 'color:var(--red);font-weight:600' if d.expiry_date <= today else 'color:var(--text-muted)' }}">
+                {{ '⚠️ Expiré' if d.expiry_date <= today else '📅 Expire' }}: {{ d.expiry_date }}
+            </div>
+            {% endif %}
+            {% if d.notes %}<div style="font-size:.7rem;color:var(--text-muted);margin-top:4px">{{ d.notes }}</div>{% endif %}
+            {% if d.file_path %}
+            <a href="/static/{{ d.file_path }}" target="_blank" class="btn btn-sm mt-2" style="background:var(--bg-hover);color:var(--gold);font-size:.7rem">📥 Voir le fichier</a>
+            {% endif %}
+            <div style="font-size:.6rem;color:var(--text-muted);margin-top:6px">Ajouté: {{ d.created_at[:10] if d.created_at else '—' }}</div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if not docs %}
+    <div class="col-12" style="text-align:center;color:var(--text-muted);padding:40px">Aucun document enregistré</div>
+    {% endif %}
+</div>
+{% endblock %}

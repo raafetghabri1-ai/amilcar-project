@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %} — Dashboard Qualité{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📊 Dashboard Qualité</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">KPIs qualité, NPS & suivi post-service</p>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="font-size:2.5rem;font-weight:800;color:var(--gold)">{{ total }}</div>
+            <small style="color:var(--text-muted)">Contrôles total</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="font-size:2.5rem;font-weight:800;color:{{ 'var(--green-light)' if avg_score >= 80 else 'var(--red)' }}">{{ "%.0f"|format(avg_score) }}%</div>
+            <small style="color:var(--text-muted)">Score moyen</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="font-size:2.5rem;font-weight:800;color:{{ 'var(--green-light)' if avg_nps >= 8 else '#f59e0b' if avg_nps >= 7 else 'var(--red)' }}">{{ "%.1f"|format(avg_nps) }}</div>
+            <small style="color:var(--text-muted)">NPS moyen</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <div style="font-size:2.5rem;font-weight:800;color:var(--green-light)">{{ "%.0f"|format((passed/total*100) if total else 0) }}%</div>
+            <small style="color:var(--text-muted)">Taux de conformité</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📈 Distribution des scores</h5>
+            <canvas id="scoreChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📊 Répartition NPS</h5>
+            <canvas id="npsChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Checks -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <h5 style="color:var(--gold);margin-bottom:10px">📋 Contrôles récents</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+            <thead><tr><th>Date</th><th>Client</th><th>Plaque</th><th>Service</th><th>Score</th><th>NPS</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for c in checks %}
+            <tr>
+                <td>{{ c.created_at[:10] if c.created_at else c.date }}</td>
+                <td style="font-weight:600">{{ c.customer_name }}</td>
+                <td>{{ c.plate }}</td>
+                <td>{{ c.service }}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div style="width:60px;height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden">
+                            <div style="width:{{ c.overall_score }}%;height:100%;background:{{ 'var(--green-light)' if c.overall_score >= 80 else 'var(--red)' }}"></div>
+                        </div>
+                        <span style="font-weight:600;color:{{ 'var(--green-light)' if c.overall_score >= 80 else 'var(--red)' }}">{{ c.overall_score }}%</span>
+                    </div>
+                </td>
+                <td style="color:{{ 'var(--green-light)' if c.nps_score >= 9 else '#f59e0b' if c.nps_score >= 7 else 'var(--red)' }}">{{ c.nps_score }}/10</td>
+                <td><span style="padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600;{{ 'background:var(--green-light);color:#000' if c.status == 'completed' else 'background:#f59e0b;color:#000' }}">{{ c.status }}</span></td>
+                <td><a href="/quality_check/{{ c.appointment_id }}" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold);font-size:.65rem">Voir</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+{% set excellent = checks|selectattr('overall_score','ge',90)|list|length %}
+{% set good = checks|selectattr('overall_score','ge',70)|selectattr('overall_score','lt',90)|list|length %}
+{% set poor_count = checks|length - excellent - good %}
+new Chart(document.getElementById('scoreChart'),{type:'doughnut',data:{
+    labels:['Excellent (90%+)','Bon (70-89%)','À améliorer (<70%)'],
+    datasets:[{data:[{{excellent}},{{good}},{{poor_count}}],backgroundColor:['#34d399','#f59e0b','#ef4444']}]
+},options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0'}}}}});
+
+{% set promoters = checks|selectattr('nps_score','ge',9)|list|length %}
+{% set passives = checks|selectattr('nps_score','ge',7)|selectattr('nps_score','lt',9)|list|length %}
+{% set detractors = checks|length - promoters - passives %}
+new Chart(document.getElementById('npsChart'),{type:'doughnut',data:{
+    labels:['Promoteurs (9-10)','Passifs (7-8)','Détracteurs (0-6)'],
+    datasets:[{data:[{{promoters}},{{passives}},{{detractors}}],backgroundColor:['#34d399','#f59e0b','#ef4444']}]
+},options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0'}}}}});
+</script>
+{% endblock %}

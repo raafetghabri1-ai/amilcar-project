@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %} — Timeline {{ customer.name }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+    <div>
+        <h2 style="color:var(--gold);margin-bottom:4px">📜 Timeline — {{ customer.name }}</h2>
+        <p style="color:var(--text-muted);font-size:.8rem;margin:0">Toutes les interactions en un seul endroit</p>
+    </div>
+    <a href="/customer_detail/{{ customer.id }}" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold)">← Fiche client</a>
+</div>
+
+<!-- Stats Bar -->
+<div class="row g-3 mb-4">
+    <div class="col">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="font-size:1.5rem;font-weight:800;color:var(--gold)">{{ events|length }}</div>
+            <small style="color:var(--text-muted)">Total événements</small>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="font-size:1.5rem;font-weight:800;color:var(--green-light)">{{ events|selectattr('type','equalto','appointment')|list|length }}</div>
+            <small style="color:var(--text-muted)">RDV</small>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="font-size:1.5rem;font-weight:800;color:#60a5fa">{{ events|selectattr('type','equalto','invoice')|list|length }}</div>
+            <small style="color:var(--text-muted)">Factures</small>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="font-size:1.5rem;font-weight:800;color:#a78bfa">{{ events|selectattr('type','equalto','communication')|list|length }}</div>
+            <small style="color:var(--text-muted)">Messages</small>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="font-size:1.5rem;font-weight:800;color:var(--text-primary)">{{ cars|length }}</div>
+            <small style="color:var(--text-muted)">Véhicules</small>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="mb-3" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn btn-sm filter-btn active" data-filter="all" style="background:var(--gold);color:#000;font-size:.7rem" onclick="filterTimeline('all', this)">Tout</button>
+    <button class="btn btn-sm filter-btn" data-filter="appointment" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('appointment', this)">📅 RDV</button>
+    <button class="btn btn-sm filter-btn" data-filter="invoice" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('invoice', this)">📄 Factures</button>
+    <button class="btn btn-sm filter-btn" data-filter="communication" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('communication', this)">💬 Messages</button>
+    <button class="btn btn-sm filter-btn" data-filter="followup" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('followup', this)">🔄 Suivi</button>
+    <button class="btn btn-sm filter-btn" data-filter="rating" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('rating', this)">⭐ Avis</button>
+    <button class="btn btn-sm filter-btn" data-filter="insurance" style="background:var(--bg-hover);color:var(--text-muted);font-size:.7rem" onclick="filterTimeline('insurance', this)">🏥 Assurance</button>
+</div>
+
+<!-- Timeline -->
+<div style="position:relative;padding-left:40px">
+    <div style="position:absolute;left:18px;top:0;bottom:0;width:2px;background:var(--border-color)"></div>
+    {% for e in events %}
+    <div class="timeline-item" data-type="{{ e.type }}" style="position:relative;margin-bottom:16px">
+        <div style="position:absolute;left:-32px;top:4px;width:28px;height:28px;background:var(--bg-card);border:2px solid var(--border-color);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;z-index:1">{{ e.icon }}</div>
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:start">
+                <div>
+                    <span style="font-weight:600;color:var(--text-primary)">{{ e.title }}</span>
+                    {% if e.detail %}
+                    <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">{{ e.detail }}</div>
+                    {% endif %}
+                </div>
+                <span style="color:var(--text-muted);font-size:.65rem;white-space:nowrap;margin-left:12px">{{ e.date or '—' }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if not events %}
+    <div style="text-align:center;color:var(--text-muted);padding:40px 0">Aucun événement enregistré</div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTimeline(type, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => {b.style.background='var(--bg-hover)';b.style.color='var(--text-muted)';});
+    btn.style.background='var(--gold)';btn.style.color='#000';
+    document.querySelectorAll('.timeline-item').forEach(item => {
+        item.style.display = (type === 'all' || item.dataset.type === type) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

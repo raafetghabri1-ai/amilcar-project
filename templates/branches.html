@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %} — Succursales{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🏢 Gestion Multi-Succursales</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Réseau de branches, transferts & performance</p>
+
+<!-- Add Branch -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">+ Nouvelle Succursale</h5>
+    <form method="POST" action="{{ url_for('add_branch') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-3"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-3"><input type="text" name="address" class="form-control form-control-sm" placeholder="Adresse" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><input type="text" name="phone" class="form-control form-control-sm" placeholder="Téléphone" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><input type="text" name="manager" class="form-control form-control-sm" placeholder="Responsable" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">Ajouter</button></div>
+        </div>
+    </form>
+</div>
+
+<!-- Branch Cards -->
+<div class="row g-3 mb-4">
+    {% for b in branches %}
+    <div class="col-md-4">
+        <div class="card h-100" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;opacity:{{ '1' if b.active else '0.5' }}">
+            <div style="display:flex;justify-content:space-between;align-items:start">
+                <div>
+                    <h4 style="color:var(--gold);margin-bottom:4px">🏢 {{ b.name }}</h4>
+                    <small style="color:var(--text-muted)">{{ b.address or '—' }}</small>
+                </div>
+                <a href="{{ url_for('toggle_branch', bid=b.id) }}" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if b.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if b.active else '⏸' }}</a>
+            </div>
+            <hr style="border-color:var(--border-subtle);margin:12px 0">
+            <div class="row text-center g-2">
+                <div class="col-4">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--gold)">{{ stats.get(b.id, {}).get('appointments', 0) }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">RDV</small>
+                </div>
+                <div class="col-4">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--green-light)">{{ "%.0f"|format(stats.get(b.id, {}).get('revenue', 0)) }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">DT</small>
+                </div>
+                <div class="col-4">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--text-primary)">{{ stats.get(b.id, {}).get('staff', 0) }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">Staff</small>
+                </div>
+            </div>
+            <div style="margin-top:8px;font-size:.7rem;color:var(--text-muted)">
+                📞 {{ b.phone or '—' }} &nbsp;|&nbsp; 👤 {{ b.manager or '—' }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Transfer -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">🔄 Transfert Inter-Succursales</h5>
+    <form method="POST" action="{{ url_for('branch_transfer') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <select name="from_branch" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="">De...</option>
+                    {% for b in branches %}{% if b.active %}<option value="{{ b.id }}">{{ b.name }}</option>{% endif %}{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="to_branch" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="">Vers...</option>
+                    {% for b in branches %}{% if b.active %}<option value="{{ b.id }}">{{ b.name }}</option>{% endif %}{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2"><input type="number" name="item_id" class="form-control form-control-sm" placeholder="ID Article" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-1"><input type="number" name="quantity" class="form-control form-control-sm" placeholder="Qté" value="1" min="1" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-3"><input type="text" name="notes" class="form-control form-control-sm" placeholder="Notes" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">Transférer</button></div>
+        </div>
+    </form>
+</div>
+
+<!-- Recent Transfers -->
+{% if transfers %}
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <h5 style="color:var(--gold);margin-bottom:10px">📋 Transferts récents</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+            <thead><tr><th>Date</th><th>De</th><th>Vers</th><th>Type</th><th>ID</th><th>Qté</th><th>Statut</th><th>Notes</th></tr></thead>
+            <tbody>
+            {% for t in transfers %}
+            <tr>
+                <td>{{ t.created_at[:16] if t.created_at else '—' }}</td>
+                <td style="font-weight:600">{{ t.from_name }}</td>
+                <td style="font-weight:600">{{ t.to_name }}</td>
+                <td>{{ t.item_type }}</td>
+                <td>{{ t.item_id }}</td>
+                <td>{{ t.quantity }}</td>
+                <td><span style="padding:2px 8px;border-radius:4px;font-size:.65rem;{{ 'background:var(--green-light);color:#000' if t.status == 'completed' else 'background:var(--gold);color:#000' }}">{{ t.status }}</span></td>
+                <td style="color:var(--text-muted)">{{ t.notes or '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %} — Contrôle Qualité{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+    <div>
+        <h2 style="color:var(--gold);margin-bottom:4px">✅ Contrôle Qualité Post-Service</h2>
+        <p style="color:var(--text-muted);font-size:.8rem;margin:0">{{ appt.customer_name }} — {{ appt.plate }} — {{ appt.service }}</p>
+    </div>
+    <a href="/quality_dashboard" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold)">📊 Dashboard Qualité</a>
+</div>
+
+{% if existing %}
+<div class="alert" style="background:{{ 'rgba(52,211,153,.15)' if existing.overall_score >= 80 else 'rgba(239,68,68,.15)' }};border:1px solid {{ 'var(--green-light)' if existing.overall_score >= 80 else 'var(--red)' }};border-radius:var(--radius);padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+        <strong style="color:{{ 'var(--green-light)' if existing.overall_score >= 80 else 'var(--red)' }}">Score: {{ existing.overall_score }}%</strong>
+        <span style="color:var(--text-muted);margin-left:10px">NPS: {{ existing.nps_score }}/10</span>
+    </div>
+    <span style="padding:4px 12px;border-radius:var(--radius);font-size:.75rem;font-weight:600;{{ 'background:var(--green-light);color:#000' if existing.overall_score >= 80 else 'background:var(--red);color:#fff' }}">{{ 'VALIDÉ' if existing.overall_score >= 80 else 'À REVOIR' }}</span>
+</div>
+{% endif %}
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    {% set categories = checklist|groupby('category') if checklist is mapping else [] %}
+    {% set cats = {} %}
+    {% for item in checklist %}
+        {% if item.category not in cats %}{% if cats.update({item.category: []}) %}{% endif %}{% endif %}
+        {% if cats[item.category].append(item) %}{% endif %}
+    {% endfor %}
+    
+    {% for cat_name in ['Finition', 'Service', 'Vérification', 'Remise'] %}
+    <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+        <h5 style="color:var(--gold);margin-bottom:12px">{{ cat_name }}</h5>
+        {% for item in checklist %}
+        {% if item.category == cat_name %}
+        {% set saved = None %}
+        {% for p in parsed %}{% if p.id == item.id %}{% set saved = p %}{% endif %}{% endfor %}
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+            <div style="flex:1;font-weight:500">{{ item.label }}</div>
+            <div style="display:flex;gap:8px">
+                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:.75rem">
+                    <input type="radio" name="check_{{ item.id }}" value="pass" {{ 'checked' if saved and saved.status == 'pass' }}>
+                    <span style="color:var(--green-light)">✅ OK</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:.75rem">
+                    <input type="radio" name="check_{{ item.id }}" value="warning" {{ 'checked' if saved and saved.status == 'warning' }}>
+                    <span style="color:#f59e0b">⚠️ Attention</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:.75rem">
+                    <input type="radio" name="check_{{ item.id }}" value="fail" {{ 'checked' if saved and saved.status == 'fail' }}>
+                    <span style="color:var(--red)">❌ Non</span>
+                </label>
+            </div>
+            <input type="text" name="note_{{ item.id }}" value="{{ saved.note if saved else '' }}" placeholder="Note..." class="form-control form-control-sm" style="width:200px;background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.7rem">
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- NPS -->
+    <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+        <h5 style="color:var(--gold);margin-bottom:12px">📊 NPS — Satisfaction Client</h5>
+        <p style="color:var(--text-muted);font-size:.8rem">Sur une échelle de 0 à 10, recommanderiez-vous notre service ?</p>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+            {% for n in range(11) %}
+            <label style="cursor:pointer;text-align:center">
+                <input type="radio" name="nps_score" value="{{ n }}" {{ 'checked' if existing and existing.nps_score == n }} style="display:none">
+                <div class="nps-btn" style="width:36px;height:36px;line-height:36px;border-radius:50%;font-weight:700;font-size:.85rem;border:2px solid var(--border-color);{{ 'background:var(--red);color:#fff' if n <= 6 else ('background:#f59e0b;color:#000' if n <= 8 else 'background:var(--green-light);color:#000') if existing and existing.nps_score == n else '' }}">{{ n }}</div>
+            </label>
+            {% endfor %}
+        </div>
+        <textarea name="nps_comment" class="form-control form-control-sm" rows="2" placeholder="Commentaire client..." style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">{{ existing.nps_comment if existing else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:700;font-size:1.1rem;padding:12px">✅ Enregistrer le contrôle qualité</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.nps-btn').forEach(btn => {
+    btn.parentElement.addEventListener('click', function() {
+        document.querySelectorAll('.nps-btn').forEach(b => {b.style.background='';b.style.color='var(--text-primary)';});
+        const val = parseInt(this.querySelector('input').value);
+        if(val<=6){btn.style.background='var(--red)';btn.style.color='#fff';}
+        else if(val<=8){btn.style.background='#f59e0b';btn.style.color='#000';}
+        else{btn.style.background='var(--green-light)';btn.style.color='#000';}
+    });
+});
+</script>
+{% endblock %}

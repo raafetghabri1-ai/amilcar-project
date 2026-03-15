@@ -776,6 +776,177 @@ def create_tables():
         )
     ''')
 
+    # ── Phase 11: Global Excellence ──
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS branches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            address TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            manager TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS branch_transfers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            from_branch INTEGER NOT NULL,
+            to_branch INTEGER NOT NULL,
+            item_type TEXT DEFAULT 'inventory',
+            item_id INTEGER NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            notes TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (from_branch) REFERENCES branches (id),
+            FOREIGN KEY (to_branch) REFERENCES branches (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vin_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            car_id INTEGER NOT NULL,
+            vin TEXT NOT NULL,
+            decoded_make TEXT DEFAULT '',
+            decoded_model TEXT DEFAULT '',
+            decoded_year TEXT DEFAULT '',
+            decoded_engine TEXT DEFAULT '',
+            decoded_body TEXT DEFAULT '',
+            decoded_fuel TEXT DEFAULT '',
+            raw_data TEXT DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS customer_timeline (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            event_title TEXT DEFAULT '',
+            event_detail TEXT DEFAULT '',
+            reference_id INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS insurance_companies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            contact_person TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            contract_number TEXT DEFAULT '',
+            discount_rate REAL DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS insurance_claims (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            insurance_id INTEGER NOT NULL,
+            claim_number TEXT DEFAULT '',
+            accident_date TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            estimated_cost REAL DEFAULT 0,
+            approved_amount REAL DEFAULT 0,
+            invoice_id INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'submitted',
+            documents TEXT DEFAULT '[]',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id),
+            FOREIGN KEY (insurance_id) REFERENCES insurance_companies (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quality_checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            inspector_id INTEGER DEFAULT 0,
+            checklist TEXT DEFAULT '[]',
+            overall_score INTEGER DEFAULT 0,
+            nps_score INTEGER DEFAULT 0,
+            nps_comment TEXT DEFAULT '',
+            customer_notified INTEGER DEFAULT 0,
+            followup_needed INTEGER DEFAULT 0,
+            followup_notes TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vehicle_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            car_id INTEGER NOT NULL,
+            doc_type TEXT NOT NULL,
+            doc_name TEXT DEFAULT '',
+            file_path TEXT DEFAULT '',
+            expiry_date TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cashflow_projections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            month TEXT NOT NULL,
+            projected_income REAL DEFAULT 0,
+            projected_expenses REAL DEFAULT 0,
+            actual_income REAL DEFAULT 0,
+            actual_expenses REAL DEFAULT 0,
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(month)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vip_levels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            min_spend REAL DEFAULT 0,
+            discount_percent REAL DEFAULT 0,
+            perks TEXT DEFAULT '',
+            color TEXT DEFAULT '#D4AF37',
+            icon TEXT DEFAULT '⭐',
+            sort_order INTEGER DEFAULT 0
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notifications_center (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER DEFAULT 0,
+            title TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            notif_type TEXT DEFAULT 'info',
+            link TEXT DEFAULT '',
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -823,6 +994,15 @@ def create_tables():
         ("ALTER TABLE users ADD COLUMN monthly_target REAL DEFAULT 0", None),
         ("ALTER TABLE users ADD COLUMN commission_rate REAL DEFAULT 0", None),
         ("ALTER TABLE invoices ADD COLUMN created_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN vip_level TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN total_spent REAL DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN insurance_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE appointments ADD COLUMN branch_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN branch_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN insurance_claim_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN branch_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE cars ADD COLUMN vin TEXT DEFAULT ''", None),
+        ("ALTER TABLE inventory ADD COLUMN branch_id INTEGER DEFAULT 0", None),
     ]
     for sql, _ in migrations:
         try:
@@ -873,6 +1053,21 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_employee_targets_user ON employee_targets(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_digital_inspections_appt ON digital_inspections(appointment_id)",
         "CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(api_key)",
+        "CREATE INDEX IF NOT EXISTS idx_branches_active ON branches(active)",
+        "CREATE INDEX IF NOT EXISTS idx_branch_transfers_from ON branch_transfers(from_branch)",
+        "CREATE INDEX IF NOT EXISTS idx_branch_transfers_to ON branch_transfers(to_branch)",
+        "CREATE INDEX IF NOT EXISTS idx_vin_records_car ON vin_records(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vin_records_vin ON vin_records(vin)",
+        "CREATE INDEX IF NOT EXISTS idx_customer_timeline_customer ON customer_timeline(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_customer_timeline_type ON customer_timeline(event_type)",
+        "CREATE INDEX IF NOT EXISTS idx_insurance_claims_customer ON insurance_claims(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_insurance_claims_status ON insurance_claims(status)",
+        "CREATE INDEX IF NOT EXISTS idx_quality_checks_appt ON quality_checks(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vehicle_documents_car ON vehicle_documents(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_vehicle_documents_expiry ON vehicle_documents(expiry_date)",
+        "CREATE INDEX IF NOT EXISTS idx_cashflow_month ON cashflow_projections(month)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications_center(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications_center(is_read)",
     ]
     for idx in indexes:
         try:

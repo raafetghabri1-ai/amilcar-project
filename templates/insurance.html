@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %} — Assurances{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🏥 Gestion Assurance & Tiers-Payant</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Compagnies d'assurance, sinistres & suivi des dossiers</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--gold)">{{ stats.total_claims }}</div><small style="color:var(--text-muted)">Total dossiers</small>
+    </div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:#f59e0b">{{ stats.pending }}</div><small style="color:var(--text-muted)">En attente</small>
+    </div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--green-light)">{{ stats.approved }}</div><small style="color:var(--text-muted)">Approuvés</small>
+    </div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--text-primary)">{{ "%.0f"|format(stats.total_amount) }} DT</div><small style="color:var(--text-muted)">Montant estimé</small>
+    </div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--green-light)">{{ "%.0f"|format(stats.approved_amount) }} DT</div><small style="color:var(--text-muted)">Montant approuvé</small>
+    </div></div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Companies + Add -->
+    <div class="col-lg-5">
+        <!-- Add Company -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:10px">🏢 Ajouter Assureur</h5>
+            <form method="POST" action="{{ url_for('add_insurance_company') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-6"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-6"><input type="text" name="contact_person" class="form-control form-control-sm" placeholder="Contact" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-6"><input type="text" name="phone" class="form-control form-control-sm" placeholder="Tél" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-6"><input type="email" name="email" class="form-control form-control-sm" placeholder="Email" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-6"><input type="text" name="contract_number" class="form-control form-control-sm" placeholder="N° Contrat" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-3"><input type="number" name="discount_rate" class="form-control form-control-sm" placeholder="Remise %" step="0.1" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-3"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">+</button></div>
+                </div>
+            </form>
+        </div>
+        <!-- Companies List -->
+        {% for c in companies %}
+        <div class="card mb-2" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <strong style="color:var(--gold)">{{ c.name }}</strong>
+                    <div style="font-size:.7rem;color:var(--text-muted)">{{ c.contact_person or '' }} &nbsp; {{ c.phone or '' }} &nbsp; Contrat: {{ c.contract_number or '—' }}</div>
+                </div>
+                {% if c.discount_rate %}<span style="background:var(--green-light);color:#000;padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600">-{{ c.discount_rate }}%</span>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Right: Claims -->
+    <div class="col-lg-7">
+        <!-- Add Claim -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:10px">📋 Nouveau Dossier Sinistre</h5>
+            <form method="POST" action="{{ url_for('add_insurance_claim') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <select name="customer_id" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="">Client...</option>
+                            {% for cu in customers %}<option value="{{ cu.id }}">{{ cu.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="car_id" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="">Véhicule...</option>
+                            {% for ca in cars %}<option value="{{ ca.id }}">{{ ca.plate }} ({{ ca.name }})</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="insurance_id" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="">Assureur...</option>
+                            {% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3"><input type="text" name="claim_number" class="form-control form-control-sm" placeholder="N° Sinistre" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-md-3"><input type="date" name="accident_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-md-3"><input type="number" name="estimated_cost" class="form-control form-control-sm" placeholder="Estimation DT" step="0.01" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-md-3"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">Créer</button></div>
+                    <div class="col-12"><textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Description du sinistre..." style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></textarea></div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Claims Table -->
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:10px">📋 Dossiers sinistres</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary);font-size:.78rem">
+                    <thead><tr><th>N°</th><th>Client</th><th>Plaque</th><th>Assureur</th><th>Date</th><th>Estimé</th><th>Approuvé</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    {% for cl in claims %}
+                    {% set colors = {'submitted':'#f59e0b','in_review':'#60a5fa','approved':'var(--green-light)','rejected':'var(--red)','paid':'var(--green-light)','closed':'var(--text-muted)'} %}
+                    <tr>
+                        <td style="font-weight:600">{{ cl.claim_number or cl.id }}</td>
+                        <td>{{ cl.customer_name }}</td>
+                        <td>{{ cl.plate }}</td>
+                        <td style="color:var(--gold)">{{ cl.insurer_name }}</td>
+                        <td>{{ cl.accident_date or '—' }}</td>
+                        <td>{{ "%.0f"|format(cl.estimated_cost) }}</td>
+                        <td style="color:var(--green-light);font-weight:600">{{ "%.0f"|format(cl.approved_amount) }}</td>
+                        <td><span style="padding:2px 6px;border-radius:4px;font-size:.6rem;background:{{ colors.get(cl.status, 'var(--bg-hover)') }};color:#000">{{ cl.status }}</span></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('update_insurance_claim', cid=cl.id) }}" style="display:flex;gap:3px">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <select name="status" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.65rem;width:90px">
+                                    {% for s in ['submitted','in_review','approved','rejected','paid','closed'] %}
+                                    <option value="{{ s }}" {{ 'selected' if cl.status == s }}>{{ s }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="number" name="approved_amount" value="{{ cl.approved_amount }}" step="0.01" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.65rem;width:70px">
+                                <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-size:.6rem">✓</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not claims %}
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted)">Aucun dossier</td></tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
