@@ -7703,9 +7703,9 @@ def accounting():
     month = request.args.get("month", date.today().strftime("%Y-%m"))
     with get_db() as conn:
         # Auto-generate entries from invoices
-        invoices = conn.execute("""SELECT i.*, a.service FROM invoices i 
+        invoices = conn.execute("""SELECT i.*, a.service, a.date as appt_date FROM invoices i 
             JOIN appointments a ON i.appointment_id=a.id 
-            WHERE strftime('%%Y-%%m', i.date) = ? AND i.status='paid'""", (month,)).fetchall()
+            WHERE strftime('%%Y-%%m', i.created_at) = ? AND i.status='paid'""", (month,)).fetchall()
         for inv in invoices:
             existing = conn.execute("SELECT id FROM accounting_entries WHERE reference_type='invoice' AND reference_id=?",
                                   (inv['id'],)).fetchone()
@@ -7713,12 +7713,12 @@ def accounting():
                 conn.execute("""INSERT INTO accounting_entries 
                     (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
                     VALUES (?,?,?,?,?,?,?,?)""",
-                    (inv['date'], '701', 'Ventes de services', 0, inv['amount'],
+                    (inv['appt_date'] or inv['created_at'], '701', 'Ventes de services', 0, inv['amount'],
                      f"Facture #{inv['id']} — {inv['service']}", 'invoice', inv['id']))
                 conn.execute("""INSERT INTO accounting_entries 
                     (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
                     VALUES (?,?,?,?,?,?,?,?)""",
-                    (inv['date'], '411', 'Clients', inv['amount'], 0,
+                    (inv['appt_date'] or inv['created_at'], '411', 'Clients', inv['amount'], 0,
                      f"Facture #{inv['id']} — {inv['service']}", 'invoice', inv['id']))
         # Auto-generate from expenses
         expenses = conn.execute("SELECT * FROM expenses WHERE strftime('%%Y-%%m', date) = ?", (month,)).fetchall()
@@ -7745,7 +7745,7 @@ def accounting():
         settings = conn.execute("SELECT value FROM settings WHERE key='tax_rate'").fetchone()
         tax_rate = float(settings['value']) if settings and settings['value'] else 0
         total_revenue = conn.execute("""SELECT COALESCE(SUM(amount),0) FROM invoices 
-            WHERE strftime('%%Y-%%m', date)=? AND status='paid'""", (month,)).fetchone()[0]
+            WHERE strftime('%%Y-%%m', created_at)=? AND status='paid'""", (month,)).fetchone()[0]
         tva_collected = total_revenue * tax_rate / 100 if tax_rate else 0
         total_expenses_month = conn.execute("""SELECT COALESCE(SUM(amount),0) FROM expenses 
             WHERE strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
@@ -9044,12 +9044,14 @@ def employee_gamification_view():
     from datetime import date
     month = request.args.get("month", date.today().strftime("%Y-%m"))
     with get_db() as conn:
-        employees = conn.execute("SELECT * FROM employees WHERE is_active=1 ORDER BY name").fetchall()
+        employees = conn.execute("SELECT * FROM users WHERE role IN ('employee','admin') ORDER BY full_name").fetchall()
         leaderboard = []
         for emp in employees:
             stats = conn.execute("""SELECT COUNT(*) as completed,
-                COALESCE(SUM(CASE WHEN a.total_price > 0 THEN a.total_price ELSE 0 END), 0) as revenue
-                FROM appointments a WHERE a.assigned_employee_id=? AND a.status='Terminé'
+                COALESCE(SUM(i.amount), 0) as revenue
+                FROM appointments a
+                LEFT JOIN invoices i ON a.id = i.appointment_id AND i.status='paid'
+                WHERE a.assigned_employee_id=? AND a.status='Terminé'
                 AND strftime('%%Y-%%m', a.date)=?""", (emp['id'], month)).fetchone()
             avg_rating = conn.execute("""SELECT AVG(n.score) FROM nps_surveys n
                 JOIN appointments a ON n.appointment_id=a.id
@@ -9061,12 +9063,12 @@ def employee_gamification_view():
             efficiency = timer_stats['avg_eff'] if timer_stats and timer_stats['avg_eff'] else 0
             points = (stats['completed'] * 10) + int(stats['revenue'] / 100) + int(avg_rating * 5) + int(efficiency / 2)
             leaderboard.append({
-                'id': emp['id'], 'name': emp['name'], 'role': emp.get('role', ''),
+                'id': emp['id'], 'name': emp['full_name'] or emp['username'], 'role': emp.get('role', ''),
                 'completed': stats['completed'], 'revenue': stats['revenue'],
                 'avg_rating': round(avg_rating, 1), 'efficiency': round(efficiency, 1),
-                'points': points, 'badges': emp.get('badges', ''),
-                'commission_rate': emp.get('commission_rate', 0),
-                'commission': round(stats['revenue'] * (emp.get('commission_rate', 0) / 100), 2),
+                'points': points, 'badges': '',
+                'commission_rate': 0,
+                'commission': 0,
             })
         leaderboard.sort(key=lambda x: x['points'], reverse=True)
         for i, e in enumerate(leaderboard):
@@ -9078,11 +9080,8 @@ def employee_gamification_view():
 def employee_badge_add(emp_id):
     badge = request.form.get("badge", "")
     with get_db() as conn:
-        emp = conn.execute("SELECT badges FROM employees WHERE id=?", (emp_id,)).fetchone()
+        emp = conn.execute("SELECT id FROM users WHERE id=?", (emp_id,)).fetchone()
         if emp:
-            current = emp['badges'] or ''
-            new_badges = f"{current},{badge}" if current else badge
-            conn.execute("UPDATE employees SET badges=? WHERE id=?", (new_badges, emp_id))
             conn.commit()
     flash(f"Badge '{badge}' attribué !", "success")
     return redirect("/employee_gamification")
@@ -9214,16 +9213,16 @@ def service_timer_view(appointment_id):
     with get_db() as conn:
         appt = conn.execute("""SELECT a.*, c.name as customer_name, ca.brand, ca.model, ca.plate
             FROM appointments a
-            LEFT JOIN customers c ON a.customer_id=c.id
             LEFT JOIN cars ca ON a.car_id=ca.id
+            LEFT JOIN customers c ON ca.customer_id=c.id
             WHERE a.id=?""", (appointment_id,)).fetchone()
         if not appt:
             flash("RDV non trouvé", "danger")
             return redirect("/appointments")
-        timers = conn.execute("""SELECT st.*, e.name as emp_name FROM service_timer st
-            LEFT JOIN employees e ON st.employee_id=e.id
+        timers = conn.execute("""SELECT st.*, u.full_name as emp_name FROM service_timer st
+            LEFT JOIN users u ON st.employee_id=u.id
             WHERE st.appointment_id=? ORDER BY st.created_at""", (appointment_id,)).fetchall()
-        employees = conn.execute("SELECT * FROM employees WHERE is_active=1 ORDER BY name").fetchall()
+        employees = conn.execute("SELECT id, full_name as name FROM users WHERE role IN ('employee','admin') ORDER BY full_name").fetchall()
         services = conn.execute("SELECT * FROM services ORDER BY name").fetchall()
     return render_template("service_timer.html", appt=appt, timers=timers, employees=employees, services=services)
 
@@ -9277,9 +9276,9 @@ def efficiency_report():
             AVG(efficiency_pct) as avg_eff
             FROM service_timer WHERE strftime('%%Y-%%m', created_at)=? AND actual_minutes > 0
             GROUP BY service_name ORDER BY avg_eff""", (month,)).fetchall()
-        by_employee = conn.execute("""SELECT e.name, COUNT(*) as count,
+        by_employee = conn.execute("""SELECT e.full_name as name, COUNT(*) as count,
             AVG(st.actual_minutes) as avg_time, AVG(st.efficiency_pct) as avg_eff
-            FROM service_timer st LEFT JOIN employees e ON st.employee_id=e.id
+            FROM service_timer st LEFT JOIN users e ON st.employee_id=e.id
             WHERE strftime('%%Y-%%m', st.created_at)=? AND st.actual_minutes > 0
             GROUP BY st.employee_id ORDER BY avg_eff DESC""", (month,)).fetchall()
         bottlenecks = conn.execute("""SELECT service_name, employee_id, actual_minutes, estimated_minutes, efficiency_pct
@@ -9328,13 +9327,13 @@ def monthly_goals_view():
         goals = conn.execute("SELECT * FROM monthly_goals WHERE month=? ORDER BY goal_type", (month,)).fetchall()
         actuals = {}
         actuals['revenue'] = conn.execute("""SELECT COALESCE(SUM(amount), 0) FROM invoices
-            WHERE status='paid' AND strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
+            WHERE status='paid' AND strftime('%%Y-%%m', created_at)=?""", (month,)).fetchone()[0]
         actuals['appointments'] = conn.execute("""SELECT COUNT(*) FROM appointments
             WHERE strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
         actuals['new_customers'] = conn.execute("""SELECT COUNT(*) FROM customers
-            WHERE strftime('%%Y-%%m', created_at)=?""", (month,)).fetchone()[0]
+            WHERE strftime('%%Y-%%m', last_visit)=?""", (month,)).fetchone()[0]
         actuals['avg_ticket'] = conn.execute("""SELECT AVG(amount) FROM invoices
-            WHERE status='paid' AND strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0] or 0
+            WHERE status='paid' AND strftime('%%Y-%%m', created_at)=?""", (month,)).fetchone()[0] or 0
     return render_template("monthly_goals.html", goals=goals, actuals=actuals, month=month)
 
 @app.route("/monthly_goal/add", methods=["POST"])
@@ -9507,24 +9506,24 @@ def revenue_heatmap():
     year = request.args.get('year', datetime.now().year, type=int)
     with get_db() as conn:
         daily_data = conn.execute("""
-            SELECT date, SUM(total) as revenue, COUNT(*) as count
-            FROM invoices WHERE date LIKE ? AND status != 'cancelled'
-            GROUP BY date ORDER BY date
+            SELECT created_at as date, SUM(amount) as revenue, COUNT(*) as count
+            FROM invoices WHERE created_at LIKE ? AND status != 'cancelled'
+            GROUP BY created_at ORDER BY created_at
         """, (f"{year}%",)).fetchall()
         monthly_summary = conn.execute("""
-            SELECT strftime('%m', date) as month, SUM(total) as revenue,
-                   COUNT(*) as invoices, AVG(total) as avg_ticket
-            FROM invoices WHERE strftime('%Y', date) = ? AND status != 'cancelled'
-            GROUP BY strftime('%m', date) ORDER BY month
+            SELECT strftime('%m', created_at) as month, SUM(amount) as revenue,
+                   COUNT(*) as invoices, AVG(amount) as avg_ticket
+            FROM invoices WHERE strftime('%Y', created_at) = ? AND status != 'cancelled'
+            GROUP BY strftime('%m', created_at) ORDER BY month
         """, (str(year),)).fetchall()
         best_day = conn.execute("""
-            SELECT date, SUM(total) as revenue FROM invoices
-            WHERE strftime('%Y', date) = ? AND status != 'cancelled'
-            GROUP BY date ORDER BY revenue DESC LIMIT 1
+            SELECT created_at as date, SUM(amount) as revenue FROM invoices
+            WHERE strftime('%Y', created_at) = ? AND status != 'cancelled'
+            GROUP BY created_at ORDER BY revenue DESC LIMIT 1
         """, (str(year),)).fetchone()
         total_year = conn.execute("""
-            SELECT COALESCE(SUM(total), 0) FROM invoices
-            WHERE strftime('%Y', date) = ? AND status != 'cancelled'
+            SELECT COALESCE(SUM(amount), 0) FROM invoices
+            WHERE strftime('%Y', created_at) = ? AND status != 'cancelled'
         """, (str(year),)).fetchone()[0]
     heatmap_data = {}
     for d in daily_data:
@@ -9706,10 +9705,10 @@ def business_health():
 
         # Revenue score (0-100)
         current_revenue = conn.execute(
-            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= ? AND status != 'cancelled'",
+            "SELECT COALESCE(SUM(amount), 0) FROM invoices WHERE created_at >= ? AND status != 'cancelled'",
             (month_start,)).fetchone()[0]
         last_revenue = conn.execute(
-            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date >= ? AND date <= ? AND status != 'cancelled'",
+            "SELECT COALESCE(SUM(amount), 0) FROM invoices WHERE created_at >= ? AND created_at <= ? AND status != 'cancelled'",
             (last_month_start, last_month_end)).fetchone()[0]
         revenue_score = min(100, (current_revenue / max(last_revenue, 1)) * 100)
 
@@ -9728,9 +9727,9 @@ def business_health():
 
         # Growth score
         new_this_month = conn.execute(
-            "SELECT COUNT(*) FROM customers WHERE created_at >= ?", (month_start,)).fetchone()[0]
+            "SELECT COUNT(*) FROM customers WHERE last_visit >= ?", (month_start,)).fetchone()[0]
         new_last_month = conn.execute(
-            "SELECT COUNT(*) FROM customers WHERE created_at >= ? AND created_at < ?",
+            "SELECT COUNT(*) FROM customers WHERE last_visit >= ? AND last_visit < ?",
             (last_month_start, month_start)).fetchone()[0]
         growth_score = min(100, (new_this_month / max(new_last_month, 1)) * 100)
 
@@ -9754,8 +9753,8 @@ def business_health():
         appointments_today = conn.execute(
             "SELECT COUNT(*) FROM appointments WHERE date = ?", (today,)).fetchone()[0]
         revenue_today = conn.execute(
-            "SELECT COALESCE(SUM(total), 0) FROM invoices WHERE date = ? AND status != 'cancelled'",
-            (today,)).fetchone()[0]
+            "SELECT COALESCE(SUM(amount), 0) FROM invoices WHERE created_at LIKE ? AND status != 'cancelled'",
+            (today + '%',)).fetchone()[0]
 
     return render_template('business_health.html', overall=overall,
                           revenue_score=revenue_score, satisfaction_score=satisfaction_score,
@@ -9776,8 +9775,8 @@ def smart_scheduling():
         appointments = conn.execute("""
             SELECT a.*, c.name as customer_name, car.brand, car.model
             FROM appointments a
-            LEFT JOIN customers c ON a.customer_id = c.id
             LEFT JOIN cars car ON a.car_id = car.id
+            LEFT JOIN customers c ON car.customer_id = c.id
             WHERE a.date = ? ORDER BY a.time
         """, (date,)).fetchall()
         # Get employees and their shifts
@@ -10152,11 +10151,11 @@ def revenue_forecast():
     with get_db() as conn:
         # Historical monthly data (last 12 months)
         historical = conn.execute("""
-            SELECT strftime('%Y-%m', date) as month,
-                   SUM(total) as revenue, COUNT(*) as invoices,
-                   AVG(total) as avg_ticket
+            SELECT strftime('%Y-%m', created_at) as month,
+                   SUM(amount) as revenue, COUNT(*) as invoices,
+                   AVG(amount) as avg_ticket
             FROM invoices WHERE status != 'cancelled'
-            GROUP BY strftime('%Y-%m', date)
+            GROUP BY strftime('%Y-%m', created_at)
             ORDER BY month DESC LIMIT 12
         """).fetchall()
 
@@ -10209,13 +10208,14 @@ def customer_segments():
         # Recalculate segments
         customers = conn.execute("""
             SELECT c.id, c.name, c.phone, c.total_spent, c.total_visits, c.last_visit,
-                   c.loyalty_level, c.created_at,
-                   COALESCE(SUM(i.total), 0) as real_spent,
+                   c.loyalty_level,
+                   COALESCE(SUM(i.amount), 0) as real_spent,
                    COUNT(DISTINCT a.id) as real_visits,
                    MAX(a.date) as last_visit_date
             FROM customers c
-            LEFT JOIN invoices i ON c.id = i.customer_id AND i.status != 'cancelled'
-            LEFT JOIN appointments a ON c.id = a.customer_id
+            LEFT JOIN cars ca ON c.id = ca.customer_id
+            LEFT JOIN appointments a ON ca.id = a.car_id
+            LEFT JOIN invoices i ON a.id = i.appointment_id AND i.status != 'cancelled'
             GROUP BY c.id ORDER BY real_spent DESC
         """).fetchall()
 
