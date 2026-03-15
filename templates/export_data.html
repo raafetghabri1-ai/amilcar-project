@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %} — Export Données{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">📥 Export des Données</h2>
+<p style="color:var(--text-secondary);margin-bottom:30px">Téléchargez vos données en CSV ou PDF</p>
+<div class="row g-4">
+    {% set exports = [
+        ('customers', '👥', 'Clients', 'Noms, téléphones, emails, notes'),
+        ('invoices', '📄', 'Factures', 'Montants, statuts, paiements'),
+        ('appointments', '📅', 'Rendez-vous', 'Dates, services, techniciens'),
+        ('cars', '🚗', 'Véhicules', 'Marques, modèles, plaques, km'),
+        ('expenses', '💸', 'Dépenses', 'Dates, catégories, montants'),
+    ] %}
+    {% for key, icon, title, desc in exports %}
+    <div class="col-md-4 col-sm-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:24px;text-align:center">
+            <div style="font-size:2.5rem;margin-bottom:10px">{{ icon }}</div>
+            <h5 style="color:var(--text-primary);margin-bottom:6px">{{ title }}</h5>
+            <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:16px">{{ desc }}</p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a href="/export_data/{{ key }}/csv" class="btn btn-sm" style="background:var(--green);color:#fff;padding:6px 18px;border-radius:6px;text-decoration:none">📥 CSV</a>
+                <a href="/export_data/{{ key }}/pdf" class="btn btn-sm" style="background:var(--red);color:#fff;padding:6px 18px;border-radius:6px;text-decoration:none">📄 PDF</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

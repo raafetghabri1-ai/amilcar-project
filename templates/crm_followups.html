@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} — Suivi CRM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">🔄 Suivi CRM — Relance Clients</h2>
+    <a href="/crm_followup/auto_generate" class="btn btn-sm" style="background:var(--gold);color:#000;padding:8px 18px;border-radius:6px;text-decoration:none;font-weight:600">⚡ Auto-générer</a>
+</div>
+
+<!-- Clients absents -->
+{% if absent %}
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid rgba(196,30,58,.3);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--red);margin-bottom:12px">⚠️ Clients absents > 60 jours ({{ absent|length }})</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Client</th><th>Téléphone</th><th>Dernière visite</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for c in absent %}
+            <tr>
+                <td>{{ c[1] }}</td>
+                <td>{{ c[2] }}</td>
+                <td>{{ c[3] or 'Jamais' }}</td>
+                <td>
+                    <form method="POST" action="/crm_followup/add" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="customer_id" value="{{ c[0] }}">
+                        <input type="hidden" name="type" value="absence">
+                        <input type="hidden" name="scheduled_date" value="{{ (now|default(''))|string[:10] if now else '' }}">
+                        <input type="hidden" name="reason" value="Client absent > 60 jours">
+                        <button class="btn btn-sm" style="background:var(--gold);color:#000;padding:3px 12px;border-radius:4px;font-size:.75rem" type="submit">📞 Planifier relance</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Ajouter un suivi -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouveau suivi</h5>
+    <form method="POST" action="/crm_followup/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label style="color:var(--text-secondary);font-size:.75rem">Client</label>
+                <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">-- Choisir --</option>
+                    {% for c in absent %}
+                    <option value="{{ c[0] }}">{{ c[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label style="color:var(--text-secondary);font-size:.75rem">Type</label>
+                <select name="type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="absence">Absence</option>
+                    <option value="followup">Suivi</option>
+                    <option value="upsell">Upsell</option>
+                    <option value="feedback">Feedback</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label style="color:var(--text-secondary);font-size:.75rem">Date prévue</label>
+                <input type="date" name="scheduled_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-3">
+                <label style="color:var(--text-secondary);font-size:.75rem">Raison</label>
+                <input type="text" name="reason" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Liste des suivis -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📋 Suivis planifiés</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Client</th><th>Type</th><th>Date</th><th>Raison</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for f in followups %}
+            <tr>
+                <td>{{ f[8] }}</td>
+                <td><span class="badge" style="background:{% if f[2]=='absence' %}var(--red){% elif f[2]=='upsell' %}var(--gold);color:#000{% else %}var(--blue){% endif %};font-size:.65rem">{{ f[2]|upper }}</span></td>
+                <td>{{ f[4] }}</td>
+                <td style="font-size:.8rem">{{ f[3] }}</td>
+                <td>
+                    {% if f[5] == 'pending' %}<span style="color:var(--gold)">⏳ En attente</span>
+                    {% elif f[5] == 'completed' %}<span style="color:var(--green-light)">✅ Complété</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if f[5] == 'pending' %}
+                    <a href="/crm_followup/complete/{{ f[0] }}" class="btn btn-sm" style="background:var(--green);color:#fff;padding:2px 10px;border-radius:4px;font-size:.7rem">✅ Done</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not followups %}<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Aucun suivi planifié</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

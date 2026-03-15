@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %} — Gestion Flottes{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">🏢 Gestion des Flottes d'Entreprises</h2>
+
+<!-- Add Company -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvelle Entreprise</h5>
+    <form method="POST" action="/fleet_company/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" name="name" placeholder="Nom entreprise *" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="contact_person" placeholder="Contact" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="phone" placeholder="Téléphone" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-2">
+                <input type="email" name="email" placeholder="Email" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="discount_percent" placeholder="%" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" min="0" max="50" step="1">
+            </div>
+            <div class="col-md-2">
+                <select name="payment_terms" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="monthly">Mensuel</option>
+                    <option value="quarterly">Trimestriel</option>
+                    <option value="per_service">Par service</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="contract_start" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" placeholder="Début contrat">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="contract_end" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" placeholder="Fin contrat">
+            </div>
+            <div class="col-md-6">
+                <input type="text" name="notes" placeholder="Notes" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Companies List -->
+<div class="row g-4">
+{% for c in companies %}
+<div class="col-md-4">
+    <a href="/fleet_company/{{ c[0] }}" style="text-decoration:none">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;transition:border-color .2s">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 style="color:var(--gold);margin:0">🏢 {{ c[1] }}</h5>
+                {% if c[11] %}<span style="color:var(--green-light);font-size:.7rem">● ACTIF</span>{% else %}<span style="color:var(--red);font-size:.7rem">● INACTIF</span>{% endif %}
+            </div>
+            <p style="color:var(--text-secondary);font-size:.8rem;margin:0">{{ c[2] }} — {{ c[3] }}</p>
+            <div class="d-flex gap-3 mt-3" style="font-size:.75rem">
+                <span style="color:var(--text-muted)">🚗 {{ vehicle_counts.get(c[0], 0) }} véhicules</span>
+                <span style="color:var(--text-muted)">📊 {{ c[8] }}% remise</span>
+                <span style="color:var(--text-muted)">💳 {{ c[9] }}</span>
+            </div>
+        </div>
+    </a>
+</div>
+{% endfor %}
+{% if not companies %}
+<div class="col-12 text-center" style="color:var(--text-muted);padding:40px">Aucune entreprise enregistrée</div>
+{% endif %}
+</div>
+{% endblock %}

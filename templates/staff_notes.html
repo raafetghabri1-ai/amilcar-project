@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %} — Notes Internes{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">💬 Notes Internes Staff</h2>
+
+{% if entity_id %}
+<!-- Notes for specific entity -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">
+        {% if entity_type == 'customer' %}👤{% else %}🚗{% endif %} 
+        {{ entity_name }} — Notes
+    </h5>
+    <form method="POST" action="/staff_note/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="entity_type" value="{{ entity_type }}">
+        <input type="hidden" name="entity_id" value="{{ entity_id }}">
+        <div class="row g-2">
+            <div class="col-md-8">
+                <textarea name="note" class="form-control form-control-sm" rows="2" placeholder="Ajouter une note interne..." style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required></textarea>
+            </div>
+            <div class="col-md-2">
+                <select name="priority" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="normal">Normal</option>
+                    <option value="important">⚠️ Important</option>
+                    <option value="urgent">🔴 Urgent</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-start">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+            </div>
+        </div>
+    </form>
+    
+    <div class="mt-3">
+    {% for n in notes %}
+    <div style="padding:10px 14px;margin-bottom:8px;background:var(--bg-input);border-radius:var(--radius-sm);border-left:3px solid {% if n[6]=='urgent' %}var(--red){% elif n[6]=='important' %}var(--gold){% else %}var(--border-subtle){% endif %}">
+        <div class="d-flex justify-content-between">
+            <div>
+                <span style="font-weight:600;color:var(--text-primary);font-size:.85rem">{{ n[5] }}</span>
+                <span style="color:var(--text-muted);font-size:.7rem;margin-left:8px">{{ n[4] }}</span>
+                {% if n[6] == 'urgent' %}<span style="color:var(--red);font-size:.65rem;font-weight:700;margin-left:6px">🔴 URGENT</span>{% endif %}
+                {% if n[6] == 'important' %}<span style="color:var(--gold);font-size:.65rem;font-weight:700;margin-left:6px">⚠️ IMPORTANT</span>{% endif %}
+            </div>
+            <a href="/staff_note/delete/{{ n[0] }}" style="color:var(--red);font-size:.7rem" title="Supprimer">✕</a>
+        </div>
+        <div style="color:var(--text-secondary);font-size:.82rem;margin-top:4px">{{ n[5] }}</div>
+    </div>
+    {% endfor %}
+    {% if not notes %}<p style="color:var(--text-muted);text-align:center;margin-top:16px">Aucune note pour cet élément</p>{% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent notes -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📋 Dernières notes (50)</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Type</th><th>Élément</th><th>Note</th><th>Par</th><th>Priorité</th><th>Date</th><th></th></tr></thead>
+            <tbody>
+            {% for n in recent %}
+            <tr>
+                <td>{% if n[1] == 'customer' %}👤{% else %}🚗{% endif %} {{ n[1] }}</td>
+                <td>
+                    <a href="/staff_notes?type={{ n[1] }}&id={{ n[2] }}" style="color:var(--gold);text-decoration:none">
+                        {{ n[8] if n|length > 8 else '#'~n[2] }}
+                    </a>
+                </td>
+                <td style="font-size:.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ n[5] }}</td>
+                <td style="font-size:.75rem">{{ n[4] }}</td>
+                <td>
+                    {% if n[6] == 'urgent' %}<span style="color:var(--red);font-size:.7rem">🔴</span>
+                    {% elif n[6] == 'important' %}<span style="color:var(--gold);font-size:.7rem">⚠️</span>
+                    {% else %}<span style="color:var(--text-muted);font-size:.7rem">—</span>{% endif %}
+                </td>
+                <td style="font-size:.7rem;color:var(--text-muted)">{{ n[7][:16] if n[7] else '' }}</td>
+                <td><a href="/staff_note/delete/{{ n[0] }}" style="color:var(--red);font-size:.65rem">✕</a></td>
+            </tr>
+            {% endfor %}
+            {% if not recent %}<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Aucune note</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

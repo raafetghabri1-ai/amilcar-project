@@ -489,6 +489,120 @@ def create_tables():
         )
     ''')
 
+    # ─── Phase 9: Enterprise Grade Tables ───
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS crm_followups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            type TEXT DEFAULT 'absence',
+            reason TEXT DEFAULT '',
+            scheduled_date TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employee_shifts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            shift_date TEXT NOT NULL,
+            start_time TEXT DEFAULT '08:00',
+            end_time TEXT DEFAULT '17:00',
+            shift_type TEXT DEFAULT 'normal',
+            status TEXT DEFAULT 'scheduled',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employee_leaves (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            leave_type TEXT DEFAULT 'annual',
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            reason TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS referrals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referrer_id INTEGER NOT NULL,
+            referred_name TEXT NOT NULL,
+            referred_phone TEXT NOT NULL,
+            reward_type TEXT DEFAULT 'free_wash',
+            status TEXT DEFAULT 'pending',
+            converted_customer_id INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (referrer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS fleet_companies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            contact_person TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            contract_start TEXT DEFAULT '',
+            contract_end TEXT DEFAULT '',
+            discount_percent REAL DEFAULT 0,
+            payment_terms TEXT DEFAULT 'monthly',
+            notes TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS fleet_vehicles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            FOREIGN KEY (company_id) REFERENCES fleet_companies (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id),
+            UNIQUE(company_id, car_id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS staff_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_type TEXT NOT NULL,
+            entity_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            note TEXT NOT NULL,
+            priority TEXT DEFAULT 'normal',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS dashboard_widgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            widget_type TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
+            config TEXT DEFAULT '{}',
+            visible INTEGER DEFAULT 1,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -526,6 +640,10 @@ def create_tables():
         ("ALTER TABLE invoices ADD COLUMN terms TEXT DEFAULT ''", None),
         ("ALTER TABLE services ADD COLUMN category_pricing TEXT DEFAULT ''", None),
         ("ALTER TABLE customers ADD COLUMN car_category TEXT DEFAULT 'sedan'", None),
+        ("ALTER TABLE customers ADD COLUMN referred_by INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN company_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN last_visit TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN total_visits INTEGER DEFAULT 0", None),
     ]
     for sql, _ in migrations:
         try:
@@ -561,6 +679,13 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_warranties_end ON warranties(end_date)",
         "CREATE INDEX IF NOT EXISTS idx_subscriptions_customer ON subscriptions(customer_id)",
         "CREATE INDEX IF NOT EXISTS idx_inspection_appointment ON inspection_checklists(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_crm_followups_customer ON crm_followups(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_crm_followups_date ON crm_followups(scheduled_date)",
+        "CREATE INDEX IF NOT EXISTS idx_employee_shifts_date ON employee_shifts(shift_date)",
+        "CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_fleet_vehicles_company ON fleet_vehicles(company_id)",
+        "CREATE INDEX IF NOT EXISTS idx_staff_notes_entity ON staff_notes(entity_type, entity_id)",
+        "CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_user ON dashboard_widgets(user_id)",
     ]
     for idx in indexes:
         try:

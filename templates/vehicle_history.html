@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %} — Historique Véhicule{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">📋 Historique Véhicule</h2>
+
+<!-- Car Selector -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <form method="GET" action="/vehicle_history">
+        <div class="d-flex gap-3 align-items-end">
+            <div style="flex:1">
+                <label style="color:var(--text-secondary);font-size:.75rem">Sélectionner un véhicule</label>
+                <select name="car_id" class="form-select" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" onchange="this.form.submit()">
+                    <option value="">-- Choisir --</option>
+                    {% for c in cars %}<option value="{{ c[0] }}" {{ 'selected' if car_id == c[0] else '' }}>{{ c[1] }} {{ c[2] }} ({{ c[3] }}) — {{ c[4] }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if car %}
+<!-- Car Info -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="row">
+        <div class="col-md-8">
+            <h4 style="color:var(--gold)">🚗 {{ car[1] }} {{ car[2] }} — {{ car[3] }}</h4>
+            <div class="d-flex gap-4 flex-wrap" style="font-size:.8rem;color:var(--text-secondary)">
+                <span>📅 Année: {{ car[4] or 'N/A' }}</span>
+                <span>🎨 Couleur: {{ car[5] or 'N/A' }}</span>
+                <span>🔧 KM: {{ car[6] or 0 }}</span>
+                <span>👤 Propriétaire: {{ car[8] }}</span>
+                <span>📞 {{ car[9] }}</span>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <div style="font-size:.8rem;color:var(--text-muted)">Total interventions</div>
+            <div style="font-size:2rem;color:var(--gold);font-weight:700">{{ history|length }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:16px">📅 Chronologie des interventions</h5>
+    {% for h in history %}
+    <div style="display:flex;gap:16px;padding:12px 0;border-bottom:1px solid var(--border-subtle)">
+        <div style="text-align:center;min-width:60px">
+            <div style="color:var(--gold);font-weight:700;font-size:.9rem">{{ h[1][-2:] }}</div>
+            <div style="color:var(--text-muted);font-size:.65rem">{{ h[1][:7] }}</div>
+        </div>
+        <div style="width:3px;background:{% if h[4]=='completed' %}var(--green-light){% elif h[4]=='in_progress' %}var(--gold){% else %}var(--text-muted){% endif %};border-radius:3px;min-height:30px"></div>
+        <div style="flex:1">
+            <div style="color:var(--text-primary);font-weight:600">{{ h[3] }}</div>
+            <div class="d-flex gap-3 flex-wrap" style="font-size:.75rem;color:var(--text-secondary);margin-top:4px">
+                {% if h[2] %}<span>🕐 {{ h[2] }}</span>{% endif %}
+                <span>Statut: 
+                    {% if h[4]=='completed' %}<span style="color:var(--green-light)">✅ Terminé</span>
+                    {% elif h[4]=='in_progress' %}<span style="color:var(--gold)">⏳ En cours</span>
+                    {% else %}<span style="color:var(--text-muted)">📋 En attente</span>{% endif %}
+                </span>
+                {% if h[5] %}<span>👷 {{ h[5] }}</span>{% endif %}
+                {% if h[6] %}<span>💰 {{ "%.0f"|format(h[6]) }} DT 
+                    {% if h[7]=='paid' %}<span style="color:var(--green-light)">Payé</span>{% else %}<span style="color:var(--red)">Impayé</span>{% endif %}
+                </span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if not history %}<p style="text-align:center;color:var(--text-muted);padding:30px">Aucune intervention trouvée</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

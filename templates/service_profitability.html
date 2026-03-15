@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %} — Rentabilité Services{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">💰 Rentabilité par Service</h2>
+
+{% set total_revenue = report|sum(attribute='revenue') %}
+{% set total_profit = report|sum(attribute='profit') %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">CA Total</small>
+            <h3 style="color:var(--gold)">{{ "%.0f"|format(total_revenue) }} DT</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Profit Total</small>
+            <h3 style="color:var(--green-light)">{{ "%.0f"|format(total_profit) }} DT</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Marge Moyenne</small>
+            <h3 style="color:var(--blue)">{{ "%.1f"|format(total_profit/total_revenue*100 if total_revenue > 0 else 0) }}%</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Services actifs</small>
+            <h3 style="color:var(--text-primary)">{{ report|length }}</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <canvas id="profitChart" height="300"></canvas>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <canvas id="marginChart" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Service</th><th>Nombre</th><th>CA</th><th>Coût matériaux</th><th>Profit</th><th>Marge</th><th>Rentabilité</th></tr></thead>
+            <tbody>
+            {% for s in report %}
+            <tr>
+                <td style="font-weight:600">{{ s.name }}</td>
+                <td>{{ s.count }}</td>
+                <td>{{ "%.0f"|format(s.revenue) }} DT</td>
+                <td style="color:var(--red)">{{ "%.0f"|format(s.material_cost) }} DT</td>
+                <td style="color:var(--green-light);font-weight:600">{{ "%.0f"|format(s.profit) }} DT</td>
+                <td>{{ "%.1f"|format(s.margin) }}%</td>
+                <td>
+                    <div style="background:var(--bg-input);border-radius:4px;height:8px;width:100px;overflow:hidden">
+                        <div style="background:{% if s.margin > 60 %}var(--green-light){% elif s.margin > 30 %}var(--gold){% else %}var(--red){% endif %};height:100%;width:{{ [s.margin, 100]|min }}%"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var labels = {{ report|map(attribute='name')|list|tojson }};
+var revenues = {{ report|map(attribute='revenue')|list|tojson }};
+var profits = {{ report|map(attribute='profit')|list|tojson }};
+var margins = {{ report|map(attribute='margin')|list|tojson }};
+new Chart(document.getElementById('profitChart'),{type:'bar',data:{labels:labels,datasets:[
+    {label:'CA',data:revenues,backgroundColor:'rgba(212,175,55,.6)'},
+    {label:'Profit',data:profits,backgroundColor:'rgba(52,211,153,.6)'}
+]},options:{responsive:true,plugins:{title:{display:true,text:'CA vs Profit par Service',color:'#e8e8e8'}},scales:{y:{ticks:{color:'#9a9ab0'}},x:{ticks:{color:'#9a9ab0',font:{size:10}}}}}});
+new Chart(document.getElementById('marginChart'),{type:'doughnut',data:{labels:labels,datasets:[{data:margins,backgroundColor:['#D4AF37','#34d399','#C41E3A','#1B6B93','#e8d060','#2d6a4f','#9a9ab0','#5a5a70','#ff6b6b','#4ecdc4']}]},options:{responsive:true,plugins:{title:{display:true,text:'Marges par Service',color:'#e8e8e8'}}}});
+</script>
+{% endblock %}

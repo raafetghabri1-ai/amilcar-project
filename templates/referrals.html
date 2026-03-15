@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %} — Parrainage{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">🤝 Système de Parrainage</h2>
+<p style="color:var(--text-secondary);margin-bottom:24px">Chaque parrain reçoit <strong style="color:var(--gold)">50 points</strong> quand son filleul devient client</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    {% set total = referrals|length %}
+    {% set converted = referrals|selectattr(5, 'equalto', 'converted')|list|length %}
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Total parrainages</small>
+            <h3 style="color:var(--gold)">{{ total }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Convertis</small>
+            <h3 style="color:var(--green-light)">{{ converted }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">En attente</small>
+            <h3 style="color:var(--blue)">{{ total - converted }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Taux conversion</small>
+            <h3 style="color:var(--gold)">{{ "%.0f"|format(converted/total*100 if total > 0 else 0) }}%</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Add referral -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouveau Parrainage</h5>
+    <form method="POST" action="/referral/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label style="color:var(--text-secondary);font-size:.75rem">Parrain (client existant)</label>
+                <select name="referrer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">-- Choisir --</option>
+                    {% for c in customers %}<option value="{{ c[0] }}">{{ c[1] }} ({{ c[2] }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label style="color:var(--text-secondary);font-size:.75rem">Nom du filleul</label>
+                <input type="text" name="referred_name" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <label style="color:var(--text-secondary);font-size:.75rem">Téléphone filleul</label>
+                <input type="text" name="referred_phone" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <label style="color:var(--text-secondary);font-size:.75rem">Récompense</label>
+                <select name="reward_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="free_wash">Lavage gratuit</option>
+                    <option value="discount">10% réduction</option>
+                    <option value="points">50 points</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- List -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Parrain</th><th>Filleul</th><th>Tél. filleul</th><th>Récompense</th><th>Statut</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for r in referrals %}
+            <tr>
+                <td style="font-weight:600">{{ r[8] }}</td>
+                <td>{{ r[2] }}</td>
+                <td>{{ r[3] }}</td>
+                <td>
+                    {% if r[4] == 'free_wash' %}🚿 Lavage gratuit
+                    {% elif r[4] == 'discount' %}🏷️ 10% réduction
+                    {% else %}🏆 50 points{% endif %}
+                </td>
+                <td>
+                    {% if r[5] == 'pending' %}<span style="color:var(--gold)">⏳ En attente</span>
+                    {% elif r[5] == 'converted' %}<span style="color:var(--green-light)">✅ Converti</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:.75rem">{{ r[7][:10] if r[7] else '' }}</td>
+                <td>
+                    {% if r[5] == 'pending' %}
+                    <a href="/referral/convert/{{ r[0] }}" class="btn btn-sm" style="background:var(--green);color:#fff;padding:2px 10px;border-radius:4px;font-size:.7rem">✅ Convertir</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not referrals %}<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Aucun parrainage</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

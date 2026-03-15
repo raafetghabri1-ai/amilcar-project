@@ -11,106 +11,243 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     {% block head %}{% endblock %}
+    <style>
+    /* ─── Sidebar Layout ─── */
+    .sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg-navbar);border-right:1px solid var(--border-color);overflow-y:auto;z-index:1100;transition:transform .3s ease;display:flex;flex-direction:column}
+    .sidebar::-webkit-scrollbar{width:4px}.sidebar::-webkit-scrollbar-thumb{background:var(--gold);border-radius:4px}
+    .sidebar-brand{padding:18px 20px 10px;text-align:center;border-bottom:1px solid var(--border-subtle)}
+    .sidebar-brand img{height:40px;margin-bottom:4px}
+    .sidebar-brand h2{font-family:var(--font-display);color:var(--gold);font-size:1.3rem;margin:0;letter-spacing:3px}
+    .sidebar-brand small{color:var(--text-muted);font-size:.55rem;letter-spacing:2px}
+    .sidebar-search{padding:10px 14px}
+    .sidebar-search input{width:100%;background:var(--bg-input);border:1px solid var(--border-subtle);color:var(--text-primary);padding:7px 12px;border-radius:var(--radius-sm);font-size:.78rem}
+    .sidebar-search input:focus{outline:none;border-color:var(--gold)}
+    .sidebar-section{padding:4px 0}
+    .sidebar-section-title{color:var(--text-muted);font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:10px 20px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+    .sidebar-section-title:hover{color:var(--gold)}
+    .sidebar-section-title .chevron{transition:transform .2s;font-size:.5rem}
+    .sidebar-section-title.collapsed .chevron{transform:rotate(-90deg)}
+    .sidebar-links{list-style:none;padding:0;margin:0}
+    .sidebar-links.collapsed{display:none}
+    .sidebar-links li a{display:flex;align-items:center;gap:8px;padding:7px 20px;color:var(--text-secondary);text-decoration:none;font-size:.75rem;font-weight:500;letter-spacing:.5px;transition:all .2s;border-left:3px solid transparent}
+    .sidebar-links li a:hover{color:var(--gold);background:rgba(212,175,55,.06);border-left-color:var(--gold)}
+    .sidebar-links li a.active{color:var(--gold);background:rgba(212,175,55,.08);border-left-color:var(--gold);font-weight:600}
+    .sidebar-links li a .icon{width:18px;text-align:center;font-size:.85rem}
+    .sidebar-links li a .badge-notif{background:var(--red);color:#fff;font-size:.55rem;padding:1px 6px;border-radius:10px;margin-left:auto}
+    .sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--border-subtle);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    .sidebar-footer .sf-user{color:var(--gold);font-size:.7rem;font-weight:600;letter-spacing:1px;flex:1}
+    .sidebar-footer .sf-role{color:var(--red);font-size:.5rem;font-weight:700;background:rgba(196,30,58,.1);padding:1px 6px;border-radius:8px}
+    .sidebar-footer a{color:var(--text-muted);font-size:.75rem;text-decoration:none;padding:3px 5px;border-radius:var(--radius-sm)}
+    .sidebar-footer a:hover{color:var(--gold)}
+    .sidebar-lang{display:flex;gap:4px;width:100%;margin-top:4px}
+    .sidebar-lang a{font-size:.65rem;padding:2px 8px;border-radius:4px}
+    .sidebar-lang a.active-lang{color:var(--gold) !important;font-weight:700}
+    /* Main content shifted */
+    .layout-main{margin-left:260px;min-height:100vh;transition:margin .3s ease}
+    /* Mobile topbar */
+    .topbar-mobile{display:none;position:fixed;top:0;left:0;right:0;height:50px;background:var(--bg-navbar);border-bottom:1px solid var(--border-color);z-index:1050;align-items:center;padding:0 16px}
+    .topbar-mobile .burger{background:none;border:none;color:var(--gold);font-size:1.5rem;cursor:pointer}
+    .topbar-mobile .tb-brand{color:var(--gold);font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;margin-left:12px}
+    .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1090}
+    @media(max-width:991px){
+        .sidebar{transform:translateX(-100%)}
+        .sidebar.open{transform:translateX(0)}
+        .sidebar-overlay.open{display:block}
+        .layout-main{margin-left:0;padding-top:55px}
+        .topbar-mobile{display:flex}
+    }
+    /* Hide old hero on sidebar layout pages */
+    .hero{display:none}
+    .sidebar-search-results{position:absolute;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);width:calc(100% - 28px);margin:0 14px;z-index:9999;display:none;max-height:200px;overflow-y:auto}
+    .sidebar-search-results a{display:block;padding:6px 12px;color:var(--text-primary);text-decoration:none;font-size:.75rem;border-bottom:1px solid var(--border-subtle)}
+    .sidebar-search-results a:hover{background:rgba(212,175,55,.08)}
+    </style>
 </head>
 <body>
-    <div class="hero">
-        <img src="/static/logo.png" alt="AMILCAR" class="logo">
-        <h1>AMILCAR</h1>
-        <p class="tagline">LÀ OÙ LES VOITURES DEVIENNENT DE L'ART</p>
-        {% block hero_extra %}{% endblock %}
+    <!-- Mobile Topbar -->
+    <div class="topbar-mobile">
+        <button class="burger" onclick="toggleSidebar()">☰</button>
+        <span class="tb-brand">AMILCAR</span>
+        <a href="/notifications" style="margin-left:auto;color:var(--text-secondary);text-decoration:none;position:relative">🔔{% if notif_count %}<span style="position:absolute;top:-4px;right:-8px;background:var(--red);color:#fff;font-size:.5rem;padding:1px 4px;border-radius:8px">{{ notif_count }}</span>{% endif %}</a>
     </div>
-    <nav class="navbar">
-        <div class="container">
-            <div class="navbar-nav mx-auto d-flex flex-row flex-wrap justify-content-center">
-                <a class="nav-link" href="/">🏠 ACCUEIL</a>
-                <a class="nav-link" href="/customers">👥 CLIENTS</a>
-                <a class="nav-link" href="/appointments">📅 RENDEZ-VOUS</a>
-                <a class="nav-link" href="/calendar">📆 CALENDRIER</a>
-                <a class="nav-link" href="/invoices">📄 FACTURES</a>
-                <a class="nav-link" href="/quotes">📋 DEVIS</a>
-                <a class="nav-link" href="/expenses">💸 DÉPENSES</a>
-                <a class="nav-link" href="/daily">📊 AUJOURD'HUI</a>
-                <a class="nav-link" href="/monthly">📈 MENSUEL</a>
-                <a class="nav-link nav-highlight" href="/reports">📑 RAPPORTS</a>
-                <a class="nav-link nav-highlight" href="/kpi">🎯 KPI</a>
-                <a class="nav-link" href="/notifications" style="position:relative">🔔{% if notif_count %}<span class="notif-badge">{{ notif_count }}</span>{% endif %}</a>
-                {% if session.get('role') == 'admin' %}
-                <a class="nav-link nav-admin" href="/users">👤 UTILISATEURS</a>
-                <a class="nav-link nav-admin" href="/services">⚙ SERVICES</a>
-                <a class="nav-link nav-admin" href="/packages">📦 PACKS</a>
-                <a class="nav-link nav-admin" href="/service_inventory">🔗 LIAISON</a>
-                <a class="nav-link nav-admin" href="/technician_performance">🏆 PERF</a>
-                <a class="nav-link" href="/activity_log" style="color:var(--text-muted)">📝 JOURNAL</a>
-                <a class="nav-link nav-admin" href="/backup">💾</a>
-                {% endif %}
-                <a class="nav-link" href="/maintenance_reminders">🔧</a>
-                <a class="nav-link" href="/loyalty">🎁</a>
-                <a class="nav-link" href="/inventory">📦</a>
-                <a class="nav-link" href="/live_board">📋 ATELIER</a>
-                <a class="nav-link" href="/heatmap">🗺️ HEATMAP</a>
-                <a class="nav-link" href="/rewards">🏆 POINTS</a>
-                {% if session.get('role') == 'admin' %}
-                <a class="nav-link nav-admin" href="/time_tracking">⏱️ TEMPS</a>
-                <a class="nav-link nav-admin" href="/profitability">💰 RENTABILITÉ</a>
-                <a class="nav-link nav-admin" href="/inventory_dashboard">📊 STOCK+</a>
-                <a class="nav-link nav-admin" href="/advanced_report">📊 RAPPORT+</a>
-                <a class="nav-link nav-admin" href="/bulk_message">💬 BULK</a>
-                <a class="nav-link nav-admin" href="/coupons">🏷️ COUPONS</a>
-                <a class="nav-link nav-admin" href="/mileage_tracking">🔧 KM</a>
-                <a class="nav-link nav-admin" href="/suppliers">🏭 FOURNIS.</a>
-                <a class="nav-link nav-admin" href="/manage_roles">🔐 RÔLES</a>
-                <a class="nav-link nav-admin" href="/ceo_dashboard">📊 CEO</a>
-                <a class="nav-link nav-admin" href="/email_settings">📧 EMAIL</a>
-                <a class="nav-link nav-admin" href="/sms_settings">📱 SMS</a>
-                <a class="nav-link nav-admin" href="/maintenance_plans">🔄 PLANS</a>
-                <a class="nav-link nav-admin" href="/surveys">📋 ENQUÊTES</a>
-                <a class="nav-link nav-admin" href="/bookings_admin">🌐 RÉSERV.</a>
-                <a class="nav-link nav-admin" href="/scheduled_reports">📊 AUTO-RAP</a>
-                <a class="nav-link nav-admin" href="/smart_alerts">🔔 ALERTES</a>
-                <a class="nav-link nav-admin" href="/whatsapp_settings">📱 WA-API</a>
-                <a class="nav-link nav-admin" href="/warranties">🛡️ GARANTIES</a>
-                <a class="nav-link nav-admin" href="/invoice_terms">📄 CGV</a>
-                <a class="nav-link nav-admin" href="/dynamic_pricing">🏷️ TARIFS+</a>
-                <a class="nav-link nav-admin" href="/retention_analysis">📊 RÉTENTION</a>
-                <a class="nav-link nav-admin" href="/subscriptions">🧾 ABONNEMENTS</a>
-                <a class="nav-link nav-admin" href="/push_settings">🔔 PUSH</a>
-                {% endif %}
-                <a class="nav-link" href="/quotes_advanced">📋 DEVIS+</a>
-                <a class="nav-link" href="/queue">⏳ FILE</a>
-                <a class="nav-link" href="/mobile">📱 MOBILE</a>
-                <!-- Language Switcher -->
-                <div class="d-flex gap-1 align-items-center ms-2">
-                    <a href="/set_language/fr" class="nav-link" style="padding:2px 5px;font-size:0.65rem;{{ 'color:#D4AF37' if current_lang=='fr' else 'color:#666' }}">FR</a>
-                    <a href="/set_language/ar" class="nav-link" style="padding:2px 5px;font-size:0.65rem;{{ 'color:#D4AF37' if current_lang=='ar' else 'color:#666' }}">ع</a>
-                </div>
-            </div>
-            <div class="navbar-util">
-                <div class="nav-search-wrap">
-                    <form action="/search" method="GET">
-                        <input type="text" name="q" id="searchInput" placeholder="Rechercher..." autocomplete="off">
-                    </form>
-                    <div id="searchResults"></div>
-                </div>
-                <span class="nav-user">{{ session.get('username', '')|upper }}</span>
-                {% if session.get('role') == 'admin' %}<span class="nav-role">ADMIN</span>{% endif %}
-                {% if session.get('role') == 'admin' %}<a href="/settings" class="nav-util-link">⚙</a>{% endif %}
-                <a href="/change_password" class="nav-util-link">🔑</a>
-                <a onclick="toggleTheme()" class="nav-util-link" style="cursor:pointer" id="themeBtn">🌙</a>
-                <a href="/logout" class="nav-util-link nav-logout">DÉCONNEXION</a>
-            </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <img src="/static/logo.png" alt="AMILCAR">
+            <h2>AMILCAR</h2>
+            <small>WHERE CARS BECOME ART</small>
         </div>
-    </nav>
-    <div class="container main-container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="flash-messages">
-            {% for category, message in messages %}
-            <div class="flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
+        <div class="sidebar-search" style="position:relative">
+            <form action="/search" method="GET">
+                <input type="text" name="q" id="searchInput" placeholder="🔍 Rechercher..." autocomplete="off">
+            </form>
+            <div class="sidebar-search-results" id="searchResults"></div>
+        </div>
+
+        <!-- PRINCIPAL -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PRINCIPAL <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/"><span class="icon">🏠</span> Accueil</a></li>
+                <li><a href="/custom_dashboard"><span class="icon">📊</span> Mon Dashboard</a></li>
+                <li><a href="/daily"><span class="icon">📋</span> Aujourd'hui</a></li>
+                <li><a href="/notifications"><span class="icon">🔔</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
+                <li><a href="/live_board"><span class="icon">📺</span> Atelier Live</a></li>
+            </ul>
+        </div>
+
+        <!-- CLIENTS & CRM -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">CLIENTS & CRM <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/customers"><span class="icon">👥</span> Clients</a></li>
+                <li><a href="/crm_followups"><span class="icon">🔄</span> Suivi CRM</a></li>
+                <li><a href="/referrals"><span class="icon">🤝</span> Parrainage</a></li>
+                <li><a href="/fleet_companies"><span class="icon">🏢</span> Flottes</a></li>
+                <li><a href="/loyalty"><span class="icon">🎁</span> Fidélité</a></li>
+                <li><a href="/rewards"><span class="icon">🏆</span> Points</a></li>
+                <li><a href="/subscriptions"><span class="icon">🧾</span> Abonnements</a></li>
+            </ul>
+        </div>
+
+        <!-- RENDEZ-VOUS & PLANNING -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PLANNING <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/appointments"><span class="icon">📅</span> Rendez-vous</a></li>
+                <li><a href="/calendar"><span class="icon">📆</span> Calendrier</a></li>
+                <li><a href="/queue"><span class="icon">⏳</span> File d'attente</a></li>
+                <li><a href="/heatmap"><span class="icon">🗺️</span> Heatmap</a></li>
+                <li><a href="/maintenance_reminders"><span class="icon">🔧</span> Rappels</a></li>
+                <li><a href="/maintenance_plans"><span class="icon">🔄</span> Plans entretien</a></li>
+            </ul>
+        </div>
+
+        <!-- FACTURATION -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/invoices"><span class="icon">📄</span> Factures</a></li>
+                <li><a href="/quotes"><span class="icon">📋</span> Devis</a></li>
+                <li><a href="/quotes_advanced"><span class="icon">📋</span> Devis+</a></li>
+                <li><a href="/expenses"><span class="icon">💸</span> Dépenses</a></li>
+                <li><a href="/warranties"><span class="icon">🛡️</span> Garanties</a></li>
+                {% if session.get('role') == 'admin' %}
+                <li><a href="/invoice_terms"><span class="icon">📄</span> CGV</a></li>
+                <li><a href="/coupons"><span class="icon">🏷️</span> Coupons</a></li>
+                <li><a href="/dynamic_pricing"><span class="icon">💲</span> Tarifs+</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- STOCK & ACHATS -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">STOCK & ACHATS <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/inventory"><span class="icon">📦</span> Inventaire</a></li>
+                {% if session.get('role') == 'admin' %}
+                <li><a href="/inventory_dashboard"><span class="icon">📊</span> Stock+</a></li>
+                <li><a href="/suppliers"><span class="icon">🏭</span> Fournisseurs</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- RAPPORTS -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">RAPPORTS & KPI <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/reports"><span class="icon">📑</span> Rapports</a></li>
+                <li><a href="/kpi"><span class="icon">🎯</span> KPI</a></li>
+                <li><a href="/monthly"><span class="icon">📈</span> Mensuel</a></li>
+                <li><a href="/service_profitability"><span class="icon">💰</span> Rentabilité</a></li>
+                <li><a href="/vehicle_history"><span class="icon">📋</span> Historique véhicule</a></li>
+                <li><a href="/export_data"><span class="icon">📥</span> Export données</a></li>
+                {% if session.get('role') == 'admin' %}
+                <li><a href="/ceo_dashboard"><span class="icon">📊</span> CEO</a></li>
+                <li><a href="/advanced_report"><span class="icon">📊</span> Rapport+</a></li>
+                <li><a href="/profitability"><span class="icon">💰</span> Rentabilité</a></li>
+                <li><a href="/retention_analysis"><span class="icon">📊</span> Rétention</a></li>
+                <li><a href="/scheduled_reports"><span class="icon">📊</span> Auto-Rapports</a></li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% if session.get('role') == 'admin' %}
+        <!-- ÉQUIPE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">ÉQUIPE <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/users"><span class="icon">👤</span> Utilisateurs</a></li>
+                <li><a href="/employee_shifts"><span class="icon">👷</span> Planning équipe</a></li>
+                <li><a href="/staff_notes"><span class="icon">💬</span> Notes internes</a></li>
+                <li><a href="/technician_performance"><span class="icon">🏆</span> Performance</a></li>
+                <li><a href="/time_tracking"><span class="icon">⏱️</span> Temps</a></li>
+                <li><a href="/manage_roles"><span class="icon">🔐</span> Rôles</a></li>
+            </ul>
+        </div>
+
+        <!-- PARAMÈTRES -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">PARAMÈTRES <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/settings"><span class="icon">⚙</span> Général</a></li>
+                <li><a href="/services"><span class="icon">🔧</span> Services</a></li>
+                <li><a href="/packages"><span class="icon">📦</span> Packs</a></li>
+                <li><a href="/service_inventory"><span class="icon">🔗</span> Liaison</a></li>
+                <li><a href="/email_settings"><span class="icon">📧</span> Email</a></li>
+                <li><a href="/sms_settings"><span class="icon">📱</span> SMS</a></li>
+                <li><a href="/whatsapp_settings"><span class="icon">📱</span> WhatsApp API</a></li>
+                <li><a href="/push_settings"><span class="icon">🔔</span> Push</a></li>
+                <li><a href="/smart_alerts"><span class="icon">🔔</span> Alertes</a></li>
+                <li><a href="/bookings_admin"><span class="icon">🌐</span> Réservations</a></li>
+                <li><a href="/surveys"><span class="icon">📋</span> Enquêtes</a></li>
+                <li><a href="/mileage_tracking"><span class="icon">🔧</span> KM</a></li>
+                <li><a href="/bulk_message"><span class="icon">💬</span> Messages Bulk</a></li>
+                <li><a href="/activity_log"><span class="icon">📝</span> Journal</a></li>
+                <li><a href="/backup"><span class="icon">💾</span> Sauvegarde</a></li>
+            </ul>
         </div>
         {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
+
+        <!-- ACCÈS RAPIDE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▼</span></div>
+            <ul class="sidebar-links">
+                <li><a href="/mobile"><span class="icon">📱</span> Vue Mobile</a></li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <span class="sf-user">{{ session.get('username', '')|upper }}</span>
+            {% if session.get('role') == 'admin' %}<span class="sf-role">ADMIN</span>{% endif %}
+            <a href="/change_password" title="Mot de passe">🔑</a>
+            <a onclick="toggleTheme()" style="cursor:pointer" id="themeBtn">🌙</a>
+            <a href="/logout" style="color:var(--red)" title="Déconnexion">⏻</a>
+            <div class="sidebar-lang">
+                <a href="/set_language/fr" class="{{ 'active-lang' if current_lang=='fr' else '' }}" style="color:var(--text-muted)">FR</a>
+                <a href="/set_language/ar" class="{{ 'active-lang' if current_lang=='ar' else '' }}" style="color:var(--text-muted)">ع</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="layout-main">
+        <div class="container main-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            {% block hero_extra %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
     {% block scripts %}{% endblock %}
     <script>
@@ -132,10 +269,34 @@
     /* Active nav */
     (function(){
         var path = location.pathname;
-        document.querySelectorAll('.nav-link').forEach(function(link){
+        document.querySelectorAll('.sidebar-links a').forEach(function(link){
             if (link.getAttribute('href') === path) link.classList.add('active');
         });
     })();
+    /* Sidebar toggle (mobile) */
+    function toggleSidebar(){
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('open');
+    }
+    /* Section collapse */
+    function toggleSection(el){
+        el.classList.toggle('collapsed');
+        var links = el.nextElementSibling;
+        if(links) links.classList.toggle('collapsed');
+    }
+    /* Restore collapsed sections */
+    (function(){
+        var saved = JSON.parse(localStorage.getItem('sb_collapsed')||'[]');
+        document.querySelectorAll('.sidebar-section-title').forEach(function(el,i){
+            if(saved.indexOf(i)>-1){el.classList.add('collapsed');var l=el.nextElementSibling;if(l)l.classList.add('collapsed')}
+        });
+    })();
+    /* Save collapsed state */
+    window.addEventListener('beforeunload',function(){
+        var arr=[];document.querySelectorAll('.sidebar-section-title').forEach(function(el,i){
+            if(el.classList.contains('collapsed'))arr.push(i);
+        });localStorage.setItem('sb_collapsed',JSON.stringify(arr));
+    });
     /* Search autocomplete */
     (function(){
         var input = document.getElementById('searchInput');
@@ -154,8 +315,7 @@
                     var html = '';
                     data.forEach(function(r){
                         var icon = r.type === 'client' ? '👤' : '🚗';
-                        html += '<a href="'+r.url+'" class="search-item">'
-                            + '<span>'+icon+'</span> <span class="search-label">'+r.label+'</span> <span class="search-sub">'+r.sub+'</span></a>';
+                        html += '<a href="'+r.url+'">'+icon+' '+r.label+' <small style="color:var(--text-muted)">'+r.sub+'</small></a>';
                     });
                     box.innerHTML = html;
                     box.style.display = 'block';

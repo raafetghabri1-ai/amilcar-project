@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %} — Mon Dashboard{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">📊 Mon Dashboard</h2>
+    <button class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:6px 14px" onclick="document.getElementById('widgetConfig').style.display=document.getElementById('widgetConfig').style.display==='none'?'block':'none'">⚙ Configurer</button>
+</div>
+
+<!-- Widget Config Panel -->
+<div id="widgetConfig" style="display:none" class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="card-body" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+        <h5 style="color:var(--gold);margin-bottom:12px">Widgets disponibles</h5>
+        <div class="d-flex flex-wrap gap-2">
+        {% set active_types = widgets|map(attribute=2)|list %}
+        {% for w in available %}
+            {% if w.type in active_types %}
+            <form method="POST" action="/custom_dashboard/toggle" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="widget_type" value="{{ w.type }}">
+                <input type="hidden" name="action" value="remove">
+                <button class="btn btn-sm" style="background:rgba(212,175,55,.2);color:var(--gold);border:1px solid var(--gold);border-radius:6px;padding:4px 12px;font-size:.75rem">{{ w.icon }} {{ w.name }} ✕</button>
+            </form>
+            {% else %}
+            <form method="POST" action="/custom_dashboard/toggle" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="widget_type" value="{{ w.type }}">
+                <input type="hidden" name="action" value="add">
+                <button class="btn btn-sm" style="background:var(--bg-input);color:var(--text-secondary);border:1px solid var(--border-subtle);border-radius:6px;padding:4px 12px;font-size:.75rem">{{ w.icon }} {{ w.name }} +</button>
+            </form>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Widgets Grid -->
+<div class="row g-4">
+{% for w in widgets %}
+    {% set wtype = w[2] %}
+    {% set winfo = available|selectattr('type', 'equalto', wtype)|first %}
+    
+    {% if wtype in ('today_revenue', 'today_appointments', 'pending_invoices', 'low_stock', 'queue_count', 'alerts', 'crm_pending') %}
+    <!-- KPI Card -->
+    <div class="col-md-3 col-sm-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center">
+            <div style="font-size:2rem;margin-bottom:6px">{{ winfo.icon if winfo else '📊' }}</div>
+            <div style="color:var(--text-muted);font-size:.75rem;letter-spacing:1px;text-transform:uppercase">{{ winfo.name if winfo else wtype }}</div>
+            <div style="font-size:2rem;font-weight:700;color:{% if wtype=='pending_invoices' %}var(--red){% elif wtype=='low_stock' %}var(--gold){% else %}var(--green-light){% endif %}">
+                {{ data.get(wtype, '0') }}
+            </div>
+        </div>
+    </div>
+    
+    {% elif wtype == 'top_services' %}
+    <!-- Top Services -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">🏆 Top Services</h5>
+            {% for s in data.get(wtype, []) %}
+            <div class="d-flex justify-content-between align-items-center" style="padding:6px 0;border-bottom:1px solid var(--border-subtle)">
+                <span style="color:var(--text-primary);font-size:.85rem">{{ s[0] }}</span>
+                <span style="color:var(--gold);font-weight:600">{{ s[1] }}x</span>
+            </div>
+            {% endfor %}
+            {% if not data.get(wtype) %}<p style="color:var(--text-muted);text-align:center;margin:10px 0">Aucune donnée</p>{% endif %}
+        </div>
+    </div>
+    
+    {% elif wtype == 'recent_customers' %}
+    <!-- Recent Customers -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">👥 Derniers Clients</h5>
+            {% for c in data.get(wtype, []) %}
+            <div class="d-flex justify-content-between" style="padding:6px 0;border-bottom:1px solid var(--border-subtle)">
+                <span style="color:var(--text-primary);font-size:.85rem">{{ c[0] }}</span>
+                <span style="color:var(--text-muted);font-size:.8rem">{{ c[1] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    {% elif wtype == 'monthly_chart' %}
+    <!-- Monthly Chart -->
+    <div class="col-md-12">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📈 Evolution Mensuelle du CA</h5>
+            <canvas id="monthlyChart" height="120"></canvas>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        var chartData = {{ data.get(wtype, [])|tojson }};
+        new Chart(document.getElementById('monthlyChart'),{
+            type:'line',
+            data:{
+                labels: chartData.map(function(r){return r[0]}),
+                datasets:[{label:'CA (DT)',data:chartData.map(function(r){return r[1]}),
+                    borderColor:'#D4AF37',backgroundColor:'rgba(212,175,55,.15)',fill:true,tension:.4}]
+            },
+            options:{responsive:true,scales:{y:{ticks:{color:'#9a9ab0'}},x:{ticks:{color:'#9a9ab0'}}}}
+        });
+    });
+    </script>
+    {% endif %}
+{% endfor %}
+</div>
+
+{% if not widgets %}
+<div style="text-align:center;color:var(--text-muted);padding:60px">
+    <p style="font-size:3rem">📊</p>
+    <p>Cliquez sur ⚙ Configurer pour ajouter des widgets</p>
+</div>
+{% endif %}
+{% endblock %}

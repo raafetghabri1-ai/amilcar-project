@@ -5521,6 +5521,537 @@ def push_subscribe():
             conn.commit()
     return jsonify({'status': 'ok'})
 
+# ═══════════════════════════════════════════════════════════
+# Phase 9: Enterprise Grade Features
+# ═══════════════════════════════════════════════════════════
+
+# ─── 2. Export Data (Excel/CSV/PDF) ───
+@app.route("/export_data")
+@login_required
+def export_data():
+    return render_template("export_data.html")
+
+@app.route("/export_data/<data_type>/<fmt>")
+@login_required
+def export_data_download(data_type, fmt):
+    import csv
+    allowed_types = ['customers', 'invoices', 'appointments', 'cars', 'expenses']
+    allowed_fmts = ['csv', 'pdf']
+    if data_type not in allowed_types or fmt not in allowed_fmts:
+        flash("Type ou format non supporté", "error")
+        return redirect("/export_data")
+
+    with get_db() as conn:
+        if data_type == 'customers':
+            rows = conn.execute("SELECT id, name, phone, email, notes FROM customers ORDER BY name").fetchall()
+            headers = ['ID', 'Nom', 'Téléphone', 'Email', 'Notes']
+        elif data_type == 'invoices':
+            rows = conn.execute("""SELECT i.id, c.name, ca.plate, a.service, i.amount, i.status, i.payment_method
+                FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+                JOIN cars ca ON a.car_id=ca.id JOIN customers c ON ca.customer_id=c.id
+                ORDER BY i.id DESC""").fetchall()
+            headers = ['ID', 'Client', 'Plaque', 'Service', 'Montant', 'Statut', 'Paiement']
+        elif data_type == 'appointments':
+            rows = conn.execute("""SELECT a.id, c.name, ca.plate, a.service, a.date, a.time, a.status, a.assigned_to
+                FROM appointments a JOIN cars ca ON a.car_id=ca.id JOIN customers c ON ca.customer_id=c.id
+                ORDER BY a.date DESC""").fetchall()
+            headers = ['ID', 'Client', 'Plaque', 'Service', 'Date', 'Heure', 'Statut', 'Technicien']
+        elif data_type == 'cars':
+            rows = conn.execute("""SELECT ca.id, c.name, ca.brand, ca.model, ca.plate, ca.year, ca.color, ca.mileage
+                FROM cars ca JOIN customers c ON ca.customer_id=c.id ORDER BY c.name""").fetchall()
+            headers = ['ID', 'Propriétaire', 'Marque', 'Modèle', 'Plaque', 'Année', 'Couleur', 'Kilométrage']
+        else:  # expenses
+            rows = conn.execute("SELECT id, date, category, description, amount FROM expenses ORDER BY date DESC").fetchall()
+            headers = ['ID', 'Date', 'Catégorie', 'Description', 'Montant']
+
+    if fmt == 'csv':
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow(row)
+        resp = make_response(output.getvalue())
+        resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        resp.headers['Content-Disposition'] = f'attachment; filename=amilcar_{data_type}.csv'
+        return resp
+    else:  # pdf
+        try:
+            from xhtml2pdf import pisa
+        except ImportError:
+            flash("xhtml2pdf non installé", "error")
+            return redirect("/export_data")
+        html = f"<html><head><meta charset='utf-8'><style>body{{font-family:Helvetica,sans-serif;font-size:11px}}table{{width:100%;border-collapse:collapse}}th,td{{border:1px solid #ccc;padding:5px;text-align:left}}th{{background:#D4AF37;color:#fff}}</style></head><body>"
+        html += f"<h2>AMILCAR — {data_type.upper()}</h2><table><tr>"
+        for h in headers:
+            html += f"<th>{h}</th>"
+        html += "</tr>"
+        for row in rows:
+            html += "<tr>" + "".join(f"<td>{c}</td>" for c in row) + "</tr>"
+        html += "</table></body></html>"
+        pdf_out = io.BytesIO()
+        pisa.CreatePDF(io.StringIO(html), dest=pdf_out)
+        resp = make_response(pdf_out.getvalue())
+        resp.headers['Content-Type'] = 'application/pdf'
+        resp.headers['Content-Disposition'] = f'attachment; filename=amilcar_{data_type}.pdf'
+        return resp
+
+# ─── 3. CRM Follow-up System ───
+@app.route("/crm_followups")
+@login_required
+def crm_followups():
+    with get_db() as conn:
+        followups = conn.execute("""SELECT f.*, c.name, c.phone FROM crm_followups f
+            JOIN customers c ON f.customer_id=c.id ORDER BY f.scheduled_date""").fetchall()
+        # Clients absents > 60 jours
+        from datetime import date, timedelta
+        cutoff = (date.today() - timedelta(days=60)).isoformat()
+        absent = conn.execute("""SELECT c.id, c.name, c.phone, MAX(a.date) as last_visit
+            FROM customers c LEFT JOIN cars ca ON ca.customer_id=c.id
+            LEFT JOIN appointments a ON a.car_id=ca.id
+            GROUP BY c.id HAVING last_visit < ? OR last_visit IS NULL
+            ORDER BY last_visit""", (cutoff,)).fetchall()
+    return render_template("crm_followups.html", followups=followups, absent=absent)
+
+@app.route("/crm_followup/add", methods=["POST"])
+@login_required
+def crm_followup_add():
+    cid = request.form.get("customer_id", type=int)
+    ftype = request.form.get("type", "absence")
+    scheduled = request.form.get("scheduled_date", "")
+    reason = request.form.get("reason", "")
+    notes = request.form.get("notes", "")
+    if cid and scheduled:
+        with get_db() as conn:
+            conn.execute("INSERT INTO crm_followups (customer_id, type, scheduled_date, reason, notes) VALUES (?,?,?,?,?)",
+                        (cid, ftype, scheduled, reason, notes))
+            conn.commit()
+        flash("Suivi CRM ajouté !", "success")
+    return redirect("/crm_followups")
+
+@app.route("/crm_followup/complete/<int:fid>")
+@login_required
+def crm_followup_complete(fid):
+    from datetime import date
+    with get_db() as conn:
+        conn.execute("UPDATE crm_followups SET status='completed', completed_at=? WHERE id=?",
+                    (date.today().isoformat(), fid))
+        conn.commit()
+    flash("Suivi marqué comme complété", "success")
+    return redirect("/crm_followups")
+
+@app.route("/crm_followup/auto_generate")
+@login_required
+def crm_followup_auto():
+    from datetime import date, timedelta
+    cutoff = (date.today() - timedelta(days=60)).isoformat()
+    scheduled = (date.today() + timedelta(days=1)).isoformat()
+    with get_db() as conn:
+        absent = conn.execute("""SELECT c.id FROM customers c LEFT JOIN cars ca ON ca.customer_id=c.id
+            LEFT JOIN appointments a ON a.car_id=ca.id GROUP BY c.id
+            HAVING MAX(a.date) < ? OR MAX(a.date) IS NULL""", (cutoff,)).fetchall()
+        existing = set(r[0] for r in conn.execute(
+            "SELECT customer_id FROM crm_followups WHERE status='pending'").fetchall())
+        count = 0
+        for row in absent:
+            if row[0] not in existing:
+                conn.execute("INSERT INTO crm_followups (customer_id, type, scheduled_date, reason) VALUES (?,?,?,?)",
+                            (row[0], 'absence', scheduled, 'Client absent > 60 jours'))
+                count += 1
+        conn.commit()
+    flash(f"{count} suivis générés automatiquement", "success")
+    return redirect("/crm_followups")
+
+# ─── 4. Employee Shifts Management ───
+@app.route("/employee_shifts")
+@login_required
+@admin_required
+def employee_shifts():
+    week_offset = request.args.get("week", 0, type=int)
+    from datetime import date, timedelta
+    today = date.today()
+    start = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+    end = start + timedelta(days=6)
+    with get_db() as conn:
+        users = conn.execute("SELECT id, username, full_name FROM users WHERE role != 'admin' ORDER BY username").fetchall()
+        shifts = conn.execute("SELECT * FROM employee_shifts WHERE shift_date BETWEEN ? AND ? ORDER BY shift_date, start_time",
+                             (start.isoformat(), end.isoformat())).fetchall()
+        leaves = conn.execute("SELECT * FROM employee_leaves WHERE start_date <= ? AND end_date >= ? ORDER BY start_date",
+                             (end.isoformat(), start.isoformat())).fetchall()
+    days = [(start + timedelta(days=i)) for i in range(7)]
+    return render_template("employee_shifts.html", users=users, shifts=shifts, leaves=leaves,
+                          days=days, start=start, end=end, week_offset=week_offset)
+
+@app.route("/employee_shifts/add", methods=["POST"])
+@login_required
+@admin_required
+def employee_shift_add():
+    uid = request.form.get("user_id", type=int)
+    shift_date = request.form.get("shift_date", "")
+    start_time = request.form.get("start_time", "08:00")
+    end_time = request.form.get("end_time", "17:00")
+    shift_type = request.form.get("shift_type", "normal")
+    notes = request.form.get("notes", "")
+    if uid and shift_date:
+        with get_db() as conn:
+            uname = conn.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()
+            conn.execute("INSERT INTO employee_shifts (user_id, username, shift_date, start_time, end_time, shift_type, notes) VALUES (?,?,?,?,?,?,?)",
+                        (uid, uname[0] if uname else '', shift_date, start_time, end_time, shift_type, notes))
+            conn.commit()
+        flash("Shift ajouté !", "success")
+    return redirect("/employee_shifts")
+
+@app.route("/employee_shifts/delete/<int:sid>")
+@login_required
+@admin_required
+def employee_shift_delete(sid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM employee_shifts WHERE id=?", (sid,))
+        conn.commit()
+    flash("Shift supprimé", "success")
+    return redirect("/employee_shifts")
+
+@app.route("/employee_leave/add", methods=["POST"])
+@login_required
+@admin_required
+def employee_leave_add():
+    uid = request.form.get("user_id", type=int)
+    leave_type = request.form.get("leave_type", "annual")
+    start_date = request.form.get("start_date", "")
+    end_date = request.form.get("end_date", "")
+    reason = request.form.get("reason", "")
+    if uid and start_date and end_date:
+        with get_db() as conn:
+            uname = conn.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()
+            conn.execute("INSERT INTO employee_leaves (user_id, username, leave_type, start_date, end_date, reason) VALUES (?,?,?,?,?,?)",
+                        (uid, uname[0] if uname else '', leave_type, start_date, end_date, reason))
+            conn.commit()
+        flash("Congé enregistré !", "success")
+    return redirect("/employee_shifts")
+
+@app.route("/employee_leave/approve/<int:lid>/<action>")
+@login_required
+@admin_required
+def employee_leave_action(lid, action):
+    if action in ('approved', 'rejected'):
+        with get_db() as conn:
+            conn.execute("UPDATE employee_leaves SET status=? WHERE id=?", (action, lid))
+            conn.commit()
+    return redirect("/employee_shifts")
+
+# ─── 5. Service Profitability Report (Enhanced) ───
+@app.route("/service_profitability")
+@login_required
+def service_profitability_report():
+    with get_db() as conn:
+        # Revenue per service
+        services = conn.execute("""SELECT a.service,
+            COUNT(*) as cnt,
+            SUM(i.amount) as revenue,
+            SUM(CASE WHEN i.status='paid' THEN i.amount ELSE 0 END) as collected
+            FROM appointments a JOIN invoices i ON i.appointment_id=a.id
+            GROUP BY a.service ORDER BY revenue DESC""").fetchall()
+        # Material costs per service (from service_inventory)
+        material_costs = {}
+        for si in conn.execute("""SELECT si.service_name, SUM(si.quantity_used * inv.unit_price) as cost
+            FROM service_inventory si JOIN inventory inv ON si.inventory_id=inv.id
+            GROUP BY si.service_name""").fetchall():
+            material_costs[si[0]] = si[1]
+    report = []
+    for s in services:
+        name, cnt, revenue, collected = s[0], s[1], s[2] or 0, s[3] or 0
+        mat_cost = material_costs.get(name, 0) * cnt
+        profit = revenue - mat_cost
+        margin = (profit / revenue * 100) if revenue > 0 else 0
+        report.append({'name': name, 'count': cnt, 'revenue': revenue, 'collected': collected,
+                       'material_cost': mat_cost, 'profit': profit, 'margin': margin})
+    return render_template("service_profitability.html", report=report)
+
+# ─── 6. Referral System ───
+@app.route("/referrals")
+@login_required
+def referrals():
+    with get_db() as conn:
+        refs = conn.execute("""SELECT r.*, c.name as referrer_name, c.phone as referrer_phone
+            FROM referrals r JOIN customers c ON r.referrer_id=c.id ORDER BY r.created_at DESC""").fetchall()
+        customers = conn.execute("SELECT id, name, phone FROM customers ORDER BY name").fetchall()
+    return render_template("referrals.html", referrals=refs, customers=customers)
+
+@app.route("/referral/add", methods=["POST"])
+@login_required
+def referral_add():
+    referrer_id = request.form.get("referrer_id", type=int)
+    referred_name = request.form.get("referred_name", "").strip()
+    referred_phone = request.form.get("referred_phone", "").strip()
+    reward_type = request.form.get("reward_type", "free_wash")
+    if referrer_id and referred_name and referred_phone:
+        with get_db() as conn:
+            conn.execute("INSERT INTO referrals (referrer_id, referred_name, referred_phone, reward_type) VALUES (?,?,?,?)",
+                        (referrer_id, referred_name, referred_phone, reward_type))
+            conn.commit()
+        flash("Parrainage enregistré !", "success")
+    return redirect("/referrals")
+
+@app.route("/referral/convert/<int:rid>")
+@login_required
+def referral_convert(rid):
+    with get_db() as conn:
+        ref = conn.execute("SELECT * FROM referrals WHERE id=?", (rid,)).fetchone()
+        if ref:
+            # Create customer from referral
+            conn.execute("INSERT INTO customers (name, phone, referred_by) VALUES (?,?,?)",
+                        (ref[2], ref[3], ref[1]))
+            new_cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute("UPDATE referrals SET status='converted', converted_customer_id=? WHERE id=?", (new_cid, rid))
+            # Reward the referrer
+            try:
+                conn.execute("INSERT INTO reward_points (customer_id, points, total_earned) VALUES (?, 50, 50) ON CONFLICT(customer_id) DO UPDATE SET points=points+50, total_earned=total_earned+50", (ref[1],))
+                conn.execute("INSERT INTO reward_history (customer_id, points, type, description) VALUES (?,50,'earn','Bonus parrainage')", (ref[1],))
+            except Exception:
+                pass
+            conn.commit()
+            flash(f"Client créé + 50 points offerts au parrain !", "success")
+    return redirect("/referrals")
+
+# ─── 7. Fleet / Company Accounts ───
+@app.route("/fleet_companies")
+@login_required
+def fleet_companies():
+    with get_db() as conn:
+        companies = conn.execute("SELECT * FROM fleet_companies ORDER BY name").fetchall()
+        # Count vehicles per company
+        vehicle_counts = {}
+        for row in conn.execute("SELECT company_id, COUNT(*) FROM fleet_vehicles GROUP BY company_id").fetchall():
+            vehicle_counts[row[0]] = row[1]
+    return render_template("fleet_companies.html", companies=companies, vehicle_counts=vehicle_counts)
+
+@app.route("/fleet_company/add", methods=["POST"])
+@login_required
+def fleet_company_add():
+    name = request.form.get("name", "").strip()
+    contact = request.form.get("contact_person", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    address = request.form.get("address", "").strip()
+    contract_start = request.form.get("contract_start", "")
+    contract_end = request.form.get("contract_end", "")
+    discount = request.form.get("discount_percent", 0, type=float)
+    payment_terms = request.form.get("payment_terms", "monthly")
+    notes = request.form.get("notes", "").strip()
+    if name:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO fleet_companies (name, contact_person, phone, email, address,
+                contract_start, contract_end, discount_percent, payment_terms, notes)
+                VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (name, contact, phone, email, address, contract_start, contract_end, discount, payment_terms, notes))
+            conn.commit()
+        flash("Entreprise ajoutée !", "success")
+    return redirect("/fleet_companies")
+
+@app.route("/fleet_company/<int:cid>")
+@login_required
+def fleet_company_detail(cid):
+    with get_db() as conn:
+        company = conn.execute("SELECT * FROM fleet_companies WHERE id=?", (cid,)).fetchone()
+        if not company:
+            flash("Entreprise non trouvée", "error")
+            return redirect("/fleet_companies")
+        vehicles = conn.execute("""SELECT fv.id, ca.id as car_id, ca.brand, ca.model, ca.plate, c.name as owner
+            FROM fleet_vehicles fv JOIN cars ca ON fv.car_id=ca.id
+            JOIN customers c ON ca.customer_id=c.id WHERE fv.company_id=?""", (cid,)).fetchall()
+        all_cars = conn.execute("SELECT ca.id, ca.brand, ca.model, ca.plate, c.name FROM cars ca JOIN customers c ON ca.customer_id=c.id ORDER BY c.name").fetchall()
+        # Invoice summary for company vehicles
+        car_ids = [v[1] for v in vehicles]
+        total_spent = 0
+        if car_ids:
+            placeholders = ','.join('?' * len(car_ids))
+            total_spent = conn.execute(f"""SELECT COALESCE(SUM(i.amount),0) FROM invoices i
+                JOIN appointments a ON i.appointment_id=a.id
+                WHERE a.car_id IN ({placeholders}) AND i.status='paid'""", car_ids).fetchone()[0]
+    return render_template("fleet_company_detail.html", company=company, vehicles=vehicles,
+                          all_cars=all_cars, total_spent=total_spent)
+
+@app.route("/fleet_vehicle/add/<int:cid>", methods=["POST"])
+@login_required
+def fleet_vehicle_add(cid):
+    car_id = request.form.get("car_id", type=int)
+    if car_id:
+        with get_db() as conn:
+            try:
+                conn.execute("INSERT INTO fleet_vehicles (company_id, car_id) VALUES (?,?)", (cid, car_id))
+                conn.commit()
+                flash("Véhicule ajouté à la flotte !", "success")
+            except Exception:
+                flash("Ce véhicule est déjà dans cette flotte", "error")
+    return redirect(f"/fleet_company/{cid}")
+
+@app.route("/fleet_vehicle/remove/<int:fvid>/<int:cid>")
+@login_required
+def fleet_vehicle_remove(fvid, cid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM fleet_vehicles WHERE id=?", (fvid,))
+        conn.commit()
+    flash("Véhicule retiré de la flotte", "success")
+    return redirect(f"/fleet_company/{cid}")
+
+# ─── 8. Vehicle History ───
+@app.route("/vehicle_history")
+@login_required
+def vehicle_history():
+    car_id = request.args.get("car_id", type=int)
+    with get_db() as conn:
+        cars = conn.execute("""SELECT ca.id, ca.brand, ca.model, ca.plate, c.name
+            FROM cars ca JOIN customers c ON ca.customer_id=c.id ORDER BY c.name""").fetchall()
+        history = []
+        car = None
+        if car_id:
+            car = conn.execute("""SELECT ca.*, c.name, c.phone FROM cars ca
+                JOIN customers c ON ca.customer_id=c.id WHERE ca.id=?""", (car_id,)).fetchone()
+            history = conn.execute("""SELECT a.id, a.date, a.time, a.service, a.status, a.assigned_to,
+                i.amount, i.status as inv_status
+                FROM appointments a LEFT JOIN invoices i ON i.appointment_id=a.id
+                WHERE a.car_id=? ORDER BY a.date DESC""", (car_id,)).fetchall()
+    return render_template("vehicle_history.html", cars=cars, history=history, car=car, car_id=car_id)
+
+# ─── 9. Staff Notes ───
+@app.route("/staff_notes")
+@login_required
+def staff_notes():
+    entity_type = request.args.get("type", "customer")
+    entity_id = request.args.get("id", type=int)
+    with get_db() as conn:
+        notes = []
+        entity_name = ""
+        if entity_type and entity_id:
+            notes = conn.execute("""SELECT * FROM staff_notes WHERE entity_type=? AND entity_id=?
+                ORDER BY created_at DESC""", (entity_type, entity_id)).fetchall()
+            if entity_type == 'customer':
+                row = conn.execute("SELECT name FROM customers WHERE id=?", (entity_id,)).fetchone()
+                entity_name = row[0] if row else ""
+            elif entity_type == 'car':
+                row = conn.execute("SELECT brand, model, plate FROM cars WHERE id=?", (entity_id,)).fetchone()
+                entity_name = f"{row[0]} {row[1]} ({row[2]})" if row else ""
+        recent = conn.execute("""SELECT sn.*, CASE sn.entity_type
+            WHEN 'customer' THEN (SELECT name FROM customers WHERE id=sn.entity_id)
+            WHEN 'car' THEN (SELECT brand||' '||model||' ('||plate||')' FROM cars WHERE id=sn.entity_id)
+            ELSE '' END as entity_name
+            FROM staff_notes sn ORDER BY sn.created_at DESC LIMIT 50""").fetchall()
+    return render_template("staff_notes.html", notes=notes, recent=recent,
+                          entity_type=entity_type, entity_id=entity_id, entity_name=entity_name)
+
+@app.route("/staff_note/add", methods=["POST"])
+@login_required
+def staff_note_add():
+    entity_type = request.form.get("entity_type", "customer")
+    entity_id = request.form.get("entity_id", type=int)
+    note = request.form.get("note", "").strip()
+    priority = request.form.get("priority", "normal")
+    if entity_id and note:
+        with get_db() as conn:
+            conn.execute("INSERT INTO staff_notes (entity_type, entity_id, user_id, username, note, priority) VALUES (?,?,?,?,?,?)",
+                        (entity_type, entity_id, session.get('user_id', 0),
+                         session.get('username', ''), note, priority))
+            conn.commit()
+        flash("Note ajoutée !", "success")
+    return redirect(f"/staff_notes?type={entity_type}&id={entity_id}")
+
+@app.route("/staff_note/delete/<int:nid>")
+@login_required
+def staff_note_delete(nid):
+    with get_db() as conn:
+        note = conn.execute("SELECT entity_type, entity_id FROM staff_notes WHERE id=?", (nid,)).fetchone()
+        conn.execute("DELETE FROM staff_notes WHERE id=?", (nid,))
+        conn.commit()
+    if note:
+        return redirect(f"/staff_notes?type={note[0]}&id={note[1]}")
+    return redirect("/staff_notes")
+
+# ─── 10. Custom Widget Dashboard ───
+AVAILABLE_WIDGETS = [
+    {'type': 'today_revenue', 'name': "CA Aujourd'hui", 'icon': '💰'},
+    {'type': 'today_appointments', 'name': "RDV Aujourd'hui", 'icon': '📅'},
+    {'type': 'pending_invoices', 'name': 'Factures impayées', 'icon': '📄'},
+    {'type': 'low_stock', 'name': 'Stock bas', 'icon': '📦'},
+    {'type': 'queue_count', 'name': "File d'attente", 'icon': '⏳'},
+    {'type': 'monthly_chart', 'name': 'Graphique mensuel', 'icon': '📈'},
+    {'type': 'top_services', 'name': 'Top services', 'icon': '🏆'},
+    {'type': 'recent_customers', 'name': 'Derniers clients', 'icon': '👥'},
+    {'type': 'alerts', 'name': 'Alertes', 'icon': '🔔'},
+    {'type': 'crm_pending', 'name': 'Suivis CRM', 'icon': '🔄'},
+]
+
+@app.route("/custom_dashboard")
+@login_required
+def custom_dashboard():
+    from datetime import date, timedelta
+    uid = session.get('user_id', 0)
+    with get_db() as conn:
+        widgets = conn.execute("SELECT * FROM dashboard_widgets WHERE user_id=? AND visible=1 ORDER BY position",
+                              (uid,)).fetchall()
+        if not widgets:
+            # Auto-create default widgets
+            for i, w in enumerate(AVAILABLE_WIDGETS[:6]):
+                conn.execute("INSERT INTO dashboard_widgets (user_id, widget_type, position, visible) VALUES (?,?,?,1)",
+                            (uid, w['type'], i))
+            conn.commit()
+            widgets = conn.execute("SELECT * FROM dashboard_widgets WHERE user_id=? AND visible=1 ORDER BY position",
+                                  (uid,)).fetchall()
+        # Build widget data
+        today = date.today().isoformat()
+        data = {}
+        for w in widgets:
+            wtype = w[2]
+            if wtype == 'today_revenue':
+                val = conn.execute("SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date=?", (today,)).fetchone()[0]
+                data[wtype] = f"{val:.0f} DT"
+            elif wtype == 'today_appointments':
+                val = conn.execute("SELECT COUNT(*) FROM appointments WHERE date=?", (today,)).fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'pending_invoices':
+                val = conn.execute("SELECT COUNT(*) FROM invoices WHERE status IN ('unpaid','partial')").fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'low_stock':
+                val = conn.execute("SELECT COUNT(*) FROM inventory WHERE quantity <= min_quantity").fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'queue_count':
+                val = conn.execute("SELECT COUNT(*) FROM waiting_queue WHERE status='waiting'").fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'top_services':
+                rows = conn.execute("SELECT service, COUNT(*) as cnt FROM appointments GROUP BY service ORDER BY cnt DESC LIMIT 5").fetchall()
+                data[wtype] = rows
+            elif wtype == 'recent_customers':
+                rows = conn.execute("SELECT name, phone FROM customers ORDER BY id DESC LIMIT 5").fetchall()
+                data[wtype] = rows
+            elif wtype == 'alerts':
+                val = conn.execute("SELECT COUNT(*) FROM smart_alerts WHERE is_read=0").fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'crm_pending':
+                val = conn.execute("SELECT COUNT(*) FROM crm_followups WHERE status='pending'").fetchone()[0]
+                data[wtype] = str(val)
+            elif wtype == 'monthly_chart':
+                rows = conn.execute("""SELECT strftime('%Y-%m', a.date) as m, SUM(i.amount)
+                    FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+                    WHERE a.date >= date('now', '-6 months')
+                    GROUP BY m ORDER BY m""").fetchall()
+                data[wtype] = rows
+    return render_template("custom_dashboard.html", widgets=widgets, data=data,
+                          available=AVAILABLE_WIDGETS)
+
+@app.route("/custom_dashboard/toggle", methods=["POST"])
+@login_required
+def custom_dashboard_toggle():
+    uid = session.get('user_id', 0)
+    wtype = request.form.get("widget_type", "")
+    action = request.form.get("action", "add")
+    with get_db() as conn:
+        if action == 'add':
+            pos = conn.execute("SELECT COALESCE(MAX(position),0)+1 FROM dashboard_widgets WHERE user_id=?", (uid,)).fetchone()[0]
+            conn.execute("INSERT INTO dashboard_widgets (user_id, widget_type, position, visible) VALUES (?,?,?,1)",
+                        (uid, wtype, pos))
+        elif action == 'remove':
+            conn.execute("DELETE FROM dashboard_widgets WHERE user_id=? AND widget_type=?", (uid, wtype))
+        conn.commit()
+    return redirect("/custom_dashboard")
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

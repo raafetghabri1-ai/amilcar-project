@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %} — {{ company[1] }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 style="color:var(--gold)">🏢 {{ company[1] }}</h2>
+        <p style="color:var(--text-secondary);margin:0">{{ company[2] }} — {{ company[3] }} — {{ company[4] }}</p>
+    </div>
+    <a href="/fleet_companies" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:6px 14px;text-decoration:none">← Retour</a>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Véhicules</small>
+            <h3 style="color:var(--gold)">{{ vehicles|length }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Total facturé</small>
+            <h3 style="color:var(--green-light)">{{ "%.0f"|format(total_spent) }} DT</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Remise</small>
+            <h3 style="color:var(--blue)">{{ company[8] }}%</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center">
+            <small style="color:var(--text-muted)">Paiement</small>
+            <h3 style="color:var(--text-primary);font-size:1.2rem">{{ company[9] }}</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Add Vehicle -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Ajouter Véhicule</h5>
+            <form method="POST" action="/fleet_vehicle/add/{{ company[0] }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="car_id" class="form-select form-select-sm mb-3" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">-- Choisir véhicule --</option>
+                    {% for c in all_cars %}<option value="{{ c[0] }}">{{ c[1] }} {{ c[2] }} ({{ c[3] }}) — {{ c[4] }}</option>{% endfor %}
+                </select>
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter à la flotte</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vehicles List -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">🚗 Véhicules de la flotte</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary)">
+                    <thead><tr><th>Marque</th><th>Modèle</th><th>Plaque</th><th>Propriétaire</th><th></th></tr></thead>
+                    <tbody>
+                    {% for v in vehicles %}
+                    <tr>
+                        <td>{{ v[2] }}</td>
+                        <td>{{ v[3] }}</td>
+                        <td style="font-weight:600;color:var(--gold)">{{ v[4] }}</td>
+                        <td>{{ v[5] }}</td>
+                        <td>
+                            <a href="/vehicle_history?car_id={{ v[1] }}" style="color:var(--blue);font-size:.75rem;margin-right:8px" title="Historique">📋</a>
+                            <a href="/fleet_vehicle/remove/{{ v[0] }}/{{ company[0] }}" style="color:var(--red);font-size:.75rem" title="Retirer">✕</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not vehicles %}<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Aucun véhicule</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contract Info -->
+<div class="card mt-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📝 Détails du contrat</h5>
+    <div class="row">
+        <div class="col-md-3"><strong style="color:var(--text-muted)">Début :</strong> <span>{{ company[6] or 'N/A' }}</span></div>
+        <div class="col-md-3"><strong style="color:var(--text-muted)">Fin :</strong> <span>{{ company[7] or 'N/A' }}</span></div>
+        <div class="col-md-3"><strong style="color:var(--text-muted)">Email :</strong> <span>{{ company[4] or 'N/A' }}</span></div>
+        <div class="col-md-3"><strong style="color:var(--text-muted)">Adresse :</strong> <span>{{ company[5] or 'N/A' }}</span></div>
+    </div>
+    {% if company[10] %}<p style="color:var(--text-secondary);margin-top:10px"><strong style="color:var(--text-muted)">Notes :</strong> {{ company[10] }}</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %} — Planning Équipe{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">👷 Planning Équipe</h2>
+    <div class="d-flex gap-2">
+        <a href="/employee_shifts?week={{ week_offset - 1 }}" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:6px 14px">◀ Semaine préc.</a>
+        <a href="/employee_shifts?week=0" class="btn btn-sm" style="background:var(--gold);color:#000;border-radius:6px;padding:6px 14px;font-weight:600">Aujourd'hui</a>
+        <a href="/employee_shifts?week={{ week_offset + 1 }}" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:6px 14px">Semaine suiv. ▶</a>
+    </div>
+</div>
+
+<p style="color:var(--text-secondary);margin-bottom:20px">📅 {{ start.strftime('%d/%m/%Y') }} — {{ end.strftime('%d/%m/%Y') }}</p>
+
+<!-- Weekly Grid -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;overflow-x:auto">
+    <table class="table table-sm" style="color:var(--text-primary)">
+        <thead>
+            <tr>
+                <th style="min-width:100px">Employé</th>
+                {% for day in days %}
+                <th style="text-align:center;min-width:90px;{% if day.isoformat() == today %}color:var(--gold);font-weight:700{% endif %}">
+                    {{ ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'][day.weekday()] }}<br>
+                    <small>{{ day.strftime('%d/%m') }}</small>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+            <td style="font-weight:600">{{ u[2] or u[1] }}</td>
+            {% for day in days %}
+            <td style="text-align:center;font-size:.7rem">
+                {% set found = false %}
+                {% for s in shifts %}
+                {% if s[1] == u[0] and s[3] == day.isoformat() %}
+                <div style="background:{% if s[6]=='morning' %}rgba(45,106,79,.3){% elif s[6]=='evening' %}rgba(27,107,147,.3){% else %}rgba(212,175,55,.15){% endif %};padding:3px 6px;border-radius:4px;margin:1px 0">
+                    {{ s[4] }}-{{ s[5] }}
+                    <a href="/employee_shifts/delete/{{ s[0] }}" style="color:var(--red);font-size:.6rem;margin-left:4px" title="Supprimer">✕</a>
+                </div>
+                {% set found = true %}
+                {% endif %}
+                {% endfor %}
+                {% for l in leaves %}
+                {% if l[1] == u[0] and l[4] <= day.isoformat() and l[5] >= day.isoformat() %}
+                <div style="background:rgba(196,30,58,.2);padding:3px 6px;border-radius:4px;font-size:.65rem">
+                    🏖️ {{ l[3] }}
+                    {% if l[6] == 'pending' %}<span style="color:var(--gold)">⏳</span>{% endif %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="row g-4">
+    <!-- Add Shift -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Ajouter Shift</h5>
+            <form method="POST" action="/employee_shifts/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select name="user_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                            <option value="">Employé</option>
+                            {% for u in users %}<option value="{{ u[0] }}">{{ u[2] or u[1] }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <input type="date" name="shift_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    </div>
+                    <div class="col-4">
+                        <input type="time" name="start_time" value="08:00" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    </div>
+                    <div class="col-4">
+                        <input type="time" name="end_time" value="17:00" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    </div>
+                    <div class="col-4">
+                        <select name="shift_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                            <option value="normal">Normal</option>
+                            <option value="morning">Matin</option>
+                            <option value="evening">Soir</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Leave -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">🏖️ Demande de Congé</h5>
+            <form method="POST" action="/employee_leave/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <select name="user_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                            <option value="">Employé</option>
+                            {% for u in users %}<option value="{{ u[0] }}">{{ u[2] or u[1] }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select name="leave_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                            <option value="annual">Annuel</option>
+                            <option value="sick">Maladie</option>
+                            <option value="personal">Personnel</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label style="color:var(--text-muted);font-size:.65rem">Du</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    </div>
+                    <div class="col-6">
+                        <label style="color:var(--text-muted);font-size:.65rem">Au</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    </div>
+                    <div class="col-12">
+                        <input type="text" name="reason" placeholder="Raison" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    </div>
+                    <div class="col-12">
+                        <button class="btn w-100" style="background:var(--blue);color:#fff;font-weight:600;border-radius:6px" type="submit">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Leaves -->
+{% set pending_leaves = leaves|selectattr(6, 'equalto', 'pending')|list %}
+{% if pending_leaves %}
+<div class="card mt-4" style="background:var(--bg-card);border:1px solid rgba(212,175,55,.3);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">⏳ Congés en attente d'approbation</h5>
+    <table class="table table-sm" style="color:var(--text-primary)">
+        <thead><tr><th>Employé</th><th>Type</th><th>Du</th><th>Au</th><th>Raison</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for l in leaves %}
+        {% if l[6] == 'pending' %}
+        <tr>
+            <td>{{ l[2] }}</td>
+            <td>{{ l[3] }}</td>
+            <td>{{ l[4] }}</td>
+            <td>{{ l[5] }}</td>
+            <td>{{ l[7] }}</td>
+            <td>
+                <a href="/employee_leave/approve/{{ l[0] }}/approved" style="color:var(--green-light);font-size:.8rem;margin-right:8px">✅</a>
+                <a href="/employee_leave/approve/{{ l[0] }}/rejected" style="color:var(--red);font-size:.8rem">❌</a>
+            </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
