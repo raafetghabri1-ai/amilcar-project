@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %} - Paramètres SMS{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📱 Paramètres SMS</h3>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-5">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">⚙️ Configuration API SMS</h6>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Fournisseur SMS</label>
+                    <select name="sms_provider" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                        <option value="twilio" {{ 'selected' if settings.get('sms_provider')=='twilio' }}>Twilio</option>
+                        <option value="vonage" {{ 'selected' if settings.get('sms_provider')=='vonage' }}>Vonage (Nexmo)</option>
+                        <option value="infobip" {{ 'selected' if settings.get('sms_provider')=='infobip' }}>Infobip</option>
+                        <option value="orange" {{ 'selected' if settings.get('sms_provider')=='orange' }}>Orange SMS API</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">Clé API</label>
+                    <input type="text" name="sms_api_key" class="form-control form-control-sm" value="{{ settings.get('sms_api_key','') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size:0.75rem;color:#888">ID Expéditeur</label>
+                    <input type="text" name="sms_sender_id" class="form-control form-control-sm" value="{{ settings.get('sms_sender_id','AMILCAR') }}" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                </div>
+                <button class="btn btn-gold btn-sm w-100">💾 Enregistrer</button>
+            </form>
+            <hr style="border-color:#333">
+            <h6 style="color:#888;font-size:0.8rem;margin-bottom:10px">📨 Rappels Automatiques</h6>
+            <form method="POST" action="/sms_reminder_batch">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <p style="color:#666;font-size:0.75rem">Envoyer un rappel SMS à tous les clients avec un RDV demain</p>
+                <button class="btn btn-sm btn-outline-warning w-100">📨 Envoyer rappels demain</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">💡 Guide de Configuration</h6>
+            <div style="color:#888;font-size:0.8rem;line-height:1.8">
+                <p><strong style="color:#D4AF37">Twilio:</strong> Créez un compte sur twilio.com, récupérez SID + Auth Token</p>
+                <p><strong style="color:#D4AF37">Vonage:</strong> S'inscrire sur vonage.com, API Key + Secret</p>
+                <p><strong style="color:#D4AF37">Orange:</strong> Developer.orange.com, créez une application SMS</p>
+                <hr style="border-color:#333">
+                <p style="color:#666">Les SMS sont actuellement simulés et enregistrés dans le journal de communication. Pour activer l'envoi réel, configurez les paramètres API ci-contre.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

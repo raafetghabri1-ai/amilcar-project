@@ -59,9 +59,21 @@
                 <a class="nav-link nav-admin" href="/mileage_tracking">🔧 KM</a>
                 <a class="nav-link nav-admin" href="/suppliers">🏭 FOURNIS.</a>
                 <a class="nav-link nav-admin" href="/manage_roles">🔐 RÔLES</a>
+                <a class="nav-link nav-admin" href="/ceo_dashboard">📊 CEO</a>
+                <a class="nav-link nav-admin" href="/email_settings">📧 EMAIL</a>
+                <a class="nav-link nav-admin" href="/sms_settings">📱 SMS</a>
+                <a class="nav-link nav-admin" href="/maintenance_plans">🔄 PLANS</a>
+                <a class="nav-link nav-admin" href="/surveys">📋 ENQUÊTES</a>
+                <a class="nav-link nav-admin" href="/bookings_admin">🌐 RÉSERV.</a>
                 {% endif %}
+                <a class="nav-link" href="/quotes_advanced">📋 DEVIS+</a>
                 <a class="nav-link" href="/queue">⏳ FILE</a>
                 <a class="nav-link" href="/mobile">📱 MOBILE</a>
+                <!-- Language Switcher -->
+                <div class="d-flex gap-1 align-items-center ms-2">
+                    <a href="/set_language/fr" class="nav-link" style="padding:2px 5px;font-size:0.65rem;{{ 'color:#D4AF37' if current_lang=='fr' else 'color:#666' }}">FR</a>
+                    <a href="/set_language/ar" class="nav-link" style="padding:2px 5px;font-size:0.65rem;{{ 'color:#D4AF37' if current_lang=='ar' else 'color:#666' }}">ع</a>
+                </div>
             </div>
             <div class="navbar-util">
                 <div class="nav-search-wrap">

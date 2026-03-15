@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %} - Devis Avancés{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📋 Gestion des Devis</h3>
+    <a href="/request_quote" class="btn btn-gold btn-sm">+ Nouveau Devis</a>
+</div>
+
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr><th>#</th><th>Client</th><th>Téléphone</th><th>Service</th><th>Prix</th><th>Validité</th><th>Statut</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            {% for q in quotes %}
+            <tr>
+                <td style="color:#D4AF37;font-weight:700">{{ q[0] }}</td>
+                <td><strong>{{ q[1] }}</strong></td>
+                <td style="color:#888;font-size:0.8rem">{{ q[2] }}</td>
+                <td>{{ q[3] or '-' }}</td>
+                <td style="font-weight:600">{{ "%.2f"|format(q[6] or 0) }} DH</td>
+                <td style="color:#888;font-size:0.75rem">
+                    {% if q|length > 9 and q[9] %}{{ q[9] }}{% else %}-{% endif %}
+                </td>
+                <td>
+                    {% set ds = q[-1] if q|length > 10 else q[5] %}
+                    {% if ds == 'Convertie' %}<span class="badge bg-success" style="font-size:0.6rem">✅ Convertie</span>
+                    {% elif ds == 'Accepté' or ds == 'accepted' %}<span class="badge bg-primary" style="font-size:0.6rem">✓ Accepté</span>
+                    {% elif ds == 'Refusé' or ds == 'rejected' %}<span class="badge bg-danger" style="font-size:0.6rem">✗ Refusé</span>
+                    {% elif ds == 'Expiré' or ds == 'expired' %}<span class="badge bg-secondary" style="font-size:0.6rem">⏰ Expiré</span>
+                    {% else %}<span class="badge bg-warning text-dark" style="font-size:0.6rem">⏳ En attente</span>{% endif %}
+                </td>
+                <td>
+                    <div class="d-flex gap-1 flex-wrap">
+                        {% set status = q[-1] if q|length > 10 else q[5] %}
+                        {% if status != 'Convertie' and q[5] != 'accepted' %}
+                        <form method="POST" action="/quote_to_invoice/{{ q[0] }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px" title="Convertir en facture">📄→💰</button>
+                        </form>
+                        {% endif %}
+                        {% if q[5] == 'pending' %}
+                        <form method="POST" action="/quote_status/{{ q[0] }}/accepted" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-outline-primary" style="font-size:0.55rem;padding:2px 5px">✓</button>
+                        </form>
+                        <form method="POST" action="/quote_status/{{ q[0] }}/rejected" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">✗</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not quotes %}<tr><td colspan="8" style="text-align:center;color:#666">Aucun devis</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

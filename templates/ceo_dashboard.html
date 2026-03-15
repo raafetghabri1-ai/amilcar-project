@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %} - Tableau de Bord CEO{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">📊 Tableau de Bord CEO</h3>
+    <span style="color:#888;font-size:0.75rem">Mise à jour: {{ now }}</span>
+</div>
+
+<!-- KPI Cards Row 1 -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">REVENU CE MOIS</p>
+            <h3 style="color:#2d6a4f;margin:5px 0">{{ "%.0f"|format(rev_month) }} <small style="font-size:0.5em">DH</small></h3>
+            {% set change = ((rev_month - rev_last) / rev_last * 100) if rev_last > 0 else 0 %}
+            <span style="color:{{ '#2d6a4f' if change >= 0 else '#dc3545' }};font-size:0.7rem">
+                {{ '↑' if change >= 0 else '↓' }} {{ "%.1f"|format(change|abs) }}% vs mois dernier
+            </span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">DÉPENSES CE MOIS</p>
+            <h3 style="color:#dc3545;margin:5px 0">{{ "%.0f"|format(exp_month) }} <small style="font-size:0.5em">DH</small></h3>
+            {% set exp_change = ((exp_month - exp_last) / exp_last * 100) if exp_last > 0 else 0 %}
+            <span style="color:{{ '#dc3545' if exp_change > 0 else '#2d6a4f' }};font-size:0.7rem">
+                {{ '↑' if exp_change >= 0 else '↓' }} {{ "%.1f"|format(exp_change|abs) }}%
+            </span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">BÉNÉFICE NET</p>
+            <h3 style="color:{{ '#D4AF37' if profit_month >= 0 else '#dc3545' }};margin:5px 0">{{ "%.0f"|format(profit_month) }} <small style="font-size:0.5em">DH</small></h3>
+            <span style="color:#888;font-size:0.7rem">Marge: {{ "%.0f"|format((profit_month/rev_month*100) if rev_month > 0 else 0) }}%</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">REVENU ANNUEL</p>
+            <h3 style="color:#D4AF37;margin:5px 0">{{ "%.0f"|format(rev_year) }} <small style="font-size:0.5em">DH</small></h3>
+            <span style="color:#888;font-size:0.7rem">{{ appts_month }} RDV ce mois</span>
+        </div>
+    </div>
+</div>
+
+<!-- KPI Cards Row 2 -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">CLIENTS TOTAL</p>
+            <h3 style="color:#D4AF37;margin:5px 0">{{ total_clients }}</h3>
+            <span style="color:#2d6a4f;font-size:0.7rem">+{{ new_clients }} nouveau{{ 'x' if new_clients > 1 }} ce mois</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">NOTE MOYENNE</p>
+            <h3 style="color:#D4AF37;margin:5px 0">{{ avg_rating }} ⭐</h3>
+            <span style="color:#888;font-size:0.7rem">sur 5.0</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">IMPAYÉS</p>
+            <h3 style="color:#dc3545;margin:5px 0">{{ "%.0f"|format(unpaid_total) }} <small style="font-size:0.5em">DH</small></h3>
+            <span style="color:#888;font-size:0.7rem">{{ unpaid_count }} facture{{ 's' if unpaid_count > 1 }}</span>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card p-3 text-center">
+            <p style="color:#888;font-size:0.6rem;letter-spacing:2px;margin:0">RDV CE MOIS</p>
+            <h3 style="color:#D4AF37;margin:5px 0">{{ appts_month }}</h3>
+            <span style="color:#888;font-size:0.7rem">rendez-vous</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📈 Évolution Mensuelle (12 mois)</h6>
+            <canvas id="revenueChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">🏆 Top Services</h6>
+            <canvas id="servicesChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Top Customers -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">💰 Meilleurs Clients</h6>
+            <table class="table table-dark table-sm">
+                <thead><tr><th>#</th><th>Client</th><th>Total Dépensé</th></tr></thead>
+                <tbody>
+                {% for c in top_customers %}
+                <tr>
+                    <td style="color:#D4AF37">{{ loop.index }}</td>
+                    <td>{{ c[0] }}</td>
+                    <td><strong style="color:#2d6a4f">{{ "%.0f"|format(c[1]) }} DH</strong></td>
+                </tr>
+                {% endfor %}
+                {% if not top_customers %}<tr><td colspan="3" style="text-align:center;color:#666">Aucune donnée</td></tr>{% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h6 style="color:#D4AF37;margin-bottom:15px">📊 Résumé Financier</h6>
+            <table class="table table-dark table-sm">
+                <tbody>
+                    <tr><td style="color:#888">Revenu ce mois</td><td style="text-align:right;color:#2d6a4f;font-weight:700">{{ "%.0f"|format(rev_month) }} DH</td></tr>
+                    <tr><td style="color:#888">Dépenses ce mois</td><td style="text-align:right;color:#dc3545;font-weight:700">{{ "%.0f"|format(exp_month) }} DH</td></tr>
+                    <tr><td style="color:#888">Bénéfice net</td><td style="text-align:right;color:#D4AF37;font-weight:700">{{ "%.0f"|format(profit_month) }} DH</td></tr>
+                    <tr><td style="color:#888">Mois précédent</td><td style="text-align:right;font-weight:700">{{ "%.0f"|format(rev_last) }} DH</td></tr>
+                    <tr><td style="color:#888">Impayés total</td><td style="text-align:right;color:#dc3545;font-weight:700">{{ "%.0f"|format(unpaid_total) }} DH</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<script>
+const monthlyData = {{ monthly_data|tojson }};
+new Chart(document.getElementById('revenueChart'), {
+    type: 'line',
+    data: {
+        labels: monthlyData.map(d => d.month),
+        datasets: [
+            {label:'Revenu', data:monthlyData.map(d=>d.revenue), borderColor:'#2d6a4f', backgroundColor:'rgba(45,106,79,0.1)', fill:true, tension:0.3},
+            {label:'Dépenses', data:monthlyData.map(d=>d.expenses), borderColor:'#dc3545', backgroundColor:'rgba(220,53,69,0.1)', fill:true, tension:0.3},
+            {label:'Bénéfice', data:monthlyData.map(d=>d.profit), borderColor:'#D4AF37', backgroundColor:'rgba(212,175,55,0.1)', fill:true, tension:0.3}
+        ]
+    },
+    options:{plugins:{legend:{labels:{color:'#ccc'}}},scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888',callback:v=>v+'DH'}}}}
+});
+
+const topServices = {{ top_services|tojson }};
+new Chart(document.getElementById('servicesChart'), {
+    type: 'doughnut',
+    data: {
+        labels: topServices.map(s => s[0]),
+        datasets: [{data: topServices.map(s => s[1]), backgroundColor:['#D4AF37','#2d6a4f','#dc3545','#0d6efd','#6f42c1']}]
+    },
+    options:{plugins:{legend:{position:'bottom',labels:{color:'#ccc',font:{size:10}}}}}
+});
+</script>
+{% endblock %}

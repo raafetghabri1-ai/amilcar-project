@@ -308,6 +308,99 @@ def create_tables():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            method TEXT DEFAULT 'cash',
+            reference TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS surveys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            q_quality INTEGER DEFAULT 0,
+            q_speed INTEGER DEFAULT 0,
+            q_reception INTEGER DEFAULT 0,
+            q_cleanliness INTEGER DEFAULT 0,
+            q_value INTEGER DEFAULT 0,
+            comment TEXT DEFAULT '',
+            submitted INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            submitted_at TEXT DEFAULT '',
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id),
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS car_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            car_id INTEGER NOT NULL,
+            appointment_id INTEGER,
+            photo_type TEXT DEFAULT 'before',
+            filename TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS online_bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT DEFAULT '',
+            car_brand TEXT DEFAULT '',
+            car_model TEXT DEFAULT '',
+            car_plate TEXT DEFAULT '',
+            service TEXT NOT NULL,
+            preferred_date TEXT NOT NULL,
+            preferred_time TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS maintenance_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            car_id INTEGER NOT NULL,
+            service_type TEXT NOT NULL,
+            interval_km INTEGER DEFAULT 0,
+            interval_months INTEGER DEFAULT 0,
+            last_done_date TEXT DEFAULT '',
+            last_done_km INTEGER DEFAULT 0,
+            next_due_date TEXT DEFAULT '',
+            next_due_km INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS email_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER,
+            to_email TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT DEFAULT '',
+            status TEXT DEFAULT 'sent',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -333,6 +426,14 @@ def create_tables():
         ("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT ''", None),
         ("ALTER TABLE invoices ADD COLUMN coupon_id INTEGER DEFAULT 0", None),
         ("ALTER TABLE customers ADD COLUMN password_hash TEXT DEFAULT ''", None),
+        ("ALTER TABLE invoices ADD COLUMN total_paid REAL DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN remaining REAL DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN installments INTEGER DEFAULT 0", None),
+        ("ALTER TABLE quotes ADD COLUMN converted_invoice_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE quotes ADD COLUMN valid_until TEXT DEFAULT ''", None),
+        ("ALTER TABLE quotes ADD COLUMN items TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN preferred_lang TEXT DEFAULT 'fr'", None),
+        ("ALTER TABLE settings ADD COLUMN value2 TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -358,6 +459,11 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)",
         "CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier ON purchase_orders(supplier_id)",
         "CREATE INDEX IF NOT EXISTS idx_waiting_queue_status ON waiting_queue(status)",
+        "CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id)",
+        "CREATE INDEX IF NOT EXISTS idx_surveys_token ON surveys(token)",
+        "CREATE INDEX IF NOT EXISTS idx_car_photos_car ON car_photos(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_online_bookings_status ON online_bookings(status)",
+        "CREATE INDEX IF NOT EXISTS idx_maintenance_plans_car ON maintenance_plans(car_id)",
     ]
     for idx in indexes:
         try:

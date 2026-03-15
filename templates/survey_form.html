@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Enquête de Satisfaction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#333;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+        .survey-card{background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.08);padding:40px;max-width:500px;width:100%}
+        .brand{font-family:'Playfair Display',serif;color:#B8860B;font-size:1.6rem;text-align:center;margin-bottom:5px}
+        .subtitle{text-align:center;color:#888;font-size:0.85rem;margin-bottom:25px}
+        .question{margin-bottom:20px}
+        .question label{font-weight:600;color:#555;font-size:0.9rem;margin-bottom:8px;display:block}
+        .stars{display:flex;gap:8px;justify-content:center}
+        .stars input{display:none}
+        .stars label{font-size:2rem;cursor:pointer;color:#ddd;transition:color 0.2s}
+        .stars input:checked ~ label,.stars label:hover,.stars label:hover ~ label{color:#ddd}
+        .stars input:checked + label,.stars :checked ~ label{color:#D4AF37!important}
+        .star-group{display:flex;flex-direction:row-reverse;justify-content:center;gap:4px}
+        .star-group input{display:none}
+        .star-group label{font-size:1.8rem;cursor:pointer;color:#ddd;transition:color 0.2s}
+        .star-group label:hover,.star-group label:hover ~ label,.star-group input:checked ~ label{color:#D4AF37}
+        .btn-gold{background:linear-gradient(135deg,#D4AF37,#B8860B);border:none;color:#fff;font-weight:600;padding:12px;border-radius:10px;width:100%;font-size:1rem}
+        .btn-gold:hover{color:#fff;transform:translateY(-2px)}
+        textarea{border:2px solid #eee;border-radius:10px;padding:12px;font-size:0.9rem}
+        textarea:focus{border-color:#D4AF37;box-shadow:0 0 0 3px rgba(212,175,55,0.15);outline:none}
+    </style>
+</head>
+<body>
+    <div class="survey-card">
+        <div class="brand">AMILCAR</div>
+        <div class="subtitle">Enquête de Satisfaction — {{ survey[14] }}</div>
+        <p style="text-align:center;color:#888;font-size:0.8rem;margin-bottom:25px">
+            Service: <strong>{{ survey[15] }}</strong>
+        </p>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            {% set questions = [
+                ('q_quality', '⭐ Qualité du service'),
+                ('q_speed', '⚡ Rapidité'),
+                ('q_reception', '🤝 Accueil'),
+                ('q_cleanliness', '✨ Propreté'),
+                ('q_value', '💰 Rapport qualité/prix')
+            ] %}
+
+            {% for name, label in questions %}
+            <div class="question">
+                <label>{{ label }}</label>
+                <div class="star-group">
+                    {% for i in range(5, 0, -1) %}
+                    <input type="radio" name="{{ name }}" value="{{ i }}" id="{{ name }}_{{ i }}" {{ 'checked' if i == 3 }}>
+                    <label for="{{ name }}_{{ i }}">★</label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="question">
+                <label>💬 Commentaire (optionnel)</label>
+                <textarea name="comment" class="form-control" rows="3" placeholder="Votre avis nous aide à nous améliorer..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-gold">Envoyer mon avis</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %} - Plans de Maintenance{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="page-title mb-0">🔄 Plans de Maintenance Périodique</h3>
+    {% if alerts %}<span class="badge bg-danger">{{ alerts|length }} en retard</span>{% endif %}
+</div>
+
+<!-- Alerts -->
+{% if alerts %}
+<div class="card p-3 mb-4" style="border-left:4px solid #dc3545">
+    <h6 style="color:#dc3545;margin-bottom:10px">⚠️ Maintenances en Retard</h6>
+    {% for a in alerts %}
+    <div class="d-flex justify-content-between align-items-center py-1" style="border-bottom:1px solid #222">
+        <div>
+            <strong>{{ a[11] }}</strong> — {{ a[12] }} {{ a[13] }} ({{ a[14] }})
+            <span style="color:#888;font-size:0.75rem">• {{ a[2] }}</span>
+        </div>
+        <div>
+            <span class="badge bg-danger" style="font-size:0.65rem">Échéance: {{ a[8] }}</span>
+            <form method="POST" action="/maintenance_plans/done/{{ a[0] }}" class="d-inline ms-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 6px">✅ Fait</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Add Plan -->
+<div class="card p-3 mb-4">
+    <h6 style="color:#D4AF37;margin-bottom:15px">➕ Nouveau Plan de Maintenance</h6>
+    <form method="POST" action="/maintenance_plans/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="car_id" class="form-select form-select-sm" required style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="">-- Véhicule --</option>
+                    {% for c in cars %}<option value="{{ c[0] }}">{{ c[1] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="service_type" class="form-select form-select-sm" style="background:#1a1a1a;color:#ccc;border-color:#333">
+                    <option value="Vidange">Vidange</option>
+                    <option value="Filtre huile">Filtre huile</option>
+                    <option value="Filtre air">Filtre air</option>
+                    <option value="Plaquettes frein">Plaquettes frein</option>
+                    <option value="Courroie">Courroie</option>
+                    <option value="Pneus">Pneus</option>
+                    <option value="Climatisation">Climatisation</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="interval_km" class="form-control form-control-sm" placeholder="KM" value="10000" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Intervalle KM">
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="interval_months" class="form-control form-control-sm" placeholder="Mois" value="6" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Intervalle mois">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="last_done_date" class="form-control form-control-sm" style="background:#1a1a1a;color:#ccc;border-color:#333" title="Dernière maintenance">
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="last_done_km" class="form-control form-control-sm" placeholder="KM" style="background:#1a1a1a;color:#ccc;border-color:#333" title="KM dernière maintenance">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-sm btn-gold w-100">+ Ajouter</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Plans List -->
+<div class="card p-3">
+    <h6 style="color:#D4AF37;margin-bottom:15px">📋 Plans Actifs ({{ plans|length }})</h6>
+    <div class="table-responsive">
+        <table class="table table-dark table-sm table-hover">
+            <thead>
+                <tr><th>Client</th><th>Véhicule</th><th>Service</th><th>Intervalle</th><th>Dernier</th><th>Prochain</th><th>KM Actuel</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            {% for p in plans %}
+            <tr>
+                <td><strong>{{ p[11] }}</strong></td>
+                <td style="font-size:0.8rem">{{ p[12] }} {{ p[13] }} <span style="color:#888">({{ p[14] }})</span></td>
+                <td style="color:#D4AF37">{{ p[2] }}</td>
+                <td style="font-size:0.75rem;color:#888">
+                    {% if p[3] > 0 %}{{ p[3] }} km{% endif %}
+                    {% if p[3] > 0 and p[4] > 0 %} / {% endif %}
+                    {% if p[4] > 0 %}{{ p[4] }} mois{% endif %}
+                </td>
+                <td style="font-size:0.75rem">{{ p[5] or '-' }}<br><span style="color:#888">{{ p[6] }} km</span></td>
+                <td style="font-size:0.75rem">
+                    <span style="color:{{ '#dc3545' if p[8] and p[8] <= now_date else '#2d6a4f' }}">{{ p[8] or '-' }}</span>
+                    {% if p[9] > 0 %}<br><span style="color:#888">{{ p[9] }} km</span>{% endif %}
+                </td>
+                <td style="color:#D4AF37;font-weight:600">{{ p[15] }} km</td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <form method="POST" action="/maintenance_plans/done/{{ p[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px" title="Marquer fait">✅</button></form>
+                        <form method="POST" action="/maintenance_plans/delete/{{ p[0] }}" onsubmit="return confirm('Supprimer ce plan ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">🗑</button></form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not plans %}<tr><td colspan="8" style="text-align:center;color:#666">Aucun plan de maintenance</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
