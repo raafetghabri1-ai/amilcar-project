@@ -21,6 +21,7 @@ Blueprint Structure:
   routes/api.py           — API Endpoints
 """
 from flask import Flask, jsonify, session, request
+from flask_socketio import SocketIO
 from database.db import create_tables, get_db
 from database.migrations import migrate
 from helpers import check_api_rate_limit, TRANSLATIONS, csrf
@@ -46,6 +47,7 @@ def _get_secret_key():
 
 app.secret_key = _get_secret_key()
 csrf.init_app(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 create_tables()
 migrate()  # Apply pending database migrations
 
@@ -145,5 +147,24 @@ app.register_blueprint(ops_bp)
 app.register_blueprint(portal_bp)
 app.register_blueprint(api_bp)
 
+# ─── WebSocket Events ───
+from flask_socketio import emit
+
+@socketio.on('connect')
+def handle_connect():
+    pass
+
+@socketio.on('join_dashboard')
+def handle_join_dashboard():
+    from flask_socketio import join_room
+    join_room('dashboard')
+
+def notify_update(event_type, data=None):
+    """Broadcast real-time update to dashboard clients."""
+    socketio.emit('update', {'type': event_type, 'data': data or {}}, room='dashboard')
+
+# Make notify_update available to blueprints
+app.config['notify_update'] = notify_update
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=False, host='0.0.0.0', port=5000)

@@ -30,6 +30,24 @@ def check_api_key():
     return None
 
 
+@api_bp.route("/api/docs")
+@login_required
+def api_docs():
+    """API documentation page."""
+    endpoints = [
+        {"method": "GET", "path": "/api/v1/customers", "desc": "List all customers", "auth": "API Key"},
+        {"method": "GET", "path": "/api/v1/appointments", "desc": "List all appointments", "auth": "API Key"},
+        {"method": "GET", "path": "/api/v1/invoices", "desc": "List all invoices", "auth": "API Key"},
+        {"method": "GET", "path": "/api/v1/stats", "desc": "Dashboard statistics", "auth": "API Key"},
+        {"method": "GET", "path": "/api/appointments_calendar", "desc": "Calendar data (JSON)", "auth": "Session"},
+        {"method": "GET", "path": "/api/chart_data", "desc": "Chart data for dashboard", "auth": "Session"},
+        {"method": "GET", "path": "/api/search?q=term", "desc": "Global search", "auth": "Session"},
+        {"method": "POST", "path": "/api/v1/customers", "desc": "Create customer", "auth": "API Key"},
+        {"method": "POST", "path": "/api/v1/appointments", "desc": "Create appointment", "auth": "API Key"},
+    ]
+    return render_template("api_docs.html", endpoints=endpoints)
+
+
 @api_bp.route("/api/appointments_calendar")
 @login_required
 def appointments_calendar():

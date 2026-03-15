@@ -17,6 +17,42 @@ import sqlite3
 reports_bp = Blueprint("reports_bp", __name__)
 
 
+def generate_pdf(html_content):
+    """Generate PDF from HTML using WeasyPrint."""
+    from weasyprint import HTML
+    pdf = HTML(string=html_content).write_pdf()
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    return response
+
+
+@reports_bp.route("/report_pdf/<report_type>")
+@login_required
+def report_pdf(report_type):
+    """Generate PDF for any report page."""
+    allowed = ['daily', 'reports', 'end_of_day', 'advanced_report', 'ceo_dashboard']
+    if report_type not in allowed:
+        flash("Type de rapport invalide", "error")
+        return redirect('/')
+    from flask import current_app
+    client = current_app.test_client()
+    # Copy session to internal request
+    with client.session_transaction() as sess:
+        sess['user_id'] = session.get('user_id')
+        sess['username'] = session.get('username')
+        sess['role'] = session.get('role')
+    resp = client.get(f'/{report_type}')
+    if resp.status_code != 200:
+        flash("Erreur lors de la génération du PDF", "error")
+        return redirect(f'/{report_type}')
+    html = resp.data.decode('utf-8')
+    # Add print-friendly CSS
+    html = html.replace('</head>', '<style>@page{size:A4;margin:1cm} body{background:#fff!important;color:#000!important} .no-print,.sidebar,.navbar{display:none!important}</style></head>')
+    response = generate_pdf(html)
+    response.headers['Content-Disposition'] = f'attachment; filename=rapport_{report_type}_{datetime.now().strftime("%Y%m%d")}.pdf'
+    return response
+
+
 @reports_bp.route("/daily")
 @login_required
 def daily():
