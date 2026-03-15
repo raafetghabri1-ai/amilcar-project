@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %} — Rappels intelligents{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔔 Rappels Intelligents</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Rappels automatiques : traitements expirants, abonnements inutilisés</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:var(--gold);font-size:1.8rem;font-weight:700">{{ stats.total }}</div>
+            <small style="color:var(--text-muted)">Total rappels</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#f59e0b;font-size:1.8rem;font-weight:700">{{ stats.pending }}</div>
+            <small style="color:var(--text-muted)">En attente</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#4ade80;font-size:1.8rem;font-weight:700">{{ stats.sent }}</div>
+            <small style="color:var(--text-muted)">Envoyés</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:var(--text-muted);font-size:1.8rem;font-weight:700">{{ stats.dismissed }}</div>
+            <small style="color:var(--text-muted)">Ignorés</small>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div style="margin-bottom:16px;display:flex;gap:8px">
+    <a href="/smart_reminders" class="btn btn-sm" style="{{ 'background:var(--gold);color:#000;font-weight:600' if not status_filter else 'background:var(--bg-card);color:var(--text-muted);border:1px solid var(--border-color)' }}">Tous</a>
+    <a href="/smart_reminders?status=pending" class="btn btn-sm" style="{{ 'background:var(--gold);color:#000;font-weight:600' if status_filter=='pending' else 'background:var(--bg-card);color:var(--text-muted);border:1px solid var(--border-color)' }}">⏳ En attente</a>
+    <a href="/smart_reminders?status=sent" class="btn btn-sm" style="{{ 'background:var(--gold);color:#000;font-weight:600' if status_filter=='sent' else 'background:var(--bg-card);color:var(--text-muted);border:1px solid var(--border-color)' }}">✅ Envoyés</a>
+</div>
+
+<!-- Reminders List -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    {% for r in reminders %}
+    <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ '#f59e0b' if r.status=='pending' else '#4ade80' if r.status=='sent' else 'var(--text-muted)' }}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="flex:1">
+                <strong style="color:var(--text-primary)">{{ r.title }}</strong>
+                <span style="background:{{ '#f59e0b' if r.reminder_type=='treatment_expiry' else '#8b5cf6' }};color:#000;padding:2px 8px;border-radius:10px;font-size:.55rem;margin-left:6px">
+                    {{ '🛡️ Traitement' if r.reminder_type=='treatment_expiry' else '🧼 Abonnement' }}
+                </span>
+                <br><small style="color:var(--text-muted)">{{ r.message }}</small>
+                <br><small style="color:var(--text-muted)">
+                    👤 {{ r.customer_name or 'Client' }}
+                    {% if r.plate %} • 🚗 {{ r.plate }}{% endif %}
+                    • 📅 Échéance: <span style="color:var(--gold)">{{ r.due_date }}</span>
+                </small>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+                {% if r.status == 'pending' %}
+                <a href="/smart_reminder/mark/{{ r.id }}/sent" class="btn btn-sm" style="background:#4ade80;color:#000;font-size:.7rem;padding:4px 10px" title="Marquer comme envoyé">✅ Envoyé</a>
+                <a href="/smart_reminder/mark/{{ r.id }}/dismissed" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-muted);font-size:.7rem;padding:4px 10px" title="Ignorer">✕</a>
+                {% else %}
+                <span style="background:{{ '#4ade80' if r.status=='sent' else 'var(--bg-input)' }};color:{{ '#000' if r.status=='sent' else 'var(--text-muted)' }};padding:4px 10px;border-radius:8px;font-size:.65rem">
+                    {{ '✅ Envoyé' if r.status=='sent' else '✕ Ignoré' }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);text-align:center;padding:30px">
+        {{ 'Aucun rappel avec ce filtre.' if status_filter else '🎉 Aucun rappel à traiter ! Les rappels sont générés automatiquement.' }}
+    </p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Réservation en ligne</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root { --gold: #c8a951; --bg-dark: #1a1a2e; --bg-card: #16213e; --bg-input: #0f3460; --text-primary: #e8e8e8; --text-muted: #a0a0b0; --border-color: #2a2a4a; --radius: 12px; --green: #4ade80; }
+        body { background: var(--bg-dark); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; }
+        .hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 0 30px; text-align: center; border-bottom: 2px solid var(--gold); }
+        .hero h1 { color: var(--gold); font-weight: 700; }
+        .booking-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+        .form-control, .form-select { background: var(--bg-input); color: var(--text-primary); border-color: var(--border-color); }
+        .form-control:focus, .form-select:focus { background: var(--bg-input); color: var(--text-primary); border-color: var(--gold); box-shadow: 0 0 0 .15rem rgba(200,169,81,.25); }
+        .form-label { color: var(--text-muted); font-size: .8rem; }
+        .btn-gold { background: var(--gold); color: #000; font-weight: 700; border: none; border-radius: 8px; padding: 12px 30px; }
+        .btn-gold:hover { background: #d4b85c; color: #000; }
+        .service-option { cursor: pointer; transition: all .2s; }
+        .service-option:hover { border-color: var(--gold) !important; }
+        .service-option.selected { border-color: var(--gold) !important; background: rgba(200,169,81,.1) !important; }
+        .pack-card { cursor: pointer; transition: all .2s; }
+        .pack-card:hover { transform: translateY(-2px); border-color: var(--gold) !important; }
+        .pack-card.selected { border-color: var(--gold) !important; background: rgba(200,169,81,.15) !important; }
+    </style>
+</head>
+<body>
+<div class="hero">
+    <h1>✨ AMILCAR</h1>
+    <p style="color:var(--text-muted)">Centre de soins automobiles & moto — Réservation en ligne</p>
+    {% if shop %}<p style="color:var(--gold);font-size:.85rem">📍 {{ shop.name }}</p>{% endif %}
+</div>
+
+<div class="container" style="max-width:800px;margin-top:30px;margin-bottom:60px">
+    <form method="POST" action="/booking_online/submit" id="bookingForm">
+        <!-- Client Info -->
+        <div class="booking-card">
+            <h5 style="color:var(--gold);margin-bottom:16px">👤 Vos informations</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Nom complet *</label>
+                    <input type="text" name="customer_name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Téléphone *</label>
+                    <input type="tel" name="phone" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control">
+                </div>
+            </div>
+        </div>
+
+        <!-- Vehicle Info -->
+        <div class="booking-card">
+            <h5 style="color:var(--gold);margin-bottom:16px">🚗 Votre véhicule</h5>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Type *</label>
+                    <select name="vehicle_type" class="form-select" required>
+                        <option value="voiture">🚗 Voiture</option>
+                        <option value="moto_grande">🏍️ Moto grande</option>
+                        <option value="moto_petite">🛵 Moto petite</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Marque</label>
+                    <input type="text" name="brand" class="form-control" placeholder="Ex: BMW, Mercedes...">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Immatriculation</label>
+                    <input type="text" name="plate" class="form-control" placeholder="AA-123-BB">
+                </div>
+            </div>
+        </div>
+
+        <!-- Services -->
+        <div class="booking-card">
+            <h5 style="color:var(--gold);margin-bottom:16px">🛠️ Services souhaités</h5>
+            <div class="row g-2" id="servicesList">
+                {% for s in services %}
+                <div class="col-md-6">
+                    <label class="service-option card p-3 mb-0" style="background:var(--bg-input);border:2px solid var(--border-color);border-radius:var(--radius);display:flex;flex-direction:row;align-items:center;gap:10px">
+                        <input type="checkbox" name="services" value="{{ s.name }}" style="accent-color:var(--gold);width:18px;height:18px">
+                        <div>
+                            <strong style="color:var(--text-primary);font-size:.85rem">{{ s.name }}</strong>
+                            {% if s.price %}<span style="color:var(--gold);font-size:.75rem;margin-left:6px">{{ s.price }} DH</span>{% endif %}
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Packs -->
+        {% if packs %}
+        <div class="booking-card">
+            <h5 style="color:var(--gold);margin-bottom:16px">📦 Ou choisir un Pack</h5>
+            <div class="row g-2">
+                {% for p in packs %}
+                <div class="col-md-4">
+                    <div class="pack-card card p-3" style="background:var(--bg-input);border:2px solid var(--border-color);border-radius:var(--radius);text-align:center" onclick="selectPack(this, '{{ p.name }}')">
+                        <input type="radio" name="pack" value="{{ p.name }}" style="display:none">
+                        <strong style="color:var(--gold);font-size:.9rem">{{ p.name }}</strong>
+                        {% if p.price %}<div style="color:var(--green);font-weight:600;font-size:.85rem;margin-top:4px">{{ p.price }} DH</div>{% endif %}
+                        {% if p.services %}<small style="color:var(--text-muted);font-size:.65rem">{{ p.services }}</small>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Date & Notes -->
+        <div class="booking-card">
+            <h5 style="color:var(--gold);margin-bottom:16px">📅 Date souhaitée</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Date *</label>
+                    <input type="date" name="preferred_date" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Heure préférée</label>
+                    <select name="preferred_time" class="form-select">
+                        <option value="09:00">09:00</option>
+                        <option value="10:00">10:00</option>
+                        <option value="11:00">11:00</option>
+                        <option value="14:00">14:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="16:00">16:00</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Notes / Demandes spéciales</label>
+                    <textarea name="notes" rows="3" class="form-control" placeholder="Ex: Taches persistantes, rayures à traiter..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:20px">
+            <button type="submit" class="btn btn-gold btn-lg">✨ Réserver maintenant</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.service-option').forEach(el => {
+    el.addEventListener('click', function() {
+        const cb = this.querySelector('input[type=checkbox]');
+        setTimeout(() => this.classList.toggle('selected', cb.checked), 10);
+    });
+});
+function selectPack(el, name) {
+    document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    el.querySelector('input[type=radio]').checked = true;
+}
+// Set min date to today
+document.querySelector('input[name=preferred_date]').min = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>

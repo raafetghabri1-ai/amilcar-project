@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %} — Historique complet{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📖 Dossier Complet Véhicule</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">
+    {{ car.brand }} {{ car.model }} — {{ car.plate }}
+    {% if car.vehicle_type %}<span style="background:var(--bg-card);color:var(--gold);padding:2px 10px;border-radius:10px;font-size:.7rem;margin-left:6px">{{ car.vehicle_type }}</span>{% endif %}
+    <a href="/vehicle_qr/{{ car.id }}" style="margin-left:10px;color:var(--gold);font-size:.8rem">📱 QR Code</a>
+</p>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:var(--gold);font-size:1.8rem;font-weight:700">{{ total_visits }}</div>
+            <small style="color:var(--text-muted)">Visites totales</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#4ade80;font-size:1.5rem;font-weight:700">{{ '{:,.0f}'.format(total_revenue) }} <small style="font-size:.6rem">DH</small></div>
+            <small style="color:var(--text-muted)">Revenu total</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#8b5cf6;font-size:1.8rem;font-weight:700">{{ treatments|length }}</div>
+            <small style="color:var(--text-muted)">Traitements</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="color:#f59e0b;font-size:1.8rem;font-weight:700">{{ gallery|length }}</div>
+            <small style="color:var(--text-muted)">Photos</small>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left Column -->
+    <div class="col-md-7">
+        <!-- Appointments -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📅 Historique des visites ({{ appointments|length }})</h5>
+            {% for a in appointments %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:12px;border-left:4px solid {{ '#4ade80' if a.status=='Terminé' else 'var(--gold)' if a.status=='En cours' else 'var(--border-color)' }}">
+                <div style="display:flex;justify-content:space-between">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ a.date_rdv }}</strong>
+                        <span style="background:{{ '#4ade80' if a.status=='Terminé' else 'var(--gold)' }};color:#000;padding:2px 8px;border-radius:10px;font-size:.55rem;margin-left:6px">{{ a.status }}</span>
+                        <br><small style="color:var(--text-muted)">{{ a.service_type or 'Service' }}</small>
+                    </div>
+                    <div style="text-align:right">
+                        {% if a.total_price %}<span style="color:var(--gold);font-weight:600">{{ a.total_price }} DH</span>{% endif %}
+                        <br><a href="/checklist/fill/{{ a.id }}" style="color:var(--gold);font-size:.65rem">📋 Checklist</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:20px">Aucune visite enregistrée.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Product Costs -->
+        {% if product_costs %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">🧴 Produits utilisés</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+                    <thead>
+                        <tr style="border-color:var(--border-color)">
+                            <th style="color:var(--gold)">Produit</th>
+                            <th style="color:var(--gold);text-align:center">Quantité</th>
+                            <th style="color:var(--gold);text-align:right">Coût</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pc in product_costs %}
+                        <tr style="border-color:var(--border-color)">
+                            <td>{{ pc.product_name }}</td>
+                            <td class="text-center">{{ pc.total_qty }}</td>
+                            <td style="text-align:right;color:var(--gold)">{{ '{:,.0f}'.format(pc.total_cost) }} DH</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Conditions -->
+        {% if conditions %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📝 Rapports de Condition</h5>
+            {% for c in conditions %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:12px">
+                <div style="display:flex;justify-content:space-between">
+                    <strong style="color:var(--text-primary)">{{ c.inspection_date }}</strong>
+                    <span style="color:var(--gold);font-weight:600">{{ c.overall_score }}/10</span>
+                </div>
+                {% if c.notes %}<small style="color:var(--text-muted)">{{ c.notes }}</small>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-md-5">
+        <!-- Treatments -->
+        {% if treatments %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">🛡️ Traitements & Protections</h5>
+            {% for t in treatments %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:12px">
+                <strong style="color:var(--text-primary)">{{ t.treatment_type }}</strong>
+                <br><small style="color:var(--text-muted)">
+                    {{ t.applied_date }}
+                    {% if t.warranty_end %} → {{ t.warranty_end }}{% endif %}
+                </small>
+                {% if t.product_used %}<br><small style="color:var(--text-muted)">Produit: {{ t.product_used }}</small>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Subscriptions -->
+        {% if subscriptions %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">🔄 Abonnements lavage</h5>
+            {% for s in subscriptions %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:12px">
+                <div style="display:flex;justify-content:space-between">
+                    <strong style="color:var(--text-primary)">{{ s.plan_name }}</strong>
+                    <span style="background:{{ '#4ade80' if s.status=='active' else 'var(--text-muted)' }};color:#000;padding:2px 8px;border-radius:10px;font-size:.6rem">{{ s.status }}</span>
+                </div>
+                <small style="color:var(--text-muted)">{{ s.start_date }} → {{ s.end_date }}</small>
+                <br><small style="color:var(--gold)">Utilisé: {{ s.washes_used or 0 }}/{{ s.washes_included or '∞' }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Gallery -->
+        {% if gallery %}
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📸 Galerie ({{ gallery|length }})</h5>
+            <div class="row g-2">
+                {% for g in gallery[:6] %}
+                <div class="col-4">
+                    <div style="position:relative;border-radius:8px;overflow:hidden">
+                        <img src="/static/uploads/{{ g.photo_path }}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px">
+                        <small style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.7);color:var(--gold);padding:2px 6px;border-radius:4px;font-size:.5rem">{{ g.photo_type }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if gallery|length > 6 %}
+            <small style="color:var(--text-muted);display:block;text-align:center;margin-top:8px">+ {{ gallery|length - 6 }} autres photos</small>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

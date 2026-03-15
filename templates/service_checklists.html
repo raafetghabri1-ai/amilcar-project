@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %} — Checklists Qualité{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📋 Checklists de Qualité</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Contrôle qualité standardisé pour chaque type de service</p>
+
+<div class="row g-3">
+    <!-- Add Checklist -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvelle checklist</h5>
+            <form method="POST" action="/service_checklist/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Service associé</label>
+                    <select name="service_name" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        {% for s in services %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type de véhicule</label>
+                    <select name="vehicle_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="all">🚗🏍️ Tous</option>
+                        <option value="voiture">🚗 Voiture</option>
+                        <option value="moto_grande">🏍️ Moto grande</option>
+                        <option value="moto_petite">🛵 Moto petite</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Points de contrôle (un par ligne)</label>
+                    <textarea name="checklist_items" rows="8" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Carrosserie propre et sans traces
+Jantes nettoyées et brillantes
+Vitres sans traces
+Intérieur aspiré
+Tableau de bord nettoyé
+Cuirs traités
+Odeur fraîche
+Contrôle final effectué"></textarea>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Créer la checklist</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Checklists List -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:14px">📋 Checklists configurées</h5>
+            {% for c in checklists %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ c.service_name }}</strong>
+                        {% if c.vehicle_type != 'all' %}<span style="background:var(--bg-input);color:var(--gold);padding:2px 8px;border-radius:10px;font-size:.6rem;margin-left:6px">{{ c.vehicle_type }}</span>{% endif %}
+                    </div>
+                    <small style="color:var(--text-muted)">{{ c.checklist_items.split('\n')|length }} points</small>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    {% for item in c.checklist_items.split('\n') %}
+                    {% if item.strip() %}
+                    <span style="background:var(--bg-input);color:var(--text-muted);padding:2px 8px;border-radius:6px;font-size:.65rem">☐ {{ item.strip() }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucune checklist configurée. Créez-en une ! 📋</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

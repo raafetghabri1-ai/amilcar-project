@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %} — Configurations de Pack{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📦 Configurations de Pack reçues</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Demandes de packs personnalisés des clients</p>
+
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    {% for c in configs %}
+    <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ 'var(--gold)' if c.status=='pending' else '#4ade80' if c.status=='confirmed' else 'var(--text-muted)' }}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+                <strong style="color:var(--text-primary)">{{ c.customer_name }}</strong>
+                <span style="background:{{ 'var(--gold)' if c.status=='pending' else '#4ade80' if c.status=='confirmed' else 'var(--bg-input)' }};color:{{ '#000' if c.status in ['pending','confirmed'] else 'var(--text-muted)' }};padding:2px 8px;border-radius:10px;font-size:.55rem;margin-left:6px">
+                    {{ 'En attente' if c.status=='pending' else 'Confirmé' if c.status=='confirmed' else c.status }}
+                </span>
+                <br><small style="color:var(--text-muted)">
+                    📞 {{ c.phone or '-' }}
+                    {% if c.email %} • ✉️ {{ c.email }}{% endif %}
+                    • {{ '🚗' if c.vehicle_type=='voiture' else '🏍️' if c.vehicle_type=='moto_grande' else '🛵' }} {{ c.vehicle_type }}
+                </small>
+                <br><small style="color:var(--gold)">🛠️ {{ c.selected_services }}</small>
+                {% if c.notes %}<br><small style="color:var(--text-muted);font-style:italic">"{{ c.notes }}"</small>{% endif %}
+            </div>
+            <div style="text-align:right">
+                {% if c.discount_pct > 0 %}
+                <small style="color:#4ade80;font-size:.7rem">-{{ c.discount_pct|int }}%</small><br>
+                <small style="color:var(--text-muted);text-decoration:line-through;font-size:.7rem">{{ '{:,.0f}'.format(c.total_regular) }} DH</small><br>
+                {% endif %}
+                <strong style="color:var(--gold);font-size:1rem">{{ '{:,.0f}'.format(c.total_discounted) }} DH</strong>
+                <br><small style="color:var(--text-muted);font-size:.6rem">{{ c.created_at[:10] if c.created_at else '' }}</small>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);text-align:center;padding:30px">Aucune configuration reçue.</p>
+    {% endfor %}
+</div>
+{% endblock %}

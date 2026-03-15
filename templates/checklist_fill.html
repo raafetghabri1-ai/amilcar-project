@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %} — Remplir Checklist{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📋 Contrôle Qualité</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">
+    RDV #{{ appt.id }} — {{ appt.service_type or 'Service' }} 
+    <span style="color:var(--gold)">• {{ appt.date_rdv }}</span>
+</p>
+
+<div class="row g-3">
+    {% for cl in checklists %}
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:4px">{{ cl.service_name }}</h5>
+            <small style="color:var(--text-muted);display:block;margin-bottom:14px">
+                {% if cl.vehicle_type != 'all' %}{{ cl.vehicle_type }} • {% endif %}{{ cl.checklist_items.split('\n')|length }} points
+            </small>
+
+            {% set existing = none %}
+            {% for r in results if r.checklist_id == cl.id %}{% set existing = r %}{% endfor %}
+
+            {% if existing %}
+            <!-- Already filled -->
+            <div style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:8px;padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <span style="color:var(--green-light, #4ade80);font-weight:600">✅ Complété</span>
+                    <span style="background:var(--gold);color:#000;padding:3px 10px;border-radius:10px;font-size:.75rem;font-weight:600">{{ existing.score }}/{{ existing.total_items }}</span>
+                </div>
+                {% if existing.checked_by %}<small style="color:var(--text-muted)">Par: {{ existing.checked_by }}</small>{% endif %}
+                {% if existing.notes %}<p style="color:var(--text-muted);font-size:.75rem;margin-top:6px;font-style:italic">"{{ existing.notes }}"</p>{% endif %}
+            </div>
+            {% else %}
+            <!-- Fill form -->
+            <form method="POST" action="/checklist/fill/{{ appt.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="checklist_id" value="{{ cl.id }}">
+                {% for item in cl.checklist_items.split('\n') %}
+                {% if item.strip() %}
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color);cursor:pointer">
+                    <input type="checkbox" name="item_{{ loop.index0 }}" value="1" style="accent-color:var(--gold);width:18px;height:18px;flex-shrink:0">
+                    <span style="color:var(--text-primary);font-size:.82rem">{{ item.strip() }}</span>
+                </label>
+                {% endif %}
+                {% endfor %}
+                <div class="mt-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Contrôlé par</label>
+                    <input type="text" name="checked_by" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Nom du technicien">
+                </div>
+                <div class="mt-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Notes</label>
+                    <textarea name="notes" rows="2" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Remarques..."></textarea>
+                </div>
+                <button type="submit" class="btn w-100 mt-3" style="background:var(--gold);color:#000;font-weight:600">✅ Valider le contrôle</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:30px;text-align:center">
+            <p style="color:var(--text-muted)">Aucune checklist disponible pour ce type de service.</p>
+            <a href="/service_checklists" style="color:var(--gold)">Configurer les checklists →</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

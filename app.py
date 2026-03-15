@@ -8445,6 +8445,459 @@ def live_tracking_update(vs_id):
                 conn.commit()
     return redirect("/live_tracking")
 
+# ══════════════════════════════════════════════════════════
+# ═══  PHASE 14 — Smart Car Care Automation  ═══
+# ══════════════════════════════════════════════════════════
+
+# ─── 1. Dashboard Car Care ───
+
+@app.route("/care_dashboard")
+@login_required
+@admin_required
+def care_dashboard():
+    from datetime import date, timedelta
+    today = date.today().isoformat()
+    with get_db() as conn:
+        # Active treatments
+        active_treatments = conn.execute("SELECT COUNT(*) FROM treatments WHERE status='active'").fetchone()[0]
+        expiring_treatments = conn.execute(
+            "SELECT COUNT(*) FROM treatments WHERE status='active' AND warranty_expiry <= date('now','+30 days') AND warranty_expiry != ''").fetchone()[0]
+        # Top products
+        top_products = conn.execute("""SELECT product_name, SUM(total_cost) as cost, SUM(quantity_used) as qty, COUNT(*) as cnt
+            FROM product_usage GROUP BY product_name ORDER BY cost DESC LIMIT 5""").fetchall()
+        # Subscriptions
+        active_subs = conn.execute("SELECT COUNT(*) FROM wash_subscriptions WHERE status='active'").fetchone()[0]
+        sub_revenue = conn.execute("SELECT COALESCE(SUM(price),0) FROM wash_subscriptions WHERE status='active'").fetchone()[0]
+        # Reviews
+        avg_rating = conn.execute("SELECT COALESCE(AVG(rating),0) FROM client_reviews").fetchone()[0]
+        total_reviews = conn.execute("SELECT COUNT(*) FROM client_reviews").fetchone()[0]
+        # Today's live tracking
+        in_progress = conn.execute("SELECT COUNT(*) FROM vehicle_status vs JOIN appointments a ON vs.appointment_id=a.id WHERE a.date=?", (today,)).fetchone()[0]
+        # Revenue by vehicle type (this month)
+        month = date.today().strftime("%Y-%m")
+        rev_by_type = conn.execute("""SELECT c.vehicle_type, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) as rev
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id JOIN cars c ON a.car_id=c.id
+            WHERE strftime('%%Y-%%m',a.date)=? AND i.status='paid'
+            GROUP BY c.vehicle_type""", (month,)).fetchall()
+        # Gallery count
+        gallery_count = conn.execute("SELECT COUNT(*) FROM vehicle_gallery").fetchone()[0]
+        portfolio_count = conn.execute("SELECT COUNT(*) FROM vehicle_gallery WHERE is_portfolio=1").fetchone()[0]
+        # Packs
+        active_packs = conn.execute("SELECT COUNT(*) FROM detailing_packs WHERE is_active=1").fetchone()[0]
+        # Treatments by type
+        treat_by_type = conn.execute("""SELECT treatment_type, COUNT(*) as cnt
+            FROM treatments WHERE status='active' GROUP BY treatment_type ORDER BY cnt DESC LIMIT 6""").fetchall()
+        # Expiring treatments list
+        expiring_list = conn.execute("""SELECT t.*, c.plate, c.brand, c.model, cu.name as customer_name, cu.phone
+            FROM treatments t JOIN cars c ON t.car_id=c.id JOIN customers cu ON t.customer_id=cu.id
+            WHERE t.status='active' AND t.warranty_expiry != '' AND t.warranty_expiry <= date('now','+30 days')
+            ORDER BY t.warranty_expiry LIMIT 10""").fetchall()
+    return render_template("care_dashboard.html", active_treatments=active_treatments,
+        expiring_treatments=expiring_treatments, top_products=top_products, active_subs=active_subs,
+        sub_revenue=sub_revenue, avg_rating=avg_rating, total_reviews=total_reviews,
+        in_progress=in_progress, rev_by_type=rev_by_type, gallery_count=gallery_count,
+        portfolio_count=portfolio_count, active_packs=active_packs, treat_by_type=treat_by_type,
+        expiring_list=expiring_list)
+
+# ─── 2. Moteur Upsell Intelligent ───
+
+@app.route("/upsell_rules")
+@login_required
+@admin_required
+def upsell_rules():
+    with get_db() as conn:
+        rules = conn.execute("SELECT * FROM upsell_rules ORDER BY created_at DESC").fetchall()
+        services = conn.execute("SELECT DISTINCT name FROM services ORDER BY name").fetchall()
+    return render_template("upsell_rules.html", rules=rules, services=services)
+
+@app.route("/upsell_rule/add", methods=["POST"])
+@login_required
+@admin_required
+def upsell_rule_add():
+    name = request.form.get("name", "").strip()
+    trigger_type = request.form.get("trigger_type", "")
+    trigger_value = request.form.get("trigger_value", "")
+    suggestion_text = request.form.get("suggestion_text", "")
+    discount_pct = request.form.get("discount_pct", 0, type=float)
+    target_service = request.form.get("target_service", "")
+    vehicle_types = request.form.get("vehicle_types", "all")
+    if name and suggestion_text:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO upsell_rules (name, trigger_type, trigger_value, suggestion_text,
+                discount_pct, target_service, vehicle_types) VALUES (?,?,?,?,?,?,?)""",
+                (name, trigger_type, trigger_value, suggestion_text, discount_pct, target_service, vehicle_types))
+            conn.commit()
+        flash("Règle upsell créée ✅", "success")
+    return redirect("/upsell_rules")
+
+@app.route("/upsell_rule/toggle/<int:rid>")
+@login_required
+@admin_required
+def upsell_rule_toggle(rid):
+    with get_db() as conn:
+        conn.execute("UPDATE upsell_rules SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END WHERE id=?", (rid,))
+        conn.commit()
+    return redirect("/upsell_rules")
+
+def get_upsell_suggestions(car_id, service_name):
+    """Get upsell suggestions for a car and service"""
+    suggestions = []
+    with get_db() as conn:
+        car = conn.execute("SELECT * FROM cars WHERE id=?", (car_id,)).fetchone()
+        if not car:
+            return suggestions
+        rules = conn.execute("SELECT * FROM upsell_rules WHERE is_active=1").fetchall()
+        for rule in rules:
+            match = False
+            if rule['trigger_type'] == 'service_match' and rule['trigger_value'] in service_name:
+                match = True
+            elif rule['trigger_type'] == 'treatment_expired':
+                expired = conn.execute(
+                    "SELECT COUNT(*) FROM treatments WHERE car_id=? AND status='active' AND warranty_expiry <= date('now','+30 days') AND treatment_type LIKE ?",
+                    (car_id, f"%{rule['trigger_value']}%")).fetchone()[0]
+                if expired > 0:
+                    match = True
+            elif rule['trigger_type'] == 'no_treatment':
+                has_treatment = conn.execute(
+                    "SELECT COUNT(*) FROM treatments WHERE car_id=? AND status='active' AND treatment_type LIKE ?",
+                    (car_id, f"%{rule['trigger_value']}%")).fetchone()[0]
+                if has_treatment == 0:
+                    match = True
+            elif rule['trigger_type'] == 'days_since_last':
+                from datetime import date, timedelta
+                threshold = int(rule['trigger_value'] or 90)
+                last_visit = conn.execute(
+                    "SELECT MAX(date) FROM appointments WHERE car_id=? AND status='completed'",
+                    (car_id,)).fetchone()[0]
+                if last_visit:
+                    days_diff = (date.today() - date.fromisoformat(last_visit)).days
+                    if days_diff >= threshold:
+                        match = True
+            if match and (rule['vehicle_types'] == 'all' or (car['vehicle_type'] or 'voiture') in rule['vehicle_types']):
+                suggestions.append(dict(rule))
+                conn.execute("UPDATE upsell_rules SET times_shown=times_shown+1 WHERE id=?", (rule['id'],))
+        conn.commit()
+    return suggestions
+
+# ─── 3. Réservation en Ligne Pro ───
+
+@app.route("/booking_online")
+def booking_online():
+    with get_db() as conn:
+        services = conn.execute("SELECT id, name, price FROM services WHERE price > 0 ORDER BY name").fetchall()
+        packs = conn.execute("SELECT * FROM detailing_packs WHERE is_active=1 ORDER BY name").fetchall()
+        shop = {}
+        for r in conn.execute("SELECT key, value FROM settings").fetchall():
+            shop[r['key']] = r['value']
+    return render_template("booking_online.html", services=services, packs=packs, shop=shop)
+
+@app.route("/booking_online/submit", methods=["POST"])
+@csrf.exempt
+def booking_online_submit():
+    name = request.form.get("name", "").strip()
+    phone = request.form.get("phone", "").strip()
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    brand = request.form.get("brand", "").strip()
+    model = request.form.get("model", "").strip()
+    plate = request.form.get("plate", "").strip()
+    service = request.form.get("service", "")
+    preferred_date = request.form.get("preferred_date", "")
+    preferred_time = request.form.get("preferred_time", "")
+    notes = request.form.get("notes", "")
+    if name and phone and service and preferred_date:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO online_bookings (customer_name, phone, vehicle_type, brand, model, plate,
+                service, preferred_date, preferred_time, notes, status)
+                VALUES (?,?,?,?,?,?,?,?,?,?,'pending')""",
+                (name, phone, vehicle_type, brand, model, plate, service, preferred_date, preferred_time, notes))
+            conn.commit()
+    return render_template("booking_success.html", name=name)
+
+# ─── 4. QR Code Véhicule ───
+
+@app.route("/vehicle_qr/<int:car_id>")
+@login_required
+def vehicle_qr(car_id):
+    import uuid
+    with get_db() as conn:
+        car = conn.execute("""SELECT c.*, cu.name as customer_name, cu.phone
+            FROM cars c JOIN customers cu ON c.customer_id=cu.id WHERE c.id=?""", (car_id,)).fetchone()
+        if not car:
+            flash("Véhicule non trouvé", "danger")
+            return redirect("/customers")
+        # Generate token if not exists
+        if not car['qr_token']:
+            token = uuid.uuid4().hex[:12]
+            conn.execute("UPDATE cars SET qr_token=? WHERE id=?", (token, car_id))
+            conn.commit()
+        else:
+            token = car['qr_token']
+    return render_template("vehicle_qr.html", car=car, token=token)
+
+@app.route("/vehicle_history_public/<token>")
+def vehicle_history_public(token):
+    with get_db() as conn:
+        car = conn.execute("""SELECT c.*, cu.name as customer_name
+            FROM cars c JOIN customers cu ON c.customer_id=cu.id WHERE c.qr_token=?""", (token,)).fetchone()
+        if not car:
+            return "Véhicule non trouvé", 404
+        appointments = conn.execute("""SELECT a.date, a.service, a.status FROM appointments a
+            WHERE a.car_id=? ORDER BY a.date DESC""", (car['id'],)).fetchall()
+        treatments = conn.execute("""SELECT * FROM treatments WHERE car_id=? ORDER BY applied_date DESC""",
+            (car['id'],)).fetchone() and conn.execute("""SELECT * FROM treatments WHERE car_id=? ORDER BY applied_date DESC""",
+            (car['id'],)).fetchall() or []
+        gallery = conn.execute("SELECT * FROM vehicle_gallery WHERE car_id=? ORDER BY created_at DESC LIMIT 10",
+            (car['id'],)).fetchall()
+        shop = {}
+        for r in conn.execute("SELECT key, value FROM settings").fetchall():
+            shop[r['key']] = r['value']
+    return render_template("vehicle_history_public.html", car=car, appointments=appointments,
+        treatments=treatments, gallery=gallery, shop=shop)
+
+# ─── 5. Checklist Qualité par Service ───
+
+@app.route("/service_checklists")
+@login_required
+@admin_required
+def service_checklists_view():
+    with get_db() as conn:
+        checklists = conn.execute("SELECT * FROM service_checklists ORDER BY service_name").fetchall()
+        services = conn.execute("SELECT DISTINCT name FROM services ORDER BY name").fetchall()
+    return render_template("service_checklists.html", checklists=checklists, services=services)
+
+@app.route("/service_checklist/add", methods=["POST"])
+@login_required
+@admin_required
+def service_checklist_add():
+    service_name = request.form.get("service_name", "")
+    vehicle_type = request.form.get("vehicle_type", "all")
+    items = request.form.get("checklist_items", "")
+    if service_name and items:
+        with get_db() as conn:
+            conn.execute("INSERT INTO service_checklists (service_name, vehicle_type, checklist_items) VALUES (?,?,?)",
+                        (service_name, vehicle_type, items))
+            conn.commit()
+        flash("Checklist créée ✅", "success")
+    return redirect("/service_checklists")
+
+@app.route("/checklist/fill/<int:appointment_id>", methods=["GET", "POST"])
+@login_required
+def checklist_fill(appointment_id):
+    import json
+    with get_db() as conn:
+        appt = conn.execute("""SELECT a.*, c.plate, c.brand, c.model, c.vehicle_type, cu.name as customer_name
+            FROM appointments a JOIN cars c ON a.car_id=c.id JOIN customers cu ON c.customer_id=cu.id
+            WHERE a.id=?""", (appointment_id,)).fetchone()
+        if not appt:
+            flash("RDV non trouvé", "danger")
+            return redirect("/appointments")
+        checklists = conn.execute("""SELECT * FROM service_checklists
+            WHERE (service_name=? OR service_name LIKE ?) AND (vehicle_type='all' OR vehicle_type=?)""",
+            (appt['service'], f"%{appt['service']}%", appt['vehicle_type'] or 'voiture')).fetchall()
+        if request.method == "POST":
+            checklist_id = request.form.get("checklist_id", 0, type=int)
+            items_checked = request.form.getlist("items")
+            total = request.form.get("total_items", 0, type=int)
+            notes = request.form.get("notes", "")
+            score = int((len(items_checked) / total * 100)) if total > 0 else 0
+            conn.execute("""INSERT INTO checklist_results (appointment_id, checklist_id, results, score, total_items, checked_by, notes)
+                VALUES (?,?,?,?,?,?,?)""", (appointment_id, checklist_id, json.dumps(items_checked), score, total, session.get('user_id', 0), notes))
+            conn.commit()
+            flash(f"Checklist validée — Score: {score}% ✅", "success")
+            return redirect(f"/checklist/fill/{appointment_id}")
+        results = conn.execute("SELECT cr.*, sc.service_name FROM checklist_results cr LEFT JOIN service_checklists sc ON cr.checklist_id=sc.id WHERE cr.appointment_id=?", (appointment_id,)).fetchall()
+    return render_template("checklist_fill.html", appt=appt, checklists=checklists, results=results)
+
+# ─── 6. Rentabilité par Type Véhicule ───
+
+@app.route("/profitability_vehicle_type")
+@login_required
+@admin_required
+def profitability_vehicle_type():
+    month = request.args.get("month", "")
+    from datetime import date
+    if not month:
+        month = date.today().strftime("%Y-%m")
+    with get_db() as conn:
+        data = conn.execute("""SELECT c.vehicle_type,
+            COUNT(DISTINCT a.id) as appointments,
+            COALESCE(SUM(CASE WHEN i.status='paid' THEN i.amount ELSE 0 END),0) as revenue,
+            COALESCE(SUM(pu.total_cost),0) as product_cost,
+            COUNT(DISTINCT c.id) as vehicles
+            FROM appointments a
+            JOIN cars c ON a.car_id=c.id
+            LEFT JOIN invoices i ON i.appointment_id=a.id
+            LEFT JOIN product_usage pu ON pu.appointment_id=a.id
+            WHERE strftime('%%Y-%%m', a.date) = ?
+            GROUP BY c.vehicle_type""", (month,)).fetchall()
+        # Service breakdown by vehicle type
+        service_data = conn.execute("""SELECT c.vehicle_type, a.service,
+            COUNT(*) as cnt, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.amount ELSE 0 END),0) as rev
+            FROM appointments a JOIN cars c ON a.car_id=c.id LEFT JOIN invoices i ON i.appointment_id=a.id
+            WHERE strftime('%%Y-%%m', a.date)=?
+            GROUP BY c.vehicle_type, a.service ORDER BY rev DESC""", (month,)).fetchall()
+    return render_template("profitability_vehicle_type.html", data=data, service_data=service_data, month=month)
+
+# ─── 7. Rappels Automatiques Smart ───
+
+@app.route("/smart_reminders")
+@login_required
+def smart_reminders_view():
+    with get_db() as conn:
+        # Auto-generate reminders
+        from datetime import date, timedelta
+        today = date.today().isoformat()
+        # Treatment expiry reminders
+        expiring = conn.execute("""SELECT t.id, t.car_id, t.customer_id, t.treatment_type, t.warranty_expiry,
+            cu.name, c.plate FROM treatments t JOIN customers cu ON t.customer_id=cu.id JOIN cars c ON t.car_id=c.id
+            WHERE t.status='active' AND t.warranty_expiry != '' AND t.warranty_expiry <= date('now','+30 days')
+            AND t.id NOT IN (SELECT reference_id FROM smart_reminders WHERE reminder_type='treatment_expiry' AND reference_id=t.id)
+            """).fetchall()
+        for t in expiring:
+            conn.execute("""INSERT INTO smart_reminders (customer_id, car_id, reminder_type, title, message, due_date, reference_type, reference_id)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (t['customer_id'], t['car_id'], 'treatment_expiry',
+                 f"Traitement {t['treatment_type']} expire bientôt",
+                 f"{t['name']} — {t['plate']}: votre {t['treatment_type']} expire le {t['warranty_expiry']}",
+                 t['warranty_expiry'], 'treatment', t['id']))
+        # Unused wash subscriptions
+        unused = conn.execute("""SELECT ws.id, ws.customer_id, ws.car_id, ws.plan_name, ws.used_washes, ws.included_washes,
+            cu.name FROM wash_subscriptions ws JOIN customers cu ON ws.customer_id=cu.id
+            WHERE ws.status='active' AND ws.used_washes < ws.included_washes AND ws.end_date <= date('now','+7 days')
+            AND ws.id NOT IN (SELECT reference_id FROM smart_reminders WHERE reminder_type='subscription_expiring' AND reference_id=ws.id)
+            """).fetchall()
+        for u in unused:
+            conn.execute("""INSERT INTO smart_reminders (customer_id, car_id, reminder_type, title, message, due_date, reference_type, reference_id)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (u['customer_id'], u['car_id'], 'subscription_expiring',
+                 f"Abonnement {u['plan_name']} expire — lavages non utilisés",
+                 f"{u['name']}: {u['included_washes'] - u['used_washes']} lavages restants sur votre abonnement",
+                 date.today().isoformat(), 'subscription', u['id']))
+        conn.commit()
+        # Fetch all reminders
+        status_filter = request.args.get("status", "")
+        where = f"WHERE status='{status_filter}'" if status_filter else ""
+        reminders = conn.execute(f"""SELECT sr.*, cu.name as customer_name, cu.phone, c.plate, c.brand, c.model
+            FROM smart_reminders sr JOIN customers cu ON sr.customer_id=cu.id LEFT JOIN cars c ON sr.car_id=c.id
+            {where} ORDER BY sr.due_date ASC""").fetchall()
+        stats = {
+            'pending': conn.execute("SELECT COUNT(*) FROM smart_reminders WHERE status='pending'").fetchone()[0],
+            'sent': conn.execute("SELECT COUNT(*) FROM smart_reminders WHERE status='sent'").fetchone()[0],
+            'total': conn.execute("SELECT COUNT(*) FROM smart_reminders").fetchone()[0]
+        }
+    return render_template("smart_reminders_care.html", reminders=reminders, stats=stats, status_filter=status_filter)
+
+@app.route("/smart_reminder/mark/<int:rid>/<action>")
+@login_required
+def smart_reminder_mark(rid, action):
+    from datetime import datetime
+    if action in ('sent', 'dismissed'):
+        with get_db() as conn:
+            conn.execute("UPDATE smart_reminders SET status=?, sent_at=? WHERE id=?",
+                        (action, datetime.now().strftime("%Y-%m-%d %H:%M"), rid))
+            conn.commit()
+    return redirect("/smart_reminders")
+
+# ─── 8. Configurateur Pack en Ligne ───
+
+@app.route("/pack_configurator")
+def pack_configurator():
+    with get_db() as conn:
+        services = conn.execute("SELECT id, name, price FROM services WHERE price > 0 ORDER BY name").fetchall()
+        shop = {}
+        for r in conn.execute("SELECT key, value FROM settings").fetchall():
+            shop[r['key']] = r['value']
+    return render_template("pack_configurator.html", services=services, shop=shop)
+
+@app.route("/pack_configurator/submit", methods=["POST"])
+@csrf.exempt
+def pack_configurator_submit():
+    import json
+    name = request.form.get("name", "").strip()
+    phone = request.form.get("phone", "").strip()
+    email = request.form.get("email", "").strip()
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    selected = request.form.getlist("services")
+    notes = request.form.get("notes", "")
+    total_regular = request.form.get("total_regular", 0, type=float)
+    total_discounted = request.form.get("total_discounted", 0, type=float)
+    discount_pct = request.form.get("discount_pct", 0, type=float)
+    if selected:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO pack_configurations (customer_name, customer_phone, customer_email,
+                vehicle_type, selected_services, total_regular, total_discounted, discount_pct, notes)
+                VALUES (?,?,?,?,?,?,?,?,?)""",
+                (name, phone, email, vehicle_type, json.dumps(selected), total_regular, total_discounted, discount_pct, notes))
+            conn.commit()
+    return render_template("pack_configurator_success.html", name=name, total=total_discounted, discount=discount_pct)
+
+@app.route("/pack_configurations")
+@login_required
+def pack_configurations():
+    with get_db() as conn:
+        configs = conn.execute("SELECT * FROM pack_configurations ORDER BY created_at DESC").fetchall()
+    return render_template("pack_configurations.html", configs=configs)
+
+# ─── 9. Rapport Tendances Produits ───
+
+@app.route("/product_trends")
+@login_required
+@admin_required
+def product_trends():
+    from datetime import date
+    with get_db() as conn:
+        # Monthly product usage last 6 months
+        months = []
+        for i in range(5, -1, -1):
+            m = date.today().month - i
+            y = date.today().year
+            while m <= 0:
+                m += 12; y -= 1
+            ms = f"{y}-{m:02d}"
+            total = conn.execute("SELECT COALESCE(SUM(total_cost),0) FROM product_usage WHERE strftime('%%Y-%%m',created_at)=?", (ms,)).fetchone()[0]
+            qty = conn.execute("SELECT COALESCE(SUM(quantity_used),0) FROM product_usage WHERE strftime('%%Y-%%m',created_at)=?", (ms,)).fetchone()[0]
+            months.append({'month': ms, 'cost': total, 'quantity': qty})
+        # Top products all time
+        top = conn.execute("""SELECT product_name, unit, SUM(quantity_used) as total_qty, SUM(total_cost) as total_cost,
+            COUNT(*) as usage_count, AVG(unit_cost) as avg_cost
+            FROM product_usage GROUP BY product_name ORDER BY total_cost DESC LIMIT 15""").fetchall()
+        # Low stock warning (products used a lot but maybe running low)
+        high_usage = conn.execute("""SELECT product_name, SUM(quantity_used) as monthly_usage
+            FROM product_usage WHERE created_at >= date('now','-30 days')
+            GROUP BY product_name ORDER BY monthly_usage DESC LIMIT 10""").fetchall()
+        # By vehicle type
+        by_type = conn.execute("""SELECT vehicle_type, SUM(total_cost) as cost, COUNT(*) as cnt
+            FROM product_usage GROUP BY vehicle_type ORDER BY cost DESC""").fetchall()
+    return render_template("product_trends.html", months=months, top=top, high_usage=high_usage, by_type=by_type)
+
+# ─── 10. Historique Complet Véhicule ───
+
+@app.route("/vehicle_full_history/<int:car_id>")
+@login_required
+def vehicle_full_history(car_id):
+    with get_db() as conn:
+        car = conn.execute("""SELECT c.*, cu.name as customer_name, cu.phone, cu.email
+            FROM cars c JOIN customers cu ON c.customer_id=cu.id WHERE c.id=?""", (car_id,)).fetchone()
+        if not car:
+            flash("Véhicule non trouvé", "danger")
+            return redirect("/customers")
+        appointments = conn.execute("""SELECT a.*, COALESCE(i.amount,0) as invoice_amount, i.status as invoice_status
+            FROM appointments a LEFT JOIN invoices i ON i.appointment_id=a.id
+            WHERE a.car_id=? ORDER BY a.date DESC""", (car_id,)).fetchall()
+        treatments = conn.execute("SELECT * FROM treatments WHERE car_id=? ORDER BY applied_date DESC", (car_id,)).fetchall()
+        gallery = conn.execute("SELECT * FROM vehicle_gallery WHERE car_id=? ORDER BY created_at DESC", (car_id,)).fetchall()
+        conditions = conn.execute("""SELECT vc.*, a.date as appt_date FROM vehicle_conditions vc
+            JOIN appointments a ON vc.appointment_id=a.id WHERE vc.car_id=? ORDER BY vc.created_at DESC""", (car_id,)).fetchall()
+        subscriptions = conn.execute("""SELECT * FROM wash_subscriptions WHERE car_id=? ORDER BY created_at DESC""", (car_id,)).fetchall()
+        product_costs = conn.execute("""SELECT COALESCE(SUM(pu.total_cost),0) FROM product_usage pu
+            JOIN appointments a ON pu.appointment_id=a.id WHERE a.car_id=?""", (car_id,)).fetchone()[0]
+        total_revenue = conn.execute("""SELECT COALESCE(SUM(i.amount),0) FROM invoices i
+            JOIN appointments a ON i.appointment_id=a.id WHERE a.car_id=? AND i.status='paid'""", (car_id,)).fetchone()[0]
+        total_visits = len(appointments)
+    return render_template("vehicle_full_history.html", car=car, appointments=appointments,
+        treatments=treatments, gallery=gallery, conditions=conditions, subscriptions=subscriptions,
+        product_costs=product_costs, total_revenue=total_revenue, total_visits=total_visits)
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

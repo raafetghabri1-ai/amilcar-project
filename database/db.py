@@ -1139,6 +1139,10 @@ def create_tables():
         ("ALTER TABLE cars ADD COLUMN color TEXT DEFAULT ''", None),
         ("ALTER TABLE cars ADD COLUMN year INTEGER DEFAULT 0", None),
         ("ALTER TABLE cars ADD COLUMN engine_size TEXT DEFAULT ''", None),
+        # Phase 14 migrations
+        ("ALTER TABLE cars ADD COLUMN qr_token TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN upsell_suggestions TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN upsell_accepted TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -1302,6 +1306,92 @@ def create_tables():
         FOREIGN KEY (appointment_id) REFERENCES appointments(id)
     )''')
 
+    # ─── Phase 14: Smart Car Care Automation Tables ───
+
+    # Upsell Rules Engine
+    cursor.execute('''CREATE TABLE IF NOT EXISTS upsell_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        trigger_type TEXT NOT NULL,
+        trigger_value TEXT DEFAULT '',
+        suggestion_text TEXT NOT NULL,
+        discount_pct REAL DEFAULT 0,
+        target_service TEXT DEFAULT '',
+        vehicle_types TEXT DEFAULT 'all',
+        is_active INTEGER DEFAULT 1,
+        times_shown INTEGER DEFAULT 0,
+        times_accepted INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Online Booking Pro
+    cursor.execute('''CREATE TABLE IF NOT EXISTS booking_slots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day_of_week INTEGER DEFAULT 0,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        max_bookings INTEGER DEFAULT 3,
+        vehicle_types TEXT DEFAULT 'all',
+        is_active INTEGER DEFAULT 1
+    )''')
+
+    # QR Vehicle History (qr_token on cars via migration)
+
+    # Quality Checklists per Service
+    cursor.execute('''CREATE TABLE IF NOT EXISTS service_checklists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        service_name TEXT NOT NULL,
+        vehicle_type TEXT DEFAULT 'all',
+        checklist_items TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS checklist_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER NOT NULL,
+        checklist_id INTEGER NOT NULL,
+        results TEXT DEFAULT '',
+        score INTEGER DEFAULT 0,
+        total_items INTEGER DEFAULT 0,
+        checked_by INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )''')
+
+    # Smart Reminders
+    cursor.execute('''CREATE TABLE IF NOT EXISTS smart_reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        car_id INTEGER DEFAULT 0,
+        reminder_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT DEFAULT '',
+        due_date TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        sent_at TEXT DEFAULT '',
+        reference_type TEXT DEFAULT '',
+        reference_id INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Pack Configurator Selections (online)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS pack_configurations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_name TEXT DEFAULT '',
+        customer_phone TEXT DEFAULT '',
+        customer_email TEXT DEFAULT '',
+        vehicle_type TEXT DEFAULT 'voiture',
+        selected_services TEXT NOT NULL,
+        total_regular REAL DEFAULT 0,
+        total_discounted REAL DEFAULT 0,
+        discount_pct REAL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
     # إنشاء الفهارس
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date)",
@@ -1396,6 +1486,16 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_reviews_featured ON client_reviews(is_featured)",
         "CREATE INDEX IF NOT EXISTS idx_vehicle_status_appt ON vehicle_status(appointment_id)",
         "CREATE INDEX IF NOT EXISTS idx_status_updates_appt ON status_updates(appointment_id)",
+        # Phase 14 indexes
+        "CREATE INDEX IF NOT EXISTS idx_upsell_rules_active ON upsell_rules(is_active)",
+        "CREATE INDEX IF NOT EXISTS idx_booking_slots_day ON booking_slots(day_of_week)",
+        "CREATE INDEX IF NOT EXISTS idx_checklists_service ON service_checklists(service_name)",
+        "CREATE INDEX IF NOT EXISTS idx_checklist_results_appt ON checklist_results(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_smart_reminders_customer ON smart_reminders(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_smart_reminders_status ON smart_reminders(status)",
+        "CREATE INDEX IF NOT EXISTS idx_smart_reminders_due ON smart_reminders(due_date)",
+        "CREATE INDEX IF NOT EXISTS idx_pack_configs_status ON pack_configurations(status)",
+        "CREATE INDEX IF NOT EXISTS idx_cars_qr ON cars(qr_token)",
     ]
     for idx in indexes:
         try:

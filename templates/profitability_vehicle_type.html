@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %} — Rentabilité par Type{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🚗 Rentabilité par Type de Véhicule</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Analyse comparative Voiture vs Moto — Mois : {{ month }}</p>
+
+<!-- Month selector -->
+<form method="GET" style="margin-bottom:20px;display:flex;gap:10px;align-items:center">
+    <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);max-width:180px">
+    <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">Filtrer</button>
+</form>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    {% for d in data %}
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px;border-top:4px solid {{ 'var(--gold)' if d.type=='voiture' else '#8b5cf6' if d.type=='moto_grande' else '#06b6d4' }}">
+            <div style="font-size:1.8rem;margin-bottom:6px">
+                {{ '🚗' if d.type=='voiture' else '🏍️' if d.type=='moto_grande' else '🛵' }}
+            </div>
+            <h5 style="color:var(--text-primary);margin-bottom:12px">{{ d.type|capitalize }}</h5>
+            <div class="row g-2">
+                <div class="col-4 text-center">
+                    <div style="color:var(--gold);font-size:1.4rem;font-weight:700">{{ d.count }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">RDV</small>
+                </div>
+                <div class="col-4 text-center">
+                    <div style="color:var(--green-light, #4ade80);font-size:1.1rem;font-weight:700">{{ '{:,.0f}'.format(d.revenue) }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">Revenu DH</small>
+                </div>
+                <div class="col-4 text-center">
+                    <div style="color:var(--text-primary);font-size:1.1rem;font-weight:700">{{ '{:,.0f}'.format(d.product_cost) }}</div>
+                    <small style="color:var(--text-muted);font-size:.65rem">Coût prod.</small>
+                </div>
+            </div>
+            <hr style="border-color:var(--border-color);margin:12px 0">
+            <div style="display:flex;justify-content:space-between">
+                <small style="color:var(--text-muted)">Marge brute</small>
+                <strong style="color:{{ 'var(--green-light, #4ade80)' if (d.revenue - d.product_cost) > 0 else '#ef4444' }}">
+                    {{ '{:,.0f}'.format(d.revenue - d.product_cost) }} DH
+                </strong>
+            </div>
+            {% if d.count > 0 %}
+            <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <small style="color:var(--text-muted)">Ticket moyen</small>
+                <strong style="color:var(--gold)">{{ '{:,.0f}'.format(d.revenue / d.count) }} DH</strong>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:30px;text-align:center">
+            <p style="color:var(--text-muted)">Aucune donnée pour ce mois.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Service Breakdown -->
+{% if service_data %}
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    <h5 style="color:var(--gold);margin-bottom:14px">📊 Détail par service</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+            <thead>
+                <tr style="border-color:var(--border-color)">
+                    <th style="color:var(--gold)">Service</th>
+                    <th style="color:var(--gold);text-align:center">Voiture</th>
+                    <th style="color:var(--gold);text-align:center">Moto grande</th>
+                    <th style="color:var(--gold);text-align:center">Moto petite</th>
+                    <th style="color:var(--gold);text-align:right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in service_data %}
+                <tr style="border-color:var(--border-color)">
+                    <td>{{ s.service }}</td>
+                    <td class="text-center">{{ s.voiture }}</td>
+                    <td class="text-center">{{ s.moto_grande }}</td>
+                    <td class="text-center">{{ s.moto_petite }}</td>
+                    <td style="text-align:right;color:var(--gold);font-weight:600">{{ s.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Chart -->
+{% if data %}
+<div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    <canvas id="profitChart" height="200"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('profitChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for d in data %}'{{ d.type }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Revenu (DH)',
+            data: [{% for d in data %}{{ d.revenue }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#c8a951','#8b5cf6','#06b6d4'],
+            borderRadius: 6
+        },{
+            label: 'Coût produits (DH)',
+            data: [{% for d in data %}{{ d.product_cost }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['rgba(200,169,81,.3)','rgba(139,92,246,.3)','rgba(6,182,212,.3)'],
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#a0a0b0' } } },
+        scales: {
+            x: { ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,.05)' } },
+            y: { ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,.05)' } }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Configurateur de Pack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root { --gold: #c8a951; --bg-dark: #1a1a2e; --bg-card: #16213e; --bg-input: #0f3460; --text-primary: #e8e8e8; --text-muted: #a0a0b0; --border-color: #2a2a4a; --radius: 12px; --green: #4ade80; }
+        body { background: var(--bg-dark); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; }
+        .hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 40px 0 30px; text-align: center; border-bottom: 2px solid var(--gold); }
+        .hero h1 { color: var(--gold); font-weight: 700; }
+        .config-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+        .form-control, .form-select { background: var(--bg-input); color: var(--text-primary); border-color: var(--border-color); }
+        .form-control:focus, .form-select:focus { background: var(--bg-input); color: var(--text-primary); border-color: var(--gold); box-shadow: 0 0 0 .15rem rgba(200,169,81,.25); }
+        .form-label { color: var(--text-muted); font-size: .8rem; }
+        .btn-gold { background: var(--gold); color: #000; font-weight: 700; border: none; border-radius: 8px; padding: 12px 30px; }
+        .btn-gold:hover { background: #d4b85c; color: #000; }
+        .service-item { cursor: pointer; transition: all .2s; user-select: none; }
+        .service-item:hover { border-color: var(--gold) !important; }
+        .service-item.selected { border-color: var(--gold) !important; background: rgba(200,169,81,.1) !important; }
+        .summary-panel { position: sticky; top: 20px; }
+    </style>
+</head>
+<body>
+<div class="hero">
+    <h1>🎨 AMILCAR</h1>
+    <p style="color:var(--text-muted)">Configurateur de Pack personnalisé</p>
+    {% if shop %}<p style="color:var(--gold);font-size:.85rem">📍 {{ shop.name }}</p>{% endif %}
+</div>
+
+<div class="container" style="max-width:1000px;margin-top:30px;margin-bottom:60px">
+    <form method="POST" action="/pack_configurator/submit" id="configForm">
+        <div class="row">
+            <!-- Services Selection -->
+            <div class="col-md-7">
+                <div class="config-card">
+                    <h5 style="color:var(--gold);margin-bottom:6px">👤 Vos informations</h5>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nom *</label>
+                            <input type="text" name="customer_name" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Téléphone *</label>
+                            <input type="tel" name="phone" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type de véhicule</label>
+                            <select name="vehicle_type" class="form-select form-select-sm">
+                                <option value="voiture">🚗 Voiture</option>
+                                <option value="moto_grande">🏍️ Moto grande</option>
+                                <option value="moto_petite">🛵 Moto petite</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h5 style="color:var(--gold);margin-bottom:14px">🛠️ Choisissez vos services</h5>
+                    <div class="row g-2">
+                        {% for s in services %}
+                        <div class="col-md-6">
+                            <div class="service-item card p-3" style="background:var(--bg-input);border:2px solid var(--border-color);border-radius:var(--radius)" onclick="toggleService(this, '{{ s.name }}', {{ s.price or 0 }})">
+                                <div style="display:flex;justify-content:space-between;align-items:center">
+                                    <div>
+                                        <strong style="color:var(--text-primary);font-size:.82rem">{{ s.name }}</strong>
+                                        {% if s.price %}<br><small style="color:var(--gold)">{{ s.price }} DH</small>{% endif %}
+                                    </div>
+                                    <div class="check-mark" style="width:24px;height:24px;border:2px solid var(--border-color);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <label class="form-label">📝 Notes additionnelles</label>
+                    <textarea name="notes" rows="2" class="form-control form-control-sm" placeholder="Demandes spéciales..."></textarea>
+                </div>
+            </div>
+
+            <!-- Summary Panel -->
+            <div class="col-md-5">
+                <div class="summary-panel config-card" style="border-color:var(--gold)">
+                    <h5 style="color:var(--gold);margin-bottom:16px">📦 Votre Pack</h5>
+                    <div id="selectedList" style="min-height:80px">
+                        <p style="color:var(--text-muted);font-size:.8rem;text-align:center" id="emptyMsg">Sélectionnez des services...</p>
+                    </div>
+                    <hr style="border-color:var(--border-color)">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span style="color:var(--text-muted)">Total régulier :</span>
+                        <span id="totalRegular" style="color:var(--text-primary);font-weight:600">0 DH</span>
+                    </div>
+                    <div id="discountRow" style="display:none;justify-content:space-between;margin-bottom:8px">
+                        <span style="color:var(--green)">Remise pack :</span>
+                        <span id="discountAmount" style="color:var(--green);font-weight:600">-0 DH</span>
+                    </div>
+                    <div id="discountInfo" style="display:none;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:8px;padding:8px;margin-bottom:12px;font-size:.7rem;color:var(--green);text-align:center">
+                        🎉 <span id="discountPct">0</span>% de remise pour <span id="serviceCount">0</span> services !
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:2px solid var(--gold)">
+                        <strong style="color:var(--gold);font-size:1.1rem">Total :</strong>
+                        <strong id="totalFinal" style="color:var(--gold);font-size:1.1rem">0 DH</strong>
+                    </div>
+                    <input type="hidden" name="selected_services" id="selectedServicesInput">
+                    <input type="hidden" name="total_regular" id="totalRegularInput" value="0">
+                    <input type="hidden" name="total_discounted" id="totalDiscountedInput" value="0">
+                    <input type="hidden" name="discount_pct" id="discountPctInput" value="0">
+                    <button type="submit" class="btn btn-gold w-100 mt-3" id="submitBtn" disabled>✨ Demander ce pack</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+let selected = {};
+function toggleService(el, name, price) {
+    if (selected[name]) {
+        delete selected[name];
+        el.classList.remove('selected');
+        el.querySelector('.check-mark').innerHTML = '';
+    } else {
+        selected[name] = price;
+        el.classList.add('selected');
+        el.querySelector('.check-mark').innerHTML = '✓';
+        el.querySelector('.check-mark').style.borderColor = '#c8a951';
+        el.querySelector('.check-mark').style.color = '#c8a951';
+    }
+    updateSummary();
+}
+function updateSummary() {
+    const list = document.getElementById('selectedList');
+    const names = Object.keys(selected);
+    const count = names.length;
+    if (count === 0) {
+        list.innerHTML = '<p style="color:#a0a0b0;font-size:.8rem;text-align:center" id="emptyMsg">Sélectionnez des services...</p>';
+        document.getElementById('totalRegular').textContent = '0 DH';
+        document.getElementById('totalFinal').textContent = '0 DH';
+        document.getElementById('discountRow').style.display = 'none';
+        document.getElementById('discountInfo').style.display = 'none';
+        document.getElementById('submitBtn').disabled = true;
+        return;
+    }
+    let html = '';
+    let total = 0;
+    names.forEach(n => {
+        html += `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem">
+            <span style="color:#e8e8e8">✓ ${n}</span>
+            <span style="color:#c8a951">${selected[n]} DH</span>
+        </div>`;
+        total += selected[n];
+    });
+    list.innerHTML = html;
+    // Discount tiers: 3+ services = 5%, 5+ = 10%, 7+ = 15%
+    let discPct = 0;
+    if (count >= 7) discPct = 15;
+    else if (count >= 5) discPct = 10;
+    else if (count >= 3) discPct = 5;
+    const discAmount = Math.round(total * discPct / 100);
+    const finalTotal = total - discAmount;
+    document.getElementById('totalRegular').textContent = total.toLocaleString() + ' DH';
+    document.getElementById('totalFinal').textContent = finalTotal.toLocaleString() + ' DH';
+    document.getElementById('selectedServicesInput').value = names.join(', ');
+    document.getElementById('totalRegularInput').value = total;
+    document.getElementById('totalDiscountedInput').value = finalTotal;
+    document.getElementById('discountPctInput').value = discPct;
+    if (discPct > 0) {
+        document.getElementById('discountRow').style.display = 'flex';
+        document.getElementById('discountAmount').textContent = '-' + discAmount.toLocaleString() + ' DH';
+        document.getElementById('discountInfo').style.display = 'block';
+        document.getElementById('discountPct').textContent = discPct;
+        document.getElementById('serviceCount').textContent = count;
+    } else {
+        document.getElementById('discountRow').style.display = 'none';
+        document.getElementById('discountInfo').style.display = 'none';
+    }
+    document.getElementById('submitBtn').disabled = false;
+}
+</script>
+</body>
+</html>
