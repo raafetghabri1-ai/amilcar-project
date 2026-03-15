@@ -16,6 +16,10 @@ import sqlite3
 
 auth_bp = Blueprint("auth_bp", __name__)
 
+_login_attempts = {}
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 300
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
