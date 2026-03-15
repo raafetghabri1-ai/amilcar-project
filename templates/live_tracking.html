@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %} — Suivi Temps Réel{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">⚡ Suivi en Temps Réel</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Où en est chaque véhicule dans le processus de soin</p>
+
+<!-- Active Vehicles -->
+{% if vehicles %}
+<div class="row g-3 mb-4">
+{% for v in vehicles %}
+<div class="col-md-6">
+    <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;border-left:4px solid {{ 'var(--green-light)' if v.progress_pct >= 90 else 'var(--gold)' if v.progress_pct >= 50 else 'var(--blue)' }}">
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+                <strong style="color:var(--text-primary);font-size:1rem">{{ '🏍️' if v.vehicle_type and v.vehicle_type != 'voiture' else '🚗' }} {{ v.brand }} {{ v.model }}</strong>
+                {% if v.color %}<span style="font-size:.7rem;color:var(--text-muted)"> ({{ v.color }})</span>{% endif %}
+                <br><small style="color:var(--gold)">{{ v.plate }}</small>
+                <small style="color:var(--text-muted)"> — {{ v.customer_name }}</small>
+                {% if v.customer_phone %}<small style="color:var(--text-muted)"> 📱 {{ v.customer_phone }}</small>{% endif %}
+            </div>
+            <div style="text-align:center;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;
+                background:{{ 'rgba(46,204,113,.15)' if v.progress_pct >= 90 else 'rgba(241,196,15,.15)' if v.progress_pct >= 50 else 'rgba(52,152,219,.15)' }};
+                color:{{ 'var(--green-light)' if v.progress_pct >= 90 else 'var(--gold)' if v.progress_pct >= 50 else 'var(--blue)' }}">
+                {{ v.progress_pct }}%
+            </div>
+        </div>
+
+        <!-- Service & Tech -->
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--text-muted);margin-bottom:8px">
+            <span>🔧 {{ v.service }}</span>
+            <span>👨‍🔧 {{ v.tech_name or 'Non assigné' }} {% if v.bay_number %}• Baie {{ v.bay_number }}{% endif %}</span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div style="background:var(--bg-darker);border-radius:10px;height:10px;overflow:hidden;margin-bottom:10px">
+            <div style="width:{{ v.progress_pct }}%;height:100%;border-radius:10px;transition:width .5s;
+                background:{{ 'var(--green-light)' if v.progress_pct >= 90 else 'var(--gold)' if v.progress_pct >= 50 else 'var(--blue)' }}"></div>
+        </div>
+
+        <!-- Steps -->
+        <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:10px">
+            {% for step_id, step_name, step_icon in steps %}
+            {% set step_names = steps|map(attribute=0)|list %}
+            {% set current_idx = step_names.index(v.current_step) if v.current_step in step_names else -1 %}
+            {% set this_idx = loop.index0 %}
+            <div style="flex:1;text-align:center;padding:4px 2px;border-radius:4px;font-size:.5rem;min-width:50px;
+                background:{{ 'var(--green-light)' if this_idx < current_idx else 'var(--gold)' if this_idx == current_idx else 'var(--bg-darker)' }};
+                color:{{ '#000' if this_idx <= current_idx else 'var(--text-muted)' }};
+                font-weight:{{ '700' if this_idx == current_idx else '400' }}">
+                {{ step_icon }}<br>{{ step_name[:8] }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Next Step Form -->
+        <form method="POST" action="/live_tracking/update/{{ v.id }}" style="display:flex;gap:6px;align-items:center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="step" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.7rem;flex:1">
+                {% for step_id, step_name, step_icon in steps %}
+                <option value="{{ step_id }}" {{ 'selected' if step_id == v.current_step }}>{{ step_icon }} {{ step_name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600;font-size:.65rem;white-space:nowrap">▶ Avancer</button>
+        </form>
+
+        <small style="color:var(--text-muted);font-size:.6rem;display:block;margin-top:6px">Début: {{ v.started_at }} • Dernière MAJ: {{ v.last_update }}</small>
+    </div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:30px;text-align:center">
+    <p style="color:var(--text-muted);font-size:.9rem">Aucun véhicule en cours de traitement</p>
+</div>
+{% endif %}
+
+<!-- Untracked Appointments Today -->
+{% if untracked %}
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📅 RDV d'aujourd'hui — Non démarrés</h5>
+    {% for u in untracked %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color)">
+        <div>
+            <strong style="color:var(--text-primary);font-size:.85rem">{{ '🏍️' if u.vehicle_type and u.vehicle_type != 'voiture' else '🚗' }} {{ u.brand }} {{ u.model }}</strong>
+            <small style="color:var(--text-muted)"> — {{ u.plate }} • {{ u.name }}</small>
+            <br><small style="color:var(--gold)">{{ u.service }}</small>
+        </div>
+        <form method="POST" action="/live_tracking/start/{{ u.id }}" style="display:flex;gap:6px;align-items:center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="tech_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.65rem;width:100px">
+                <option value="0">Technicien</option>
+                {% for t in techs %}<option value="{{ t.id }}">{{ t.username }}</option>{% endfor %}
+            </select>
+            <input type="number" name="bay_number" placeholder="Baie" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.65rem;width:60px" min="1">
+            <button type="submit" class="btn btn-sm" style="background:var(--green-light);color:#000;font-weight:600;font-size:.65rem;white-space:nowrap">▶ Démarrer</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %} — Fiche État Véhicule{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+        <h2 style="color:var(--gold);margin-bottom:4px">📋 Fiche État Véhicule</h2>
+        <p style="color:var(--text-muted);font-size:.8rem;margin:0">
+            {{ '🏍️' if appt.vehicle_type and appt.vehicle_type != 'voiture' else '🚗' }}
+            {{ appt.brand }} {{ appt.model }} — {{ appt.plate }} • {{ appt.customer_name }}
+        </p>
+    </div>
+    <a href="/appointments" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary)">← Retour</a>
+</div>
+
+<div class="row g-3">
+    <!-- Condition Form -->
+    <div class="col-md-5">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📝 Nouvelle fiche</h5>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type</label>
+                    <select name="condition_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="reception">📥 Réception (entrée)</option>
+                        <option value="delivery">📤 Livraison (sortie)</option>
+                    </select>
+                </div>
+                {% set fields = [
+                    ('exterior_state', '🚗 État extérieur', 'Propre, sale, très sale...'),
+                    ('interior_state', '🪑 État intérieur', 'Propre, poussière, taches...'),
+                    ('scratches', '⚡ Rayures', 'Position, taille, profondeur...'),
+                    ('dents', '💥 Bosses / Impacts', 'Position, taille...'),
+                    ('paint_condition', '🎨 État peinture', 'Terne, oxydée, brillante...'),
+                    ('leather_condition', '🪑 État cuir/tissu', 'Craquelé, taché, bon...'),
+                    ('dashboard_condition', '📊 Tableau de bord', 'Poussiéreux, rayé...'),
+                    ('wheels_condition', '🔘 Jantes & Pneus', 'Propres, freinage, rayées...')
+                ] %}
+                {% for name, label, placeholder in fields %}
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">{{ label }}</label>
+                    <select name="{{ name }}" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="bon">✅ Bon état</option>
+                        <option value="moyen">⚠️ Moyen</option>
+                        <option value="mauvais">❌ Mauvais</option>
+                        <option value="na">— N/A</option>
+                    </select>
+                </div>
+                {% endfor %}
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">📸 Photos (max 5)</label>
+                    <input type="file" name="photos" accept="image/*" multiple class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">📝 Notes</label>
+                    <textarea name="notes" rows="2" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Observations supplémentaires..."></textarea>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Enregistrer la fiche</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Previous Conditions -->
+    <div class="col-md-7">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📄 Fiches enregistrées ({{ conditions|length }})</h5>
+            {% for cond in conditions %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ 'var(--green-light)' if cond.condition_type == 'reception' else 'var(--gold)' }}">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                    <strong style="color:var(--gold)">{{ '📥 Réception' if cond.condition_type == 'reception' else '📤 Livraison' }}</strong>
+                    <small style="color:var(--text-muted)">{{ cond.created_at }}</small>
+                </div>
+                {% set state_colors = {'bon': 'var(--green-light)', 'moyen': '#e67e22', 'mauvais': 'var(--red)', 'na': 'var(--text-muted)'} %}
+                {% set state_icons = {'bon': '✅', 'moyen': '⚠️', 'mauvais': '❌', 'na': '—'} %}
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;font-size:.7rem">
+                    {% set items = [
+                        ('Extérieur', cond.exterior_state), ('Intérieur', cond.interior_state),
+                        ('Rayures', cond.scratches), ('Bosses', cond.dents),
+                        ('Peinture', cond.paint_condition), ('Cuir/Tissu', cond.leather_condition),
+                        ('Tableau bord', cond.dashboard_condition), ('Jantes', cond.wheels_condition)
+                    ] %}
+                    {% for label, val in items %}
+                    <div><span style="color:var(--text-muted)">{{ label }}:</span> <span style="color:{{ state_colors.get(val, 'var(--text-muted)') }}">{{ state_icons.get(val, val) }} {{ val }}</span></div>
+                    {% endfor %}
+                </div>
+                {% if cond.notes %}<small style="color:var(--text-muted);display:block;margin-top:6px">📝 {{ cond.notes }}</small>{% endif %}
+                {% if cond.photos and cond.photos != '[]' %}
+                <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+                    {% for p in cond.photos|replace('[','') |replace(']','')|replace('"','')|split(',') %}
+                    {% if p.strip() %}
+                    <img src="/static/{{ p.strip() }}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--border-color);cursor:pointer" onclick="window.open(this.src)">
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:20px">Aucune fiche pour ce RDV</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

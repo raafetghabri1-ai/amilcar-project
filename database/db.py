@@ -1134,12 +1134,173 @@ def create_tables():
         ("ALTER TABLE customers ADD COLUMN churn_risk TEXT DEFAULT ''", None),
         ("ALTER TABLE customers ADD COLUMN last_churn_check TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN contract_id INTEGER DEFAULT 0", None),
+        # Phase 13 migrations
+        ("ALTER TABLE cars ADD COLUMN vehicle_type TEXT DEFAULT 'voiture'", None),
+        ("ALTER TABLE cars ADD COLUMN color TEXT DEFAULT ''", None),
+        ("ALTER TABLE cars ADD COLUMN year INTEGER DEFAULT 0", None),
+        ("ALTER TABLE cars ADD COLUMN engine_size TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
             cursor.execute(sql)
         except:
             pass
+
+    # ─── Phase 13: Premium Car Care Intelligence Tables ───
+
+    # Galerie Avant/Après
+    cursor.execute('''CREATE TABLE IF NOT EXISTS vehicle_gallery (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        car_id INTEGER NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        photo_type TEXT DEFAULT 'before',
+        photo_path TEXT NOT NULL,
+        caption TEXT DEFAULT '',
+        is_portfolio INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (car_id) REFERENCES cars(id)
+    )''')
+
+    # Suivi Traitements & Garanties Produits
+    cursor.execute('''CREATE TABLE IF NOT EXISTS treatments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        car_id INTEGER NOT NULL,
+        customer_id INTEGER NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        treatment_type TEXT NOT NULL,
+        product_used TEXT DEFAULT '',
+        brand TEXT DEFAULT '',
+        warranty_years REAL DEFAULT 0,
+        warranty_expiry TEXT DEFAULT '',
+        applied_date TEXT NOT NULL,
+        next_renewal TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (car_id) REFERENCES cars(id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Fiche État Véhicule (Vehicle Condition Report)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS vehicle_conditions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        car_id INTEGER NOT NULL,
+        appointment_id INTEGER NOT NULL,
+        condition_type TEXT DEFAULT 'reception',
+        exterior_state TEXT DEFAULT '',
+        interior_state TEXT DEFAULT '',
+        scratches TEXT DEFAULT '',
+        dents TEXT DEFAULT '',
+        paint_condition TEXT DEFAULT '',
+        leather_condition TEXT DEFAULT '',
+        dashboard_condition TEXT DEFAULT '',
+        wheels_condition TEXT DEFAULT '',
+        photos TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        customer_signature INTEGER DEFAULT 0,
+        created_by INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (car_id) REFERENCES cars(id),
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )''')
+
+    # Suivi Produits & Consommation
+    cursor.execute('''CREATE TABLE IF NOT EXISTS product_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER NOT NULL,
+        product_id INTEGER DEFAULT 0,
+        product_name TEXT NOT NULL,
+        quantity_used REAL DEFAULT 0,
+        unit TEXT DEFAULT 'ml',
+        unit_cost REAL DEFAULT 0,
+        total_cost REAL DEFAULT 0,
+        vehicle_type TEXT DEFAULT 'voiture',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )''')
+
+    # Packs Detailing
+    cursor.execute('''CREATE TABLE IF NOT EXISTS detailing_packs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        vehicle_type TEXT DEFAULT 'all',
+        included_services TEXT DEFAULT '',
+        regular_price REAL DEFAULT 0,
+        pack_price REAL DEFAULT 0,
+        duration_minutes INTEGER DEFAULT 60,
+        is_active INTEGER DEFAULT 1,
+        photo_path TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Abonnements Lavage (Wash Subscriptions)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS wash_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        car_id INTEGER DEFAULT 0,
+        plan_name TEXT NOT NULL,
+        plan_type TEXT DEFAULT 'monthly',
+        vehicle_type TEXT DEFAULT 'voiture',
+        included_washes INTEGER DEFAULT 4,
+        used_washes INTEGER DEFAULT 0,
+        included_services TEXT DEFAULT '',
+        price REAL DEFAULT 0,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        auto_renew INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Avis Clients (Client Reviews with Photos)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS client_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        car_id INTEGER DEFAULT 0,
+        rating INTEGER DEFAULT 5,
+        comment TEXT DEFAULT '',
+        photos TEXT DEFAULT '',
+        service_type TEXT DEFAULT '',
+        is_public INTEGER DEFAULT 1,
+        is_featured INTEGER DEFAULT 0,
+        response TEXT DEFAULT '',
+        response_date TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Suivi Temps Réel (Real-Time Vehicle Status)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS vehicle_status (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER NOT NULL,
+        car_id INTEGER NOT NULL,
+        current_step TEXT DEFAULT 'reception',
+        progress_pct INTEGER DEFAULT 0,
+        started_at TEXT DEFAULT '',
+        estimated_end TEXT DEFAULT '',
+        assigned_tech INTEGER DEFAULT 0,
+        bay_number INTEGER DEFAULT 0,
+        last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+        FOREIGN KEY (car_id) REFERENCES cars(id)
+    )''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS status_updates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER NOT NULL,
+        step_name TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        started_at TEXT DEFAULT '',
+        completed_at TEXT DEFAULT '',
+        tech_id INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
+        photo_path TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )''')
 
     # إنشاء الفهارس
     indexes = [
@@ -1215,6 +1376,26 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id)",
         "CREATE INDEX IF NOT EXISTS idx_audit_log_date ON audit_log(created_at)",
+        # Phase 13 indexes
+        "CREATE INDEX IF NOT EXISTS idx_gallery_car ON vehicle_gallery(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_gallery_appointment ON vehicle_gallery(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_gallery_portfolio ON vehicle_gallery(is_portfolio)",
+        "CREATE INDEX IF NOT EXISTS idx_treatments_car ON treatments(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_treatments_customer ON treatments(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_treatments_status ON treatments(status)",
+        "CREATE INDEX IF NOT EXISTS idx_treatments_expiry ON treatments(warranty_expiry)",
+        "CREATE INDEX IF NOT EXISTS idx_conditions_car ON vehicle_conditions(car_id)",
+        "CREATE INDEX IF NOT EXISTS idx_conditions_appt ON vehicle_conditions(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_product_usage_appt ON product_usage(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_packs_active ON detailing_packs(is_active)",
+        "CREATE INDEX IF NOT EXISTS idx_packs_type ON detailing_packs(vehicle_type)",
+        "CREATE INDEX IF NOT EXISTS idx_wash_subs_customer ON wash_subscriptions(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_wash_subs_status ON wash_subscriptions(status)",
+        "CREATE INDEX IF NOT EXISTS idx_reviews_customer ON client_reviews(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_reviews_public ON client_reviews(is_public)",
+        "CREATE INDEX IF NOT EXISTS idx_reviews_featured ON client_reviews(is_featured)",
+        "CREATE INDEX IF NOT EXISTS idx_vehicle_status_appt ON vehicle_status(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_status_updates_appt ON status_updates(appointment_id)",
     ]
     for idx in indexes:
         try:

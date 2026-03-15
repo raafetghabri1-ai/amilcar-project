@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %} — Packs Detailing{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📦 Packs Detailing</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Créez des forfaits attractifs — Voitures & Motos</p>
+
+<div class="row g-3">
+    <!-- Create Pack -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouveau pack</h5>
+            <form method="POST" action="/detailing_pack/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Nom du pack</label>
+                    <input type="text" name="name" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Ex: Pack Premium Céramique">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Description</label>
+                    <textarea name="description" rows="2" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Détails du pack..."></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type de véhicule</label>
+                    <select name="vehicle_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="all">🚗🏍️ Tous véhicules</option>
+                        <option value="voiture">🚗 Voiture</option>
+                        <option value="moto_grande">🏍️ Moto grande</option>
+                        <option value="moto_petite">🛵 Moto petite</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Services inclus</label>
+                    <div style="max-height:130px;overflow-y:auto">
+                    {% for s in services %}
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="services" value="{{ s.name }}" id="ps{{ s.id }}"><label class="form-check-label" for="ps{{ s.id }}" style="color:var(--text-primary);font-size:.72rem">{{ s.name }} ({{ "%.0f"|format(s.price) }} DT)</label></div>
+                    {% endfor %}
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Prix normal (DT)</label>
+                        <input type="number" name="regular_price" step="0.01" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Prix pack (DT)</label>
+                        <input type="number" name="pack_price" step="0.01" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Durée (minutes)</label>
+                    <input type="number" name="duration_minutes" value="60" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Créer le pack</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Packs List -->
+    <div class="col-md-8">
+        <div class="row g-3">
+        {% for p in packs %}
+        <div class="col-md-6">
+            <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;border-top:3px solid {{ 'var(--gold)' if p.is_active else 'var(--text-muted)' }};{{ 'opacity:.5' if not p.is_active }}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                    <div>
+                        <h5 style="color:var(--gold);margin:0;font-size:.95rem">{{ p.name }}</h5>
+                        <small style="color:var(--text-muted)">
+                            {{ '🚗🏍️ Tous' if p.vehicle_type == 'all' else '🚗 Voiture' if p.vehicle_type == 'voiture' else '🏍️ Moto grande' if p.vehicle_type == 'moto_grande' else '🛵 Moto petite' }}
+                            • {{ p.duration_minutes }} min
+                        </small>
+                    </div>
+                    <a href="/detailing_pack/toggle/{{ p.id }}" style="font-size:.65rem;color:{{ 'var(--green-light)' if p.is_active else 'var(--red)' }};text-decoration:none;border:1px solid;padding:2px 8px;border-radius:10px">
+                        {{ 'Actif ✅' if p.is_active else 'Inactif ❌' }}
+                    </a>
+                </div>
+                {% if p.description %}<p style="color:var(--text-muted);font-size:.72rem;margin-bottom:8px">{{ p.description }}</p>{% endif %}
+                {% if p.included_services %}
+                <div style="margin-bottom:8px">
+                    {% for svc in p.included_services.split(',') %}
+                    <span style="background:var(--bg-darker);color:var(--text-primary);padding:2px 8px;border-radius:10px;font-size:.6rem;display:inline-block;margin:2px 0">{{ svc.strip() }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <span style="color:var(--text-muted);text-decoration:line-through;font-size:.8rem">{{ "%.0f"|format(p.regular_price) }} DT</span>
+                        <span style="color:var(--gold);font-size:1.2rem;font-weight:700;margin-left:8px">{{ "%.0f"|format(p.pack_price) }} DT</span>
+                    </div>
+                    {% if p.regular_price > 0 %}
+                    <span style="background:var(--green-light);color:#000;padding:2px 10px;border-radius:10px;font-size:.7rem;font-weight:700">
+                        -{{ ((1 - p.pack_price / p.regular_price) * 100)|int }}%
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12"><p style="color:var(--text-muted);text-align:center;padding:40px">Aucun pack créé. Commencez par créer votre premier pack ! 📦</p></div>
+        {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

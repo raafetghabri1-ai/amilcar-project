@@ -7968,6 +7968,483 @@ def audit_trail():
                           total=total, entity_types=entity_types, usernames=usernames,
                           entity_filter=entity_filter, user_filter=user_filter)
 
+# ══════════════════════════════════════════════════════════
+# ═══  PHASE 13 — Premium Car Care Intelligence  ═══
+# ══════════════════════════════════════════════════════════
+
+# ─── 1. Galerie Avant/Après ───
+
+@app.route("/gallery_global")
+@login_required
+def gallery_global():
+    with get_db() as conn:
+        photos = conn.execute("""SELECT g.*, c.plate, c.brand, c.model, c.vehicle_type
+            FROM vehicle_gallery g JOIN cars c ON g.car_id = c.id
+            ORDER BY g.created_at DESC LIMIT 100""").fetchall()
+    return render_template("gallery_global.html", photos=photos)
+
+@app.route("/gallery/upload", methods=["POST"])
+@login_required
+def gallery_upload():
+    car_id = request.form.get("car_id", 0, type=int)
+    appointment_id = request.form.get("appointment_id", 0, type=int)
+    photo_type = request.form.get("photo_type", "before")
+    caption = request.form.get("caption", "")
+    is_portfolio = 1 if request.form.get("is_portfolio") else 0
+    file = request.files.get("photo")
+    if file and car_id:
+        import os, uuid
+        from werkzeug.utils import secure_filename
+        fname = secure_filename(f"{uuid.uuid4().hex}_{file.filename}")
+        upload_dir = os.path.join("static", "uploads", "gallery")
+        os.makedirs(upload_dir, exist_ok=True)
+        fpath = os.path.join(upload_dir, fname)
+        file.save(fpath)
+        with get_db() as conn:
+            conn.execute("""INSERT INTO vehicle_gallery (car_id, appointment_id, photo_type, photo_path, caption, is_portfolio)
+                VALUES (?,?,?,?,?,?)""", (car_id, appointment_id, photo_type, f"uploads/gallery/{fname}", caption, is_portfolio))
+            conn.commit()
+        flash("Photo ajoutée ✅", "success")
+    return redirect("/gallery_global")
+
+# ─── 2. Support Motos — vehicle_type already in migration, update add_car ───
+
+@app.route("/add_car_vehicle", methods=["POST"])
+@login_required
+def add_car_vehicle():
+    """Enhanced car/moto add with vehicle_type"""
+    customer_id = request.form.get("customer_id", 0, type=int)
+    brand = request.form.get("brand", "").strip()
+    model = request.form.get("model", "").strip()
+    plate = request.form.get("plate", "").strip()
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    color = request.form.get("color", "").strip()
+    year = request.form.get("year", 0, type=int)
+    if customer_id and brand and model and plate:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO cars (customer_id, brand, model, plate, vehicle_type, color, year)
+                VALUES (?,?,?,?,?,?,?)""", (customer_id, brand, model, plate, vehicle_type, color, year))
+            conn.commit()
+        flash("Véhicule ajouté ✅", "success")
+    return redirect(f"/customer/{customer_id}")
+
+# ─── 3. Suivi Traitements & Garanties ───
+
+@app.route("/treatments")
+@login_required
+def treatments():
+    with get_db() as conn:
+        treats = conn.execute("""SELECT t.*, c.plate, c.brand, c.model, c.vehicle_type, cu.name as customer_name
+            FROM treatments t JOIN cars c ON t.car_id = c.id JOIN customers cu ON t.customer_id = cu.id
+            ORDER BY t.created_at DESC""").fetchall()
+        expiring = conn.execute("""SELECT t.*, c.plate, c.brand, c.model, cu.name as customer_name
+            FROM treatments t JOIN cars c ON t.car_id = c.id JOIN customers cu ON t.customer_id = cu.id
+            WHERE t.status='active' AND t.warranty_expiry != '' AND t.warranty_expiry <= date('now', '+30 days')
+            ORDER BY t.warranty_expiry""").fetchall()
+        stats = {
+            'active': conn.execute("SELECT COUNT(*) FROM treatments WHERE status='active'").fetchone()[0],
+            'expired': conn.execute("SELECT COUNT(*) FROM treatments WHERE status='expired'").fetchone()[0],
+            'expiring_soon': len(expiring),
+            'total': conn.execute("SELECT COUNT(*) FROM treatments").fetchone()[0]
+        }
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT id, plate, brand, model, customer_id, vehicle_type FROM cars ORDER BY plate").fetchall()
+    return render_template("treatments.html", treatments=treats, expiring=expiring, stats=stats, customers=customers, cars=cars)
+
+@app.route("/treatment/add", methods=["POST"])
+@login_required
+def treatment_add():
+    from datetime import datetime, timedelta
+    car_id = request.form.get("car_id", 0, type=int)
+    customer_id = request.form.get("customer_id", 0, type=int)
+    treatment_type = request.form.get("treatment_type", "")
+    product_used = request.form.get("product_used", "")
+    brand = request.form.get("brand", "")
+    warranty_years = request.form.get("warranty_years", 0, type=float)
+    applied_date = request.form.get("applied_date", datetime.now().strftime("%Y-%m-%d"))
+    notes = request.form.get("notes", "")
+    warranty_expiry = ""
+    next_renewal = ""
+    if warranty_years > 0:
+        expiry_date = datetime.strptime(applied_date, "%Y-%m-%d") + timedelta(days=int(warranty_years * 365))
+        warranty_expiry = expiry_date.strftime("%Y-%m-%d")
+        next_renewal = (expiry_date - timedelta(days=30)).strftime("%Y-%m-%d")
+    with get_db() as conn:
+        conn.execute("""INSERT INTO treatments (car_id, customer_id, treatment_type, product_used, brand,
+            warranty_years, warranty_expiry, applied_date, next_renewal, notes)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (car_id, customer_id, treatment_type, product_used, brand, warranty_years, warranty_expiry, applied_date, next_renewal, notes))
+        conn.commit()
+    flash("Traitement enregistré ✅", "success")
+    return redirect("/treatments")
+
+# ─── 4. Fiche État Véhicule ───
+
+@app.route("/vehicle_condition/<int:appointment_id>", methods=["GET", "POST"])
+@login_required
+def vehicle_condition(appointment_id):
+    with get_db() as conn:
+        appt = conn.execute("""SELECT a.*, c.plate, c.brand, c.model, c.vehicle_type, cu.name as customer_name
+            FROM appointments a JOIN cars c ON a.car_id = c.id JOIN customers cu ON c.customer_id = cu.id
+            WHERE a.id=?""", (appointment_id,)).fetchone()
+        if not appt:
+            flash("RDV non trouvé", "danger")
+            return redirect("/appointments")
+        if request.method == "POST":
+            exterior = request.form.get("exterior_state", "")
+            interior = request.form.get("interior_state", "")
+            scratches = request.form.get("scratches", "")
+            dents = request.form.get("dents", "")
+            paint = request.form.get("paint_condition", "")
+            leather = request.form.get("leather_condition", "")
+            dashboard = request.form.get("dashboard_condition", "")
+            wheels = request.form.get("wheels_condition", "")
+            notes = request.form.get("notes", "")
+            ctype = request.form.get("condition_type", "reception")
+            # Handle photos
+            import os, uuid, json
+            from werkzeug.utils import secure_filename
+            photo_paths = []
+            photos = request.files.getlist("photos")
+            upload_dir = os.path.join("static", "uploads", "conditions")
+            os.makedirs(upload_dir, exist_ok=True)
+            for photo in photos:
+                if photo and photo.filename:
+                    fname = secure_filename(f"{uuid.uuid4().hex}_{photo.filename}")
+                    photo.save(os.path.join(upload_dir, fname))
+                    photo_paths.append(f"uploads/conditions/{fname}")
+            conn.execute("""INSERT INTO vehicle_conditions (car_id, appointment_id, condition_type, exterior_state,
+                interior_state, scratches, dents, paint_condition, leather_condition, dashboard_condition,
+                wheels_condition, photos, notes, created_by)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (appt['car_id'], appointment_id, ctype, exterior, interior, scratches, dents, paint, leather,
+                 dashboard, wheels, json.dumps(photo_paths), notes, session.get('user_id', 0)))
+            conn.commit()
+            flash("Fiche état enregistrée ✅", "success")
+            return redirect(f"/vehicle_condition/{appointment_id}")
+        conditions = conn.execute("SELECT * FROM vehicle_conditions WHERE appointment_id=? ORDER BY created_at", (appointment_id,)).fetchall()
+    return render_template("vehicle_condition.html", appt=appt, conditions=conditions)
+
+# ─── 5. Suivi Produits & Consommation ───
+
+@app.route("/product_usage")
+@login_required
+def product_usage():
+    month = request.args.get("month", "")
+    from datetime import datetime
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+    with get_db() as conn:
+        usage = conn.execute("""SELECT pu.*, a.date, c.plate, c.brand, c.model, c.vehicle_type
+            FROM product_usage pu JOIN appointments a ON pu.appointment_id = a.id
+            JOIN cars c ON a.car_id = c.id
+            WHERE strftime('%%Y-%%m', a.date) = ?
+            ORDER BY a.date DESC""", (month,)).fetchall()
+        # Product summary
+        summary = conn.execute("""SELECT product_name, unit, SUM(quantity_used) as total_qty,
+            SUM(total_cost) as total_cost, COUNT(*) as usage_count
+            FROM product_usage pu JOIN appointments a ON pu.appointment_id = a.id
+            WHERE strftime('%%Y-%%m', a.date) = ?
+            GROUP BY product_name ORDER BY total_cost DESC""", (month,)).fetchall()
+        total_cost = sum(r['total_cost'] for r in summary) if summary else 0
+        # By vehicle type
+        by_type = conn.execute("""SELECT vehicle_type, SUM(total_cost) as cost, COUNT(*) as cnt
+            FROM product_usage WHERE strftime('%%Y-%%m', created_at) = ?
+            GROUP BY vehicle_type""", (month,)).fetchall()
+    return render_template("product_usage.html", usage=usage, summary=summary, total_cost=total_cost,
+                          by_type=by_type, month=month)
+
+@app.route("/product_usage/add", methods=["POST"])
+@login_required
+def product_usage_add():
+    appointment_id = request.form.get("appointment_id", 0, type=int)
+    product_name = request.form.get("product_name", "")
+    quantity_used = request.form.get("quantity_used", 0, type=float)
+    unit = request.form.get("unit", "ml")
+    unit_cost = request.form.get("unit_cost", 0, type=float)
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    total_cost = quantity_used * unit_cost
+    if appointment_id and product_name:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO product_usage (appointment_id, product_name, quantity_used, unit, unit_cost, total_cost, vehicle_type)
+                VALUES (?,?,?,?,?,?,?)""", (appointment_id, product_name, quantity_used, unit, unit_cost, total_cost, vehicle_type))
+            conn.commit()
+        flash("Consommation enregistrée ✅", "success")
+    return redirect("/product_usage")
+
+# ─── 6. Packs Detailing ───
+
+@app.route("/detailing_packs")
+@login_required
+def detailing_packs():
+    with get_db() as conn:
+        packs = conn.execute("SELECT * FROM detailing_packs ORDER BY vehicle_type, name").fetchall()
+        services = conn.execute("SELECT id, name, price FROM services ORDER BY name").fetchall()
+    return render_template("detailing_packs.html", packs=packs, services=services)
+
+@app.route("/detailing_pack/add", methods=["POST"])
+@login_required
+def detailing_pack_add():
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "")
+    vehicle_type = request.form.get("vehicle_type", "all")
+    included_services = ",".join(request.form.getlist("services"))
+    regular_price = request.form.get("regular_price", 0, type=float)
+    pack_price = request.form.get("pack_price", 0, type=float)
+    duration = request.form.get("duration_minutes", 60, type=int)
+    if name:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO detailing_packs (name, description, vehicle_type, included_services,
+                regular_price, pack_price, duration_minutes)
+                VALUES (?,?,?,?,?,?,?)""", (name, description, vehicle_type, included_services, regular_price, pack_price, duration))
+            conn.commit()
+        flash("Pack créé ✅", "success")
+    return redirect("/detailing_packs")
+
+@app.route("/detailing_pack/toggle/<int:pid>")
+@login_required
+def detailing_pack_toggle(pid):
+    with get_db() as conn:
+        conn.execute("UPDATE detailing_packs SET is_active = CASE WHEN is_active=1 THEN 0 ELSE 1 END WHERE id=?", (pid,))
+        conn.commit()
+    return redirect("/detailing_packs")
+
+# ─── 7. Abonnements Lavage ───
+
+@app.route("/wash_subscriptions")
+@login_required
+def wash_subscriptions():
+    with get_db() as conn:
+        subs = conn.execute("""SELECT ws.*, cu.name as customer_name, c.plate, c.brand, c.model, c.vehicle_type
+            FROM wash_subscriptions ws JOIN customers cu ON ws.customer_id = cu.id
+            LEFT JOIN cars c ON ws.car_id = c.id
+            ORDER BY ws.created_at DESC""").fetchall()
+        stats = {
+            'active': conn.execute("SELECT COUNT(*) FROM wash_subscriptions WHERE status='active'").fetchone()[0],
+            'total_revenue': conn.execute("SELECT COALESCE(SUM(price),0) FROM wash_subscriptions").fetchone()[0],
+            'total_washes': conn.execute("SELECT COALESCE(SUM(used_washes),0) FROM wash_subscriptions").fetchone()[0],
+            'expiring': conn.execute("SELECT COUNT(*) FROM wash_subscriptions WHERE status='active' AND end_date <= date('now', '+7 days')").fetchone()[0]
+        }
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT id, plate, brand, model, customer_id, vehicle_type FROM cars ORDER BY plate").fetchall()
+        services = conn.execute("SELECT id, name FROM services ORDER BY name").fetchall()
+    return render_template("wash_subscriptions.html", subscriptions=subs, stats=stats,
+                          customers=customers, cars=cars, services=services)
+
+@app.route("/wash_subscription/add", methods=["POST"])
+@login_required
+def wash_subscription_add():
+    customer_id = request.form.get("customer_id", 0, type=int)
+    car_id = request.form.get("car_id", 0, type=int)
+    plan_name = request.form.get("plan_name", "")
+    plan_type = request.form.get("plan_type", "monthly")
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    included_washes = request.form.get("included_washes", 4, type=int)
+    included_services = ",".join(request.form.getlist("services"))
+    price = request.form.get("price", 0, type=float)
+    start_date = request.form.get("start_date", "")
+    end_date = request.form.get("end_date", "")
+    auto_renew = 1 if request.form.get("auto_renew") else 0
+    if customer_id and plan_name and start_date:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO wash_subscriptions (customer_id, car_id, plan_name, plan_type, vehicle_type,
+                included_washes, included_services, price, start_date, end_date, auto_renew)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (customer_id, car_id, plan_name, plan_type, vehicle_type, included_washes, included_services, price, start_date, end_date, auto_renew))
+            conn.commit()
+        flash("Abonnement créé ✅", "success")
+    return redirect("/wash_subscriptions")
+
+@app.route("/wash_subscription/use/<int:sid>", methods=["POST"])
+@login_required
+def wash_subscription_use(sid):
+    with get_db() as conn:
+        sub = conn.execute("SELECT * FROM wash_subscriptions WHERE id=?", (sid,)).fetchone()
+        if sub and sub['used_washes'] < sub['included_washes']:
+            new_used = sub['used_washes'] + 1
+            status = 'completed' if new_used >= sub['included_washes'] else 'active'
+            conn.execute("UPDATE wash_subscriptions SET used_washes=?, status=? WHERE id=?", (new_used, status, sid))
+            conn.commit()
+            flash("Lavage utilisé ✅", "success")
+    return redirect("/wash_subscriptions")
+
+# ─── 8. Portfolio Public ───
+
+@app.route("/portfolio")
+def portfolio_public():
+    category = request.args.get("category", "")
+    vtype = request.args.get("type", "")
+    with get_db() as conn:
+        where = "WHERE g.is_portfolio = 1"
+        params = []
+        if category:
+            where += " AND g.caption LIKE ?"
+            params.append(f"%{category}%")
+        if vtype:
+            where += " AND c.vehicle_type = ?"
+            params.append(vtype)
+        photos = conn.execute(f"""SELECT g.*, c.plate, c.brand, c.model, c.vehicle_type
+            FROM vehicle_gallery g JOIN cars c ON g.car_id = c.id
+            {where} ORDER BY g.created_at DESC LIMIT 50""", params).fetchall()
+        reviews = conn.execute("""SELECT r.*, cu.name as customer_name
+            FROM client_reviews r JOIN customers cu ON r.customer_id = cu.id
+            WHERE r.is_public = 1 AND r.is_featured = 1
+            ORDER BY r.created_at DESC LIMIT 6""").fetchall()
+        stats = {
+            'total_vehicles': conn.execute("SELECT COUNT(DISTINCT car_id) FROM vehicle_gallery WHERE is_portfolio=1").fetchone()[0],
+            'total_photos': conn.execute("SELECT COUNT(*) FROM vehicle_gallery WHERE is_portfolio=1").fetchone()[0],
+            'avg_rating': conn.execute("SELECT COALESCE(AVG(rating), 5) FROM client_reviews WHERE is_public=1").fetchone()[0]
+        }
+        shop = {}
+        for r in conn.execute("SELECT key, value FROM settings").fetchall():
+            shop[r['key']] = r['value']
+    return render_template("portfolio.html", photos=photos, reviews=reviews, stats=stats, shop=shop,
+                          category=category, vtype=vtype)
+
+# ─── 9. Avis Clients avec Photos ───
+
+@app.route("/client_reviews")
+@login_required
+def client_reviews():
+    with get_db() as conn:
+        reviews = conn.execute("""SELECT r.*, cu.name as customer_name, c.plate, c.brand, c.model, c.vehicle_type
+            FROM client_reviews r JOIN customers cu ON r.customer_id = cu.id
+            LEFT JOIN cars c ON r.car_id = c.id
+            ORDER BY r.created_at DESC""").fetchall()
+        stats = {
+            'total': conn.execute("SELECT COUNT(*) FROM client_reviews").fetchone()[0],
+            'avg_rating': conn.execute("SELECT COALESCE(AVG(rating), 0) FROM client_reviews").fetchone()[0],
+            'five_star': conn.execute("SELECT COUNT(*) FROM client_reviews WHERE rating=5").fetchone()[0],
+            'public': conn.execute("SELECT COUNT(*) FROM client_reviews WHERE is_public=1").fetchone()[0]
+        }
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT id, plate, brand, model, customer_id FROM cars ORDER BY plate").fetchall()
+    return render_template("client_reviews.html", reviews=reviews, stats=stats, customers=customers, cars=cars)
+
+@app.route("/client_review/add", methods=["POST"])
+@login_required
+def client_review_add():
+    import os, uuid, json
+    from werkzeug.utils import secure_filename
+    customer_id = request.form.get("customer_id", 0, type=int)
+    car_id = request.form.get("car_id", 0, type=int)
+    rating = request.form.get("rating", 5, type=int)
+    comment = request.form.get("comment", "")
+    service_type = request.form.get("service_type", "")
+    is_public = 1 if request.form.get("is_public") else 0
+    is_featured = 1 if request.form.get("is_featured") else 0
+    photo_paths = []
+    photos = request.files.getlist("photos")
+    upload_dir = os.path.join("static", "uploads", "reviews")
+    os.makedirs(upload_dir, exist_ok=True)
+    for photo in photos:
+        if photo and photo.filename:
+            fname = secure_filename(f"{uuid.uuid4().hex}_{photo.filename}")
+            photo.save(os.path.join(upload_dir, fname))
+            photo_paths.append(f"uploads/reviews/{fname}")
+    if customer_id:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO client_reviews (customer_id, car_id, rating, comment, photos, service_type, is_public, is_featured)
+                VALUES (?,?,?,?,?,?,?,?)""", (customer_id, car_id, rating, comment, json.dumps(photo_paths), service_type, is_public, is_featured))
+            conn.commit()
+        flash("Avis ajouté ✅", "success")
+    return redirect("/client_reviews")
+
+@app.route("/client_review/respond/<int:rid>", methods=["POST"])
+@login_required
+def client_review_respond(rid):
+    from datetime import datetime
+    response = request.form.get("response", "")
+    with get_db() as conn:
+        conn.execute("UPDATE client_reviews SET response=?, response_date=? WHERE id=?",
+                    (response, datetime.now().strftime("%Y-%m-%d %H:%M"), rid))
+        conn.commit()
+    flash("Réponse enregistrée ✅", "success")
+    return redirect("/client_reviews")
+
+# ─── 10. Suivi Temps Réel ───
+
+CARE_STEPS = [
+    ("reception", "Réception", "🚗"),
+    ("inspection", "Inspection", "🔍"),
+    ("lavage_ext", "Lavage extérieur", "🚿"),
+    ("lavage_int", "Nettoyage intérieur", "🧹"),
+    ("polish", "Polissage/Correction", "✨"),
+    ("protection", "Protection/Traitement", "🛡️"),
+    ("sechage", "Séchage/Curing", "☀️"),
+    ("finition", "Finitions", "🎨"),
+    ("controle", "Contrôle qualité", "✅"),
+    ("pret", "Prêt à livrer", "🏁")
+]
+
+@app.route("/live_tracking")
+@login_required
+def live_tracking():
+    with get_db() as conn:
+        from datetime import date
+        today = date.today().isoformat()
+        vehicles = conn.execute("""SELECT vs.*, a.date, a.service, c.plate, c.brand, c.model, c.vehicle_type, c.color,
+            cu.name as customer_name, cu.phone as customer_phone,
+            u.username as tech_name
+            FROM vehicle_status vs JOIN appointments a ON vs.appointment_id = a.id
+            JOIN cars c ON vs.car_id = c.id JOIN customers cu ON c.customer_id = cu.id
+            LEFT JOIN users u ON vs.assigned_tech = u.id
+            WHERE a.date = ? ORDER BY vs.progress_pct DESC""", (today,)).fetchall()
+        # Today's appointments without tracking
+        untracked = conn.execute("""SELECT a.id, a.service, c.plate, c.brand, c.model, c.vehicle_type, cu.name
+            FROM appointments a JOIN cars c ON a.car_id=c.id JOIN customers cu ON c.customer_id=cu.id
+            WHERE a.date=? AND a.status != 'cancelled'
+            AND a.id NOT IN (SELECT appointment_id FROM vehicle_status)""", (today,)).fetchall()
+        techs = conn.execute("SELECT id, username FROM users WHERE role IN ('admin','tech') ORDER BY username").fetchall()
+    return render_template("live_tracking.html", vehicles=vehicles, untracked=untracked,
+                          techs=techs, steps=CARE_STEPS)
+
+@app.route("/live_tracking/start/<int:appointment_id>", methods=["POST"])
+@login_required
+def live_tracking_start(appointment_id):
+    from datetime import datetime
+    tech_id = request.form.get("tech_id", 0, type=int)
+    bay = request.form.get("bay_number", 0, type=int)
+    with get_db() as conn:
+        appt = conn.execute("SELECT car_id FROM appointments WHERE id=?", (appointment_id,)).fetchone()
+        if appt:
+            conn.execute("""INSERT INTO vehicle_status (appointment_id, car_id, current_step, progress_pct, started_at, assigned_tech, bay_number)
+                VALUES (?,?,'reception',0,?,?,?)""", (appointment_id, appt['car_id'], datetime.now().strftime("%Y-%m-%d %H:%M"), tech_id, bay))
+            conn.execute("""INSERT INTO status_updates (appointment_id, step_name, status, started_at)
+                VALUES (?,?,'in_progress',?)""", (appointment_id, 'reception', datetime.now().strftime("%Y-%m-%d %H:%M")))
+            conn.execute("UPDATE appointments SET status='in_progress' WHERE id=?", (appointment_id,))
+            conn.commit()
+    return redirect("/live_tracking")
+
+@app.route("/live_tracking/update/<int:vs_id>", methods=["POST"])
+@login_required
+def live_tracking_update(vs_id):
+    from datetime import datetime
+    new_step = request.form.get("step", "")
+    notes = request.form.get("notes", "")
+    with get_db() as conn:
+        vs = conn.execute("SELECT * FROM vehicle_status WHERE id=?", (vs_id,)).fetchone()
+        if vs:
+            step_names = [s[0] for s in CARE_STEPS]
+            if new_step in step_names:
+                idx = step_names.index(new_step)
+                pct = int((idx / (len(step_names) - 1)) * 100)
+                now = datetime.now().strftime("%Y-%m-%d %H:%M")
+                # Complete previous step
+                conn.execute("""UPDATE status_updates SET status='completed', completed_at=?
+                    WHERE appointment_id=? AND step_name=? AND status='in_progress'""",
+                    (now, vs['appointment_id'], vs['current_step']))
+                # Start new step
+                conn.execute("""INSERT INTO status_updates (appointment_id, step_name, status, started_at, notes)
+                    VALUES (?,?,'in_progress',?,?)""", (vs['appointment_id'], new_step, now, notes))
+                # Update vehicle_status
+                conn.execute("UPDATE vehicle_status SET current_step=?, progress_pct=?, last_update=? WHERE id=?",
+                            (new_step, pct, now, vs_id))
+                if new_step == 'pret':
+                    conn.execute("UPDATE appointments SET status='completed' WHERE id=?", (vs['appointment_id'],))
+                conn.commit()
+    return redirect("/live_tracking")
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

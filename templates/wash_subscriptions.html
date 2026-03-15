@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %} — Abonnements Lavage{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔄 Abonnements Lavage & Soins</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Revenus récurrents — Fidélité maximale</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--green-light)">
+        <small style="color:var(--text-muted)">Actifs</small><h3 style="color:var(--green-light);margin:4px 0">{{ stats.active }}</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--gold)">
+        <small style="color:var(--text-muted)">Revenus totaux</small><h3 style="color:var(--gold);margin:4px 0">{{ "%.0f"|format(stats.total_revenue) }} DT</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--blue)">
+        <small style="color:var(--text-muted)">Lavages effectués</small><h3 style="color:var(--blue);margin:4px 0">{{ stats.total_washes }}</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid {{ 'var(--red)' if stats.expiring > 0 else 'var(--text-muted)' }}">
+        <small style="color:var(--text-muted)">Expirent cette semaine</small><h3 style="color:{{ 'var(--red)' if stats.expiring > 0 else 'var(--text-muted)' }};margin:4px 0">{{ stats.expiring }}</h3></div></div>
+</div>
+
+<div class="row g-3">
+    <!-- Add Subscription -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvel abonnement</h5>
+            <form method="POST" action="/wash_subscription/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Client</label>
+                    <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                        {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Véhicule</label>
+                    <select name="car_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="">Optionnel</option>
+                        {% for c in cars %}<option value="{{ c.id }}">{{ '🏍️' if c.vehicle_type and c.vehicle_type != 'voiture' else '🚗' }} {{ c.plate }} — {{ c.brand }} {{ c.model }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Nom du plan</label>
+                    <input type="text" name="plan_name" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Ex: Lavage Hebdo Premium">
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type</label>
+                        <select name="plan_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="weekly">Hebdomadaire</option>
+                            <option value="monthly" selected>Mensuel</option>
+                            <option value="quarterly">Trimestriel</option>
+                            <option value="annual">Annuel</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type véhicule</label>
+                        <select name="vehicle_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="voiture">🚗 Voiture</option>
+                            <option value="moto_grande">🏍️ Moto grande</option>
+                            <option value="moto_petite">🛵 Moto petite</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Lavages inclus</label>
+                        <input type="number" name="included_washes" value="4" min="1" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Prix (DT)</label>
+                        <input type="number" name="price" step="0.01" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Début</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Fin</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Services inclus</label>
+                    <div style="max-height:100px;overflow-y:auto">
+                    {% for s in services %}<div class="form-check"><input class="form-check-input" type="checkbox" name="services" value="{{ s.name }}" id="ws{{ s.id }}"><label class="form-check-label" for="ws{{ s.id }}" style="color:var(--text-primary);font-size:.72rem">{{ s.name }}</label></div>{% endfor %}
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="auto_renew" id="autoRenew">
+                    <label class="form-check-label" for="autoRenew" style="color:var(--text-primary);font-size:.75rem">🔄 Renouvellement automatique</label>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Créer l'abonnement</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Subscriptions List -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📋 Abonnements</h5>
+            {% for s in subscriptions %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ 'var(--green-light)' if s.status == 'active' else 'var(--red)' if s.status == 'completed' else 'var(--text-muted)' }}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ s.plan_name }}</strong>
+                        <span style="background:{{ 'var(--green-light)' if s.status == 'active' else '#e74c3c' }};color:{{ '#000' if s.status == 'active' else '#fff' }};padding:2px 8px;border-radius:10px;font-size:.6rem;margin-left:6px">{{ s.status|upper }}</span>
+                        {% if s.auto_renew %}<span style="color:var(--gold);font-size:.6rem;margin-left:4px">🔄 Auto</span>{% endif %}
+                        <br><small style="color:var(--text-muted)">{{ s.customer_name }} {{ '— ' + s.plate + ' ' + s.brand + ' ' + s.model if s.plate else '' }}</small>
+                        <br><small style="color:var(--text-muted)">{{ '🏍️' if s.vehicle_type and s.vehicle_type != 'voiture' else '🚗' }} {{ s.plan_type }} • {{ s.start_date }} ➜ {{ s.end_date }}</small>
+                        {% if s.included_services %}<br><small style="color:var(--gold)">{{ s.included_services }}</small>{% endif %}
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="color:var(--gold);font-size:1.1rem">{{ "%.0f"|format(s.price) }} DT</strong>
+                    </div>
+                </div>
+                <div style="margin-top:8px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <small style="color:var(--text-muted)">Lavages: {{ s.used_washes }}/{{ s.included_washes }}</small>
+                        <small style="color:var(--gold)">{{ ((s.used_washes / s.included_washes) * 100)|int if s.included_washes > 0 else 0 }}%</small>
+                    </div>
+                    <div style="background:var(--bg-card);border-radius:10px;height:8px;overflow:hidden">
+                        <div style="background:var(--gold);height:100%;width:{{ ((s.used_washes / s.included_washes) * 100)|int if s.included_washes > 0 else 0 }}%;border-radius:10px"></div>
+                    </div>
+                    {% if s.status == 'active' and s.used_washes < s.included_washes %}
+                    <form method="POST" action="/wash_subscription/use/{{ s.id }}" style="margin-top:8px;text-align:right">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm" style="background:var(--green-light);color:#000;font-weight:600;font-size:.7rem">🚿 Utiliser un lavage</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucun abonnement</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %} — Consommation Produits{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🧴 Suivi Consommation Produits</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Coût réel par véhicule — Rentabilité exacte</p>
+
+<!-- Month + Stats -->
+<div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <form method="GET" style="display:flex;gap:8px;align-items:center">
+        <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="width:160px;background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+        <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">Charger</button>
+    </form>
+    <div style="display:flex;gap:16px">
+        <span style="color:var(--text-muted);font-size:.8rem">Total: <strong style="color:var(--red)">{{ "%.2f"|format(total_cost) }} DT</strong></span>
+        <span style="color:var(--text-muted);font-size:.8rem">Produits: <strong style="color:var(--gold)">{{ summary|length }}</strong></span>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Product Summary -->
+    <div class="col-md-5">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📊 Résumé par produit</h5>
+            {% for s in summary %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color)">
+                <div>
+                    <strong style="color:var(--text-primary);font-size:.8rem">{{ s.product_name }}</strong>
+                    <br><small style="color:var(--text-muted)">{{ "%.0f"|format(s.total_qty) }} {{ s.unit }} • {{ s.usage_count }} utilisations</small>
+                </div>
+                <span style="color:var(--red);font-weight:600;font-size:.85rem">{{ "%.2f"|format(s.total_cost) }} DT</span>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:20px;font-size:.8rem">Aucune donnée</p>
+            {% endfor %}
+
+            {% if by_type %}
+            <h6 style="color:var(--gold);margin-top:16px;margin-bottom:8px;font-size:.8rem">🚗🏍️ Par type de véhicule</h6>
+            {% for bt in by_type %}
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;padding:4px 0">
+                <span style="color:var(--text-primary)">{{ '🚗 Voiture' if bt.vehicle_type == 'voiture' else '🏍️ Moto' if 'moto' in (bt.vehicle_type or '') else bt.vehicle_type or 'N/A' }}</span>
+                <span style="color:var(--text-muted)">{{ bt.cnt }} fois • <strong style="color:var(--red)">{{ "%.2f"|format(bt.cost) }} DT</strong></span>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Add Usage Form -->
+        <div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:10px">➕ Enregistrer consommation</h5>
+            <form method="POST" action="/product_usage/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">N° RDV</label>
+                    <input type="number" name="appointment_id" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="ID du rendez-vous">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Produit</label>
+                    <input type="text" name="product_name" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required placeholder="Ex: Shampoo, Céramique Spray, Cire...">
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Quantité</label>
+                        <input type="number" name="quantity_used" step="0.1" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Unité</label>
+                        <select name="unit" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            <option value="g">g</option>
+                            <option value="m">m (PPF)</option>
+                            <option value="pcs">pièce</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Coût/unité</label>
+                        <input type="number" name="unit_cost" step="0.01" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Type véhicule</label>
+                    <select name="vehicle_type" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="voiture">🚗 Voiture</option>
+                        <option value="moto_grande">🏍️ Moto grande</option>
+                        <option value="moto_petite">🛵 Moto petite</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Usage Details -->
+    <div class="col-md-7">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📋 Détail consommations — {{ month }}</h5>
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-primary);font-size:.75rem">
+                    <thead><tr><th>Date</th><th>Véhicule</th><th>Produit</th><th>Qté</th><th style="text-align:right">Coût</th></tr></thead>
+                    <tbody>
+                    {% for u in usage %}
+                    <tr>
+                        <td style="color:var(--text-muted)">{{ u.date }}</td>
+                        <td>{{ '🏍️' if u.vehicle_type and u.vehicle_type != 'voiture' else '🚗' }} {{ u.plate }} {{ u.brand }}</td>
+                        <td style="color:var(--gold)">{{ u.product_name }}</td>
+                        <td>{{ "%.1f"|format(u.quantity_used) }} {{ u.unit }}</td>
+                        <td style="text-align:right;color:var(--red);font-weight:600">{{ "%.2f"|format(u.total_cost) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Aucune consommation ce mois</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

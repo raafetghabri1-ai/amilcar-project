@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %} — Avis Clients{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">⭐ Avis Clients</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Collectez et gérez les avis — Votre meilleure publicité</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--gold)">
+        <small style="color:var(--text-muted)">Total avis</small><h3 style="color:var(--gold);margin:4px 0">{{ stats.total }}</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--green-light)">
+        <small style="color:var(--text-muted)">Note moyenne</small><h3 style="color:var(--green-light);margin:4px 0">{{ "%.1f"|format(stats.avg_rating) }}/5</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid #f1c40f">
+        <small style="color:var(--text-muted)">5 étoiles</small><h3 style="color:#f1c40f;margin:4px 0">{{ stats.five_star }}</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--blue)">
+        <small style="color:var(--text-muted)">Publics</small><h3 style="color:var(--blue);margin:4px 0">{{ stats.public }}</h3></div></div>
+</div>
+
+<div class="row g-3">
+    <!-- Add Review -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvel avis</h5>
+            <form method="POST" action="/client_review/add" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Client</label>
+                    <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                        {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Véhicule (optionnel)</label>
+                    <select name="car_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="0">—</option>
+                        {% for c in cars %}<option value="{{ c.id }}">{{ c.plate }} — {{ c.brand }} {{ c.model }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Note</label>
+                    <div style="display:flex;gap:6px" id="starRating">
+                        {% for i in range(1, 6) %}
+                        <label style="cursor:pointer;font-size:1.5rem;color:var(--border-color);transition:color .2s" id="star{{ i }}" onclick="setRating({{ i }})">★</label>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="rating" id="ratingValue" value="5">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Service</label>
+                    <input type="text" name="service_type" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Céramique, Lavage Premium...">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Commentaire</label>
+                    <textarea name="comment" rows="3" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="L'avis du client..."></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">📸 Photos résultat</label>
+                    <input type="file" name="photos" accept="image/*" multiple class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                </div>
+                <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" name="is_public" id="pubCheck" checked>
+                    <label class="form-check-label" for="pubCheck" style="color:var(--text-primary);font-size:.75rem">🌐 Visible dans le portfolio</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="is_featured" id="featCheck">
+                    <label class="form-check-label" for="featCheck" style="color:var(--text-primary);font-size:.75rem">🌟 Mettre en avant</label>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reviews List -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <h5 style="color:var(--gold);margin:0">💬 Tous les avis</h5>
+                <a href="/portfolio" target="_blank" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);font-size:.7rem">🌐 Voir le Portfolio</a>
+            </div>
+            {% for r in reviews %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ r.customer_name }}</strong>
+                        {% if r.plate %}<small style="color:var(--text-muted)"> — {{ '🏍️' if r.vehicle_type and r.vehicle_type != 'voiture' else '🚗' }} {{ r.plate }} {{ r.brand }}</small>{% endif %}
+                        {% if r.is_featured %}<span style="color:var(--gold);font-size:.6rem;margin-left:6px">🌟 En avant</span>{% endif %}
+                        <div style="color:var(--gold);font-size:.9rem;margin:4px 0">{% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}<span style="color:var(--border-color)">★</span>{% endfor %}</div>
+                        {% if r.service_type %}<small style="color:var(--gold)">{{ r.service_type }}</small><br>{% endif %}
+                        {% if r.comment %}<p style="color:var(--text-muted);font-size:.8rem;margin:4px 0;font-style:italic">"{{ r.comment }}"</p>{% endif %}
+                    </div>
+                    <div style="text-align:right">
+                        <small style="color:var(--text-muted);font-size:.65rem">{{ r.created_at }}</small>
+                        <div style="margin-top:4px">
+                            {% if r.is_public %}<span style="color:var(--green-light);font-size:.55rem">🌐 Public</span>{% else %}<span style="color:var(--red);font-size:.55rem">🔒 Privé</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% if r.photos and r.photos != '[]' %}
+                <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+                    {% for p in r.photos|replace('[','') |replace(']','')|replace('"','')|split(',') %}
+                    {% if p.strip() %}<img src="/static/{{ p.strip() }}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);cursor:pointer" onclick="window.open(this.src)">{% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if r.response %}
+                <div style="margin-top:8px;padding:8px;background:var(--bg-card);border-radius:var(--radius);border-left:3px solid var(--gold)">
+                    <small style="color:var(--gold);font-weight:600">↩ Réponse ({{ r.response_date }}):</small>
+                    <p style="color:var(--text-muted);font-size:.75rem;margin:4px 0">{{ r.response }}</p>
+                </div>
+                {% else %}
+                <form method="POST" action="/client_review/respond/{{ r.id }}" style="margin-top:8px;display:flex;gap:6px">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="response" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);font-size:.72rem" placeholder="Répondre à l'avis...">
+                    <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-size:.65rem;white-space:nowrap">↩ Répondre</button>
+                </form>
+                {% endif %}
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucun avis pour le moment</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function setRating(n){
+    document.getElementById('ratingValue').value=n;
+    for(var i=1;i<=5;i++){
+        document.getElementById('star'+i).style.color = i<=n ? '#D4AF37' : '#2a2a4a';
+    }
+}
+setRating(5);
+</script>
+{% endblock %}
