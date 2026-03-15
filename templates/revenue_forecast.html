@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Prévisions de Revenus — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-graph-up text-success"></i> Prévisions de Revenus</h2>
+        <p class="text-muted mb-0">Forecast basé sur les données historiques et tendances saisonnières</p>
+    </div>
+</div>
+
+<!-- Forecast Cards -->
+<div class="row g-3 mb-4">
+{% for f in forecasts %}
+<div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+            <h6 class="text-muted">{{ f.month }}</h6>
+            <div class="display-5 fw-bold text-success">{{ "%.0f"|format(f.predicted) }} DT</div>
+            <div class="mt-2">
+                <div class="progress" style="height:8px">
+                    <div class="progress-bar bg-{{ 'success' if f.confidence > 80 else 'warning' if f.confidence > 60 else 'danger' }}" 
+                         style="width:{{ f.confidence }}%"></div>
+                </div>
+                <small class="text-muted">Confiance: {{ "%.0f"|format(f.confidence) }}%</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Key Metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="h4 fw-bold text-primary">{{ "%.0f"|format(avg_revenue) }} DT</div>
+                <small class="text-muted">Revenu Moyen Mensuel</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-{{ 'success' if trend > 0 else 'danger' }} bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="h4 fw-bold text-{{ 'success' if trend > 0 else 'danger' }}">
+                    {{ '+' if trend > 0 else '' }}{{ "%.0f"|format(trend) }} DT
+                </div>
+                <small class="text-muted">Tendance Mensuelle</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="h4 fw-bold text-info">{{ historical|length }} mois</div>
+                <small class="text-muted">Données Historiques</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historical Chart -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Historique vs Prévisions</h5></div>
+    <div class="card-body">
+        <canvas id="forecastChart" height="80"></canvas>
+    </div>
+</div>
+
+<!-- Historical Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Données Historiques</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover">
+            <thead><tr><th>Mois</th><th>Revenu</th><th>Factures</th><th>Ticket Moyen</th></tr></thead>
+            <tbody>
+            {% for h in historical %}
+            <tr>
+                <td>{{ h.month }}</td>
+                <td class="fw-bold text-success">{{ "%.2f"|format(h.revenue) }} DT</td>
+                <td>{{ h.invoices }}</td>
+                <td>{{ "%.2f"|format(h.avg_ticket or 0) }} DT</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const histLabels = [{% for h in historical|reverse %}'{{ h.month }}',{% endfor %}{% for f in forecasts %}'{{ f.month }}',{% endfor %}];
+const histData = [{% for h in historical|reverse %}{{ h.revenue }},{% endfor %}{% for f in forecasts %}null,{% endfor %}];
+const forecastData = [{% for h in historical|reverse %}null,{% endfor %}{% for f in forecasts %}{{ "%.0f"|format(f.predicted) }},{% endfor %}];
+new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {labels: histLabels, datasets: [
+        {label: 'Réel', data: histData, borderColor: '#28a745', backgroundColor: 'rgba(40,167,69,0.1)', fill: true, tension: 0.3, pointRadius: 5},
+        {label: 'Prévision', data: forecastData, borderColor: '#ffc107', borderDash: [5,5], backgroundColor: 'rgba(255,193,7,0.1)', fill: true, tension: 0.3, pointRadius: 5}
+    ]},
+    options: {responsive: true, scales: {y: {beginAtZero: true, ticks: {callback: v => v + ' DT'}}}}
+});
+</script>
+{% endblock %}

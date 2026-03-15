@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Performance Fournisseurs — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-truck text-primary"></i> Performance Fournisseurs</h2>
+        <p class="text-muted mb-0">Évaluation livraison, qualité et prix</p>
+    </div>
+</div>
+
+<!-- Suppliers Ranking -->
+<div class="row g-3 mb-4">
+{% for s in suppliers %}
+<div class="col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+                <h5 class="card-title mb-0">{{ s.name }}</h5>
+                {% if s.avg_overall %}
+                <span class="badge bg-{{ 'success' if s.avg_overall >= 4 else 'warning' if s.avg_overall >= 3 else 'danger' }} fs-6">
+                    {{ "%.1f"|format(s.avg_overall) }}/5
+                </span>
+                {% else %}
+                <span class="badge bg-secondary">Non évalué</span>
+                {% endif %}
+            </div>
+            {% if s.contact_name %}<div class="small text-muted mb-2">{{ s.contact_name }} — {{ s.phone or '' }}</div>{% endif %}
+            
+            {% if s.review_count > 0 %}
+            <div class="mb-2">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>🚚 Livraison</span>
+                    <span class="fw-bold">{{ "%.1f"|format(s.avg_delivery or 0) }}/5</span>
+                </div>
+                <div class="progress mb-2" style="height:6px">
+                    <div class="progress-bar bg-primary" style="width:{{ (s.avg_delivery or 0) * 20 }}%"></div>
+                </div>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>✅ Qualité</span>
+                    <span class="fw-bold">{{ "%.1f"|format(s.avg_quality or 0) }}/5</span>
+                </div>
+                <div class="progress mb-2" style="height:6px">
+                    <div class="progress-bar bg-success" style="width:{{ (s.avg_quality or 0) * 20 }}%"></div>
+                </div>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span>💰 Prix</span>
+                    <span class="fw-bold">{{ "%.1f"|format(s.avg_price or 0) }}/5</span>
+                </div>
+                <div class="progress" style="height:6px">
+                    <div class="progress-bar bg-warning" style="width:{{ (s.avg_price or 0) * 20 }}%"></div>
+                </div>
+            </div>
+            <div class="small text-muted">{{ s.review_count }} évaluation(s)</div>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-transparent">
+            <button class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#reviewSupplier{{ s.id }}">
+                <i class="bi bi-star"></i> Évaluer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal fade" id="reviewSupplier{{ s.id }}">
+    <div class="modal-dialog">
+        <form method="post" action="/supplier_review/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Évaluer {{ s.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" name="supplier_id" value="{{ s.id }}">
+                <div class="mb-3"><label class="form-label">🚚 Livraison (1-5)</label>
+                    <input type="range" name="delivery_rating" class="form-range" min="1" max="5" value="4">
+                </div>
+                <div class="mb-3"><label class="form-label">✅ Qualité (1-5)</label>
+                    <input type="range" name="quality_rating" class="form-range" min="1" max="5" value="4">
+                </div>
+                <div class="mb-3"><label class="form-label">💰 Prix (1-5)</label>
+                    <input type="range" name="price_rating" class="form-range" min="1" max="5" value="4">
+                </div>
+                <div class="mb-3"><label class="form-label">Commentaire</label>
+                    <textarea name="comment" class="form-control" rows="2"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+{% if not suppliers %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-truck display-1"></i>
+    <p class="mt-3">Aucun fournisseur. Ajoutez-en dans Stock → Fournisseurs</p>
+</div>
+{% endif %}
+
+<!-- Recent Reviews -->
+{% if recent_reviews %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Dernières Évaluations</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm">
+            <thead><tr><th>Fournisseur</th><th>Livraison</th><th>Qualité</th><th>Prix</th><th>Global</th><th>Commentaire</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for r in recent_reviews %}
+            <tr>
+                <td>{{ r.supplier_name }}</td>
+                <td>{{ '★' * r.delivery_rating }}{{ '☆' * (5 - r.delivery_rating) }}</td>
+                <td>{{ '★' * r.quality_rating }}{{ '☆' * (5 - r.quality_rating) }}</td>
+                <td>{{ '★' * r.price_rating }}{{ '☆' * (5 - r.price_rating) }}</td>
+                <td class="fw-bold">{{ "%.1f"|format(r.overall_rating) }}</td>
+                <td class="small">{{ r.comment or '—' }}</td>
+                <td class="small text-muted">{{ r.created_at[:10] if r.created_at else '' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

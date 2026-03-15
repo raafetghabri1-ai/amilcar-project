@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Avant/Après — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-arrow-left-right text-primary"></i> Comparaison Avant/Après</h2>
+        <p class="text-muted mb-0">{{ appointment.customer_name }} — {{ appointment.brand }} {{ appointment.model }} ({{ appointment.plate }})</p>
+    </div>
+    <a href="/gallery/{{ appointment.id }}" class="btn btn-outline-primary"><i class="bi bi-images"></i> Galerie</a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4"><strong>Service:</strong> {{ appointment.service or '—' }}</div>
+            <div class="col-md-4"><strong>Date:</strong> {{ appointment.date }}</div>
+            <div class="col-md-4"><strong>Statut:</strong> <span class="badge bg-{{ 'success' if appointment.status == 'completed' else 'warning' }}">{{ appointment.status }}</span></div>
+        </div>
+    </div>
+</div>
+
+{% if before_photos and after_photos %}
+<!-- Slider Comparison -->
+{% set pairs = [before_photos|length, after_photos|length]|min %}
+{% for i in range(pairs) %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Comparaison {{ i + 1 }}</h5></div>
+    <div class="card-body p-0">
+        <div class="comparison-container" style="position:relative;overflow:hidden;cursor:ew-resize" id="comp{{ i }}">
+            <div style="display:flex">
+                <div style="flex:1;position:relative">
+                    <img src="/static/uploads/{{ before_photos[i].photo_path }}" class="w-100" style="display:block" alt="Avant">
+                    <span class="badge bg-danger position-absolute top-0 start-0 m-2 fs-6">AVANT</span>
+                </div>
+                <div style="flex:1;position:relative">
+                    <img src="/static/uploads/{{ after_photos[i].photo_path }}" class="w-100" style="display:block" alt="Après">
+                    <span class="badge bg-success position-absolute top-0 end-0 m-2 fs-6">APRÈS</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- All Photos Side by Side -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white"><h5 class="mb-0"><i class="bi bi-camera"></i> Avant ({{ before_photos|length }})</h5></div>
+            <div class="card-body">
+                {% if before_photos %}
+                <div class="row g-2">
+                {% for p in before_photos %}
+                <div class="col-6">
+                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Avant" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')">
+                    {% if p.caption %}<small class="text-muted">{{ p.caption }}</small>{% endif %}
+                </div>
+                {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Aucune photo avant</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="bi bi-camera"></i> Après ({{ after_photos|length }})</h5></div>
+            <div class="card-body">
+                {% if after_photos %}
+                <div class="row g-2">
+                {% for p in after_photos %}
+                <div class="col-6">
+                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Après" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')">
+                    {% if p.caption %}<small class="text-muted">{{ p.caption }}</small>{% endif %}
+                </div>
+                {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Aucune photo après</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

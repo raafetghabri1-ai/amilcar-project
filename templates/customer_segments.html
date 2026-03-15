@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Segments Clients — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-people-fill text-primary"></i> Segments Clients</h2>
+        <p class="text-muted mb-0">{{ total }} clients analysés et segmentés automatiquement</p>
+    </div>
+</div>
+
+{% set segment_config = {
+    'vip': {'icon': '👑', 'label': 'VIP Premium', 'color': 'warning', 'desc': '+2000 DT et +10 visites'},
+    'frequent': {'icon': '🔄', 'label': 'Fidèle', 'color': 'success', 'desc': '+5 visites, actif derniers 60j'},
+    'seasonal': {'icon': '🌦️', 'label': 'Saisonnier', 'color': 'info', 'desc': 'Vient de temps en temps'},
+    'new': {'icon': '🆕', 'label': 'Nouveau', 'color': 'primary', 'desc': 'Client récent (<30j, ≤2 visites)'},
+    'at_risk': {'icon': '⚠️', 'label': 'À Risque', 'color': 'danger', 'desc': 'Inactif +90 jours'},
+    'lost': {'icon': '💤', 'label': 'Perdu', 'color': 'secondary', 'desc': 'Inactif +180 jours'}
+} %}
+
+<!-- Segment Summary -->
+<div class="row g-3 mb-4">
+{% for seg_key, seg_info in segment_config.items() %}
+<div class="col-md-4 col-lg-2">
+    <div class="card border-0 shadow-sm text-center h-100">
+        <div class="card-body">
+            <div class="display-6">{{ seg_info.icon }}</div>
+            <div class="h4 fw-bold text-{{ seg_info.color }}">{{ segments[seg_key]|length }}</div>
+            <small class="text-muted">{{ seg_info.label }}</small>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Segment Chart -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <canvas id="segmentChart" height="60"></canvas>
+    </div>
+</div>
+
+<!-- Segment Details -->
+{% for seg_key, seg_info in segment_config.items() %}
+{% if segments[seg_key] %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-{{ seg_info.color }} {{ 'text-white' if seg_info.color not in ('warning', 'info') else 'text-dark' }}">
+        <h5 class="mb-0">{{ seg_info.icon }} {{ seg_info.label }} — {{ segments[seg_key]|length }} clients
+            <small class="float-end">{{ seg_info.desc }}</small></h5>
+    </div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Client</th><th>Dépensé</th><th>Visites</th><th>Ticket Moy.</th><th>Dernière Visite</th><th>Jours</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for c in segments[seg_key][:20] %}
+            <tr>
+                <td><a href="/customer_360/{{ c.id }}">{{ c.name }}</a></td>
+                <td class="fw-bold">{{ "%.0f"|format(c.spent) }} DT</td>
+                <td>{{ c.visits }}</td>
+                <td>{{ "%.0f"|format(c.avg_ticket) }} DT</td>
+                <td>{{ c.last_visit or '—' }}</td>
+                <td><span class="badge bg-{{ 'success' if c.days_since < 30 else 'warning' if c.days_since < 90 else 'danger' }}">{{ c.days_since }}j</span></td>
+                <td>
+                    <a href="/customer_360/{{ c.id }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if segments[seg_key]|length > 20 %}
+            <tr><td colspan="7" class="text-center text-muted">+ {{ segments[seg_key]|length - 20 }} autres clients</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('segmentChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['VIP', 'Fidèle', 'Saisonnier', 'Nouveau', 'À Risque', 'Perdu'],
+        datasets: [{
+            data: [{{ segments.vip|length }}, {{ segments.frequent|length }}, {{ segments.seasonal|length }},
+                   {{ segments.new|length }}, {{ segments.at_risk|length }}, {{ segments.lost|length }}],
+            backgroundColor: ['#ffc107', '#28a745', '#17a2b8', '#007bff', '#dc3545', '#6c757d']
+        }]
+    },
+    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
+});
+</script>
+{% endblock %}

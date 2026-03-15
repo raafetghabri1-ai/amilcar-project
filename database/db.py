@@ -1162,6 +1162,16 @@ def create_tables():
         ("ALTER TABLE invoices ADD COLUMN commission_paid REAL DEFAULT 0", None),
         ("ALTER TABLE users ADD COLUMN specialties TEXT DEFAULT ''", None),
         ("ALTER TABLE users ADD COLUMN availability TEXT DEFAULT ''", None),
+        # Phase 17 migrations
+        ("ALTER TABLE appointments ADD COLUMN waitlist_notified INTEGER DEFAULT 0", None),
+        ("ALTER TABLE suppliers ADD COLUMN rating REAL DEFAULT 0", None),
+        ("ALTER TABLE suppliers ADD COLUMN delivery_score REAL DEFAULT 0", None),
+        ("ALTER TABLE suppliers ADD COLUMN quality_score REAL DEFAULT 0", None),
+        ("ALTER TABLE suppliers ADD COLUMN price_score REAL DEFAULT 0", None),
+        ("ALTER TABLE suppliers ADD COLUMN total_orders INTEGER DEFAULT 0", None),
+        ("ALTER TABLE services ADD COLUMN cost_products REAL DEFAULT 0", None),
+        ("ALTER TABLE services ADD COLUMN cost_labor_minutes INTEGER DEFAULT 0", None),
+        ("ALTER TABLE settings ADD COLUMN category TEXT DEFAULT 'general'", None),
     ]
     for sql, _ in migrations:
         try:
@@ -1540,6 +1550,17 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_report_builder_created ON report_builder(created_by)",
         "CREATE INDEX IF NOT EXISTS idx_flash_sales_active ON flash_sales(is_active)",
         "CREATE INDEX IF NOT EXISTS idx_flash_sales_dates ON flash_sales(start_datetime, end_datetime)",
+        # Phase 17 indexes
+        "CREATE INDEX IF NOT EXISTS idx_damage_claims_appointment ON damage_claims(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_damage_claims_status ON damage_claims(status)",
+        "CREATE INDEX IF NOT EXISTS idx_revenue_forecast_month ON revenue_forecast(month)",
+        "CREATE INDEX IF NOT EXISTS idx_customer_segments_segment ON customer_segments(segment)",
+        "CREATE INDEX IF NOT EXISTS idx_waitlist_date ON appointment_waitlist(preferred_date)",
+        "CREATE INDEX IF NOT EXISTS idx_waitlist_status ON appointment_waitlist(status)",
+        "CREATE INDEX IF NOT EXISTS idx_attendance_employee ON employee_attendance(employee_id)",
+        "CREATE INDEX IF NOT EXISTS idx_attendance_date ON employee_attendance(date)",
+        "CREATE INDEX IF NOT EXISTS idx_supplier_reviews_supplier ON supplier_reviews(supplier_id)",
+        "CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category)",
     ]
     for idx in indexes:
         try:
@@ -1801,6 +1822,127 @@ def create_tables():
         last_generated TEXT DEFAULT '',
         created_by TEXT DEFAULT 'admin',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # ─── Phase 17: Enterprise Intelligence & Business Growth Tables ───
+
+    # Damage Claims
+    cursor.execute('''CREATE TABLE IF NOT EXISTS damage_claims (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        appointment_id INTEGER DEFAULT 0,
+        customer_id INTEGER DEFAULT 0,
+        car_id INTEGER DEFAULT 0,
+        employee_id INTEGER DEFAULT 0,
+        damage_type TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        photos TEXT DEFAULT '[]',
+        severity TEXT DEFAULT 'minor',
+        compensation_amount REAL DEFAULT 0,
+        compensation_type TEXT DEFAULT 'discount',
+        status TEXT DEFAULT 'reported',
+        resolution_notes TEXT DEFAULT '',
+        reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TEXT DEFAULT '',
+        FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Revenue Forecast
+    cursor.execute('''CREATE TABLE IF NOT EXISTS revenue_forecast (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month TEXT NOT NULL,
+        predicted_revenue REAL DEFAULT 0,
+        actual_revenue REAL DEFAULT 0,
+        predicted_appointments INTEGER DEFAULT 0,
+        actual_appointments INTEGER DEFAULT 0,
+        confidence REAL DEFAULT 0,
+        factors TEXT DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Customer Segments
+    cursor.execute('''CREATE TABLE IF NOT EXISTS customer_segments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        segment TEXT DEFAULT 'regular',
+        score REAL DEFAULT 0,
+        last_visit_days INTEGER DEFAULT 0,
+        total_spent REAL DEFAULT 0,
+        visit_count INTEGER DEFAULT 0,
+        avg_ticket REAL DEFAULT 0,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Appointment Waitlist
+    cursor.execute('''CREATE TABLE IF NOT EXISTS appointment_waitlist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        customer_name TEXT DEFAULT '',
+        phone TEXT DEFAULT '',
+        service_requested TEXT DEFAULT '',
+        preferred_date TEXT DEFAULT '',
+        preferred_time TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        status TEXT DEFAULT 'waiting',
+        notified_at TEXT DEFAULT '',
+        assigned_appointment_id INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+
+    # Employee Attendance
+    cursor.execute('''CREATE TABLE IF NOT EXISTS employee_attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id INTEGER NOT NULL,
+        employee_name TEXT DEFAULT '',
+        date TEXT NOT NULL,
+        check_in TEXT DEFAULT '',
+        check_out TEXT DEFAULT '',
+        status TEXT DEFAULT 'present',
+        late_minutes INTEGER DEFAULT 0,
+        overtime_minutes INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Supplier Reviews
+    cursor.execute('''CREATE TABLE IF NOT EXISTS supplier_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_id INTEGER NOT NULL,
+        purchase_order_id INTEGER DEFAULT 0,
+        delivery_rating INTEGER DEFAULT 5,
+        quality_rating INTEGER DEFAULT 5,
+        price_rating INTEGER DEFAULT 5,
+        overall_rating REAL DEFAULT 5,
+        comment TEXT DEFAULT '',
+        reviewed_by TEXT DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    )''')
+
+    # Currency Exchange Rates
+    cursor.execute('''CREATE TABLE IF NOT EXISTS currency_rates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        currency_code TEXT NOT NULL,
+        currency_name TEXT DEFAULT '',
+        rate_to_tnd REAL DEFAULT 1,
+        is_active INTEGER DEFAULT 1,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Knowledge Base
+    cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_base (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        category TEXT DEFAULT 'general',
+        content TEXT DEFAULT '',
+        tags TEXT DEFAULT '',
+        author TEXT DEFAULT 'admin',
+        views INTEGER DEFAULT 0,
+        is_pinned INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
 
     # إدراج الخدمات الافتراضية إذا كان الجدول فارغاً

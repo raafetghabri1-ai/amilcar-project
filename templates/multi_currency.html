@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Multi-Devises — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-currency-exchange text-success"></i> Gestion Multi-Devises</h2>
+        <p class="text-muted mb-0">Taux de change et convertisseur — Base: Dinar Tunisien (TND)</p>
+    </div>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCurrencyModal">
+        <i class="bi bi-plus-lg"></i> Ajouter Devise
+    </button>
+</div>
+
+<div class="row g-4">
+    <!-- Rates -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Taux de Change</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead><tr><th>Code</th><th>Devise</th><th>1 Devise = ? TND</th><th>1 TND = ?</th><th>Mis à jour</th><th>Action</th></tr></thead>
+                    <tbody>
+                    {% for r in rates %}
+                    <tr>
+                        <td><strong class="text-primary">{{ r.currency_code }}</strong></td>
+                        <td>{{ r.currency_name }}</td>
+                        <td class="fw-bold text-success">{{ "%.4f"|format(r.rate_to_tnd) }} TND</td>
+                        <td class="text-muted">{{ "%.4f"|format(1 / r.rate_to_tnd) if r.rate_to_tnd > 0 else '—' }} {{ r.currency_code }}</td>
+                        <td class="small text-muted">{{ r.updated_at[:16] if r.updated_at else '' }}</td>
+                        <td>
+                            <form method="post" action="/currency/update" class="d-flex gap-1">
+                                <input type="hidden" name="rate_id" value="{{ r.id }}">
+                                <input type="number" name="rate_to_tnd" class="form-control form-control-sm" value="{{ r.rate_to_tnd }}" step="0.0001" style="width:100px">
+                                <button class="btn btn-sm btn-primary"><i class="bi bi-check"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Converter -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white"><h5 class="mb-0">Convertisseur</h5></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Montant</label>
+                    <input type="number" id="convAmount" class="form-control form-control-lg" value="100" step="0.01">
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-5">
+                        <label class="form-label">De</label>
+                        <select id="convFrom" class="form-select">
+                            <option value="TND">TND</option>
+                            {% for r in rates %}
+                            <option value="{{ r.currency_code }}">{{ r.currency_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-2 d-flex align-items-end justify-content-center">
+                        <button class="btn btn-outline-secondary" onclick="swapCurrencies()"><i class="bi bi-arrow-left-right"></i></button>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label">Vers</label>
+                        <select id="convTo" class="form-select">
+                            {% for r in rates %}
+                            <option value="{{ r.currency_code }}" {{ 'selected' if loop.first }}>{{ r.currency_code }}</option>
+                            {% endfor %}
+                            <option value="TND">TND</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success w-100 mb-3" onclick="convertCurrency()">
+                    <i class="bi bi-calculator"></i> Convertir
+                </button>
+                <div id="convResult" class="text-center"></div>
+            </div>
+        </div>
+
+        <!-- Quick Reference -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Référence Rapide (100 TND)</h5></div>
+            <div class="card-body">
+                {% for r in rates %}
+                <div class="d-flex justify-content-between border-bottom py-1">
+                    <span>{{ r.currency_code }}</span>
+                    <strong>{{ "%.2f"|format(100 / r.rate_to_tnd) if r.rate_to_tnd > 0 else '—' }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Currency Modal -->
+<div class="modal fade" id="addCurrencyModal">
+    <div class="modal-dialog modal-sm">
+        <form method="post" action="/currency/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Ajouter Devise</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Code (3 lettres)</label>
+                    <input type="text" name="currency_code" class="form-control" maxlength="3" required placeholder="EUR"></div>
+                <div class="mb-3"><label class="form-label">Nom</label>
+                    <input type="text" name="currency_name" class="form-control" placeholder="Euro"></div>
+                <div class="mb-3"><label class="form-label">Taux (1 devise = ? TND)</label>
+                    <input type="number" name="rate_to_tnd" class="form-control" step="0.0001" value="1" required></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-success">Ajouter</button></div>
+        </form>
+    </div>
+</div>
+
+<script>
+function convertCurrency() {
+    const amount = document.getElementById('convAmount').value;
+    const from = document.getElementById('convFrom').value;
+    const to = document.getElementById('convTo').value;
+    fetch(`/api/convert_currency?amount=${amount}&from=${from}&to=${to}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('convResult').innerHTML = `
+                <div class="alert alert-success mb-0">
+                    <div class="display-6 fw-bold">${data.result} ${data.to}</div>
+                    <small>${data.amount} ${data.from} = ${data.result} ${data.to}</small>
+                </div>`;
+        });
+}
+function swapCurrencies() {
+    const f = document.getElementById('convFrom');
+    const t = document.getElementById('convTo');
+    [f.value, t.value] = [t.value, f.value];
+}
+</script>
+{% endblock %}

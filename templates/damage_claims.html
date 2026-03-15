@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Réclamations Dommages — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-exclamation-triangle-fill text-danger"></i> Réclamations & Dommages</h2>
+        <p class="text-muted mb-0">Suivi des incidents et compensations</p>
+    </div>
+    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addClaimModal">
+        <i class="bi bi-plus-lg"></i> Nouvelle Réclamation
+    </button>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-danger">{{ stats.total }}</div>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-warning">{{ stats.open }}</div>
+                <small class="text-muted">En Cours</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-success">{{ stats.resolved }}</div>
+                <small class="text-muted">Résolues</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-info">{{ "%.0f"|format(stats.total_compensation) }} DT</div>
+                <small class="text-muted">Compensations</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>ID</th><th>Client</th><th>Véhicule</th><th>Type</th><th>Sévérité</th><th>Statut</th><th>Compensation</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for c in claims %}
+            <tr>
+                <td>#{{ c.id }}</td>
+                <td>{{ c.customer_name or '—' }}</td>
+                <td>{{ c.brand }} {{ c.model }} <small class="text-muted">{{ c.plate }}</small></td>
+                <td>{{ c.damage_type }}</td>
+                <td><span class="badge bg-{{ 'danger' if c.severity == 'major' else 'warning' if c.severity == 'moderate' else 'secondary' }}">{{ c.severity }}</span></td>
+                <td><span class="badge bg-{{ 'success' if c.status == 'resolved' else 'warning' if c.status == 'investigating' else 'danger' }}">{{ c.status }}</span></td>
+                <td>{{ "%.0f"|format(c.compensation_amount) }} DT</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updateClaim{{ c.id }}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </td>
+            </tr>
+            <!-- Update Modal -->
+            <div class="modal fade" id="updateClaim{{ c.id }}">
+                <div class="modal-dialog">
+                    <form method="post" action="/damage_claim/update/{{ c.id }}" class="modal-content">
+                        <div class="modal-header"><h5 class="modal-title">Réclamation #{{ c.id }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <p><strong>{{ c.damage_type }}</strong> — {{ c.description }}</p>
+                            <div class="mb-3"><label class="form-label">Statut</label>
+                                <select name="status" class="form-select">
+                                    <option value="reported" {{ 'selected' if c.status == 'reported' }}>Signalé</option>
+                                    <option value="investigating" {{ 'selected' if c.status == 'investigating' }}>En investigation</option>
+                                    <option value="resolved" {{ 'selected' if c.status == 'resolved' }}>Résolu</option>
+                                    <option value="rejected" {{ 'selected' if c.status == 'rejected' }}>Rejeté</option>
+                                </select></div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="form-label">Compensation (DT)</label>
+                                    <input type="number" name="compensation_amount" class="form-control" value="{{ c.compensation_amount }}" step="0.01"></div>
+                                <div class="col-6"><label class="form-label">Type</label>
+                                    <select name="compensation_type" class="form-select">
+                                        <option value="discount" {{ 'selected' if c.compensation_type == 'discount' }}>Remise</option>
+                                        <option value="refund" {{ 'selected' if c.compensation_type == 'refund' }}>Remboursement</option>
+                                        <option value="free_service" {{ 'selected' if c.compensation_type == 'free_service' }}>Service gratuit</option>
+                                    </select></div>
+                            </div>
+                            <div class="mb-3"><label class="form-label">Notes de résolution</label>
+                                <textarea name="resolution_notes" class="form-control" rows="3">{{ c.resolution_notes }}</textarea></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary">Mettre à jour</button></div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if not claims %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-shield-check display-1"></i>
+    <p class="mt-3">Aucune réclamation — Excellent!</p>
+</div>
+{% endif %}
+
+<!-- Add Claim Modal -->
+<div class="modal fade" id="addClaimModal">
+    <div class="modal-dialog">
+        <form method="post" action="/damage_claim/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Nouvelle Réclamation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">N° RDV</label>
+                        <input type="number" name="appointment_id" class="form-control"></div>
+                    <div class="col-6"><label class="form-label">ID Client</label>
+                        <input type="number" name="customer_id" class="form-control"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">ID Véhicule</label>
+                        <input type="number" name="car_id" class="form-control"></div>
+                    <div class="col-6"><label class="form-label">ID Employé</label>
+                        <input type="number" name="employee_id" class="form-control"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Type de dommage</label>
+                    <select name="damage_type" class="form-select">
+                        <option value="Rayure">Rayure</option>
+                        <option value="Bosse">Bosse</option>
+                        <option value="Tache">Tache</option>
+                        <option value="Pièce cassée">Pièce cassée</option>
+                        <option value="Produit endommagé">Produit endommagé</option>
+                        <option value="Autre">Autre</option>
+                    </select></div>
+                <div class="mb-3"><label class="form-label">Sévérité</label>
+                    <select name="severity" class="form-select">
+                        <option value="minor">Mineur</option>
+                        <option value="moderate">Modéré</option>
+                        <option value="major">Majeur</option>
+                    </select></div>
+                <div class="mb-3"><label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="3" required></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-danger">Enregistrer</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

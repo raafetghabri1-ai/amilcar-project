@@ -10059,6 +10059,596 @@ def customer_360(customer_id):
                           treatments=treatments, timeline=timeline, reviews=reviews,
                           referrals=referrals)
 
+# ─── Phase 17: Enterprise Intelligence & Business Growth ───
+
+# ── 1. Damage Claim Tracker ──
+@app.route('/damage_claims')
+@login_required
+def damage_claims():
+    with get_db() as conn:
+        claims = conn.execute("""
+            SELECT dc.*, c.name as customer_name, car.brand, car.model, car.plate
+            FROM damage_claims dc
+            LEFT JOIN customers c ON dc.customer_id = c.id
+            LEFT JOIN cars car ON dc.car_id = car.id
+            ORDER BY dc.reported_at DESC
+        """).fetchall()
+        stats = {
+            'total': len(claims),
+            'open': sum(1 for c in claims if c['status'] in ('reported', 'investigating')),
+            'resolved': sum(1 for c in claims if c['status'] == 'resolved'),
+            'total_compensation': sum(c['compensation_amount'] for c in claims if c['status'] == 'resolved')
+        }
+    return render_template('damage_claims.html', claims=claims, stats=stats)
+
+@app.route('/damage_claim/add', methods=['POST'])
+@login_required
+def damage_claim_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO damage_claims
+            (appointment_id, customer_id, car_id, employee_id, damage_type, description, severity)
+            VALUES (?,?,?,?,?,?,?)""",
+            (int(request.form.get('appointment_id', 0)),
+             int(request.form.get('customer_id', 0)),
+             int(request.form.get('car_id', 0)),
+             int(request.form.get('employee_id', 0)),
+             request.form.get('damage_type', ''),
+             request.form.get('description', ''),
+             request.form.get('severity', 'minor')))
+        conn.commit()
+    flash("Réclamation enregistrée", "success")
+    return redirect("/damage_claims")
+
+@app.route('/damage_claim/update/<int:claim_id>', methods=['POST'])
+@login_required
+def damage_claim_update(claim_id):
+    status = request.form['status']
+    with get_db() as conn:
+        resolved_at = datetime.now().strftime('%Y-%m-%d %H:%M') if status == 'resolved' else ''
+        conn.execute("""UPDATE damage_claims SET status=?, compensation_amount=?,
+            compensation_type=?, resolution_notes=?, resolved_at=? WHERE id=?""",
+            (status, float(request.form.get('compensation_amount', 0)),
+             request.form.get('compensation_type', 'discount'),
+             request.form.get('resolution_notes', ''), resolved_at, claim_id))
+        conn.commit()
+    flash("Réclamation mise à jour", "success")
+    return redirect("/damage_claims")
+
+# ── 2. Before/After Comparison ──
+@app.route('/before_after/<int:appointment_id>')
+@login_required
+def before_after(appointment_id):
+    with get_db() as conn:
+        appointment = conn.execute("""
+            SELECT a.*, c.name as customer_name, car.brand, car.model, car.plate
+            FROM appointments a
+            LEFT JOIN customers c ON a.customer_id = c.id
+            LEFT JOIN cars car ON a.car_id = car.id
+            WHERE a.id = ?
+        """, (appointment_id,)).fetchone()
+        if not appointment:
+            flash("Rendez-vous non trouvé", "danger")
+            return redirect("/appointments")
+        gallery = conn.execute("""
+            SELECT * FROM vehicle_gallery
+            WHERE appointment_id = ? ORDER BY photo_type, uploaded_at
+        """, (appointment_id,)).fetchall()
+        before_photos = [g for g in gallery if g['photo_type'] == 'before']
+        after_photos = [g for g in gallery if g['photo_type'] == 'after']
+    return render_template('before_after.html', appointment=appointment,
+                          before_photos=before_photos, after_photos=after_photos)
+
+# ── 3. Revenue Forecast ──
+@app.route('/revenue_forecast')
+@login_required
+def revenue_forecast():
+    with get_db() as conn:
+        # Historical monthly data (last 12 months)
+        historical = conn.execute("""
+            SELECT strftime('%Y-%m', date) as month,
+                   SUM(total) as revenue, COUNT(*) as invoices,
+                   AVG(total) as avg_ticket
+            FROM invoices WHERE status != 'cancelled'
+            GROUP BY strftime('%Y-%m', date)
+            ORDER BY month DESC LIMIT 12
+        """).fetchall()
+
+        # Calculate forecast for next 3 months
+        if len(historical) >= 3:
+            revenues = [h['revenue'] for h in historical[:6]]
+            avg_revenue = sum(revenues) / len(revenues)
+            trend = (revenues[0] - revenues[-1]) / len(revenues) if len(revenues) > 1 else 0
+        else:
+            avg_revenue = historical[0]['revenue'] if historical else 0
+            trend = 0
+
+        forecasts = []
+        for i in range(1, 4):
+            future_month = (datetime.now() + timedelta(days=30 * i)).strftime('%Y-%m')
+            predicted = max(0, avg_revenue + (trend * i))
+            # Seasonal adjustment (summer +15%, winter -10%)
+            month_num = int(future_month.split('-')[1])
+            if month_num in (6, 7, 8):
+                predicted *= 1.15
+            elif month_num in (12, 1, 2):
+                predicted *= 0.9
+            confidence = max(50, 95 - (i * 10) - (5 if len(historical) < 6 else 0))
+
+            existing = conn.execute("SELECT * FROM revenue_forecast WHERE month=?", (future_month,)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO revenue_forecast
+                    (month, predicted_revenue, predicted_appointments, confidence)
+                    VALUES (?,?,?,?)""",
+                    (future_month, predicted,
+                     int(predicted / max(avg_revenue / max(sum(h['invoices'] for h in historical[:6]) / min(len(historical), 6), 1), 1)) if avg_revenue > 0 else 0,
+                     confidence))
+            forecasts.append({
+                'month': future_month, 'predicted': predicted,
+                'confidence': confidence
+            })
+        conn.commit()
+
+        # Load saved forecasts with actuals
+        saved = conn.execute("SELECT * FROM revenue_forecast ORDER BY month DESC LIMIT 12").fetchall()
+
+    return render_template('revenue_forecast.html', historical=historical,
+                          forecasts=forecasts, saved=saved, avg_revenue=avg_revenue, trend=trend)
+
+# ── 4. Customer Segments ──
+@app.route('/customer_segments')
+@login_required
+def customer_segments():
+    with get_db() as conn:
+        # Recalculate segments
+        customers = conn.execute("""
+            SELECT c.id, c.name, c.phone, c.total_spent, c.total_visits, c.last_visit,
+                   c.loyalty_level, c.created_at,
+                   COALESCE(SUM(i.total), 0) as real_spent,
+                   COUNT(DISTINCT a.id) as real_visits,
+                   MAX(a.date) as last_visit_date
+            FROM customers c
+            LEFT JOIN invoices i ON c.id = i.customer_id AND i.status != 'cancelled'
+            LEFT JOIN appointments a ON c.id = a.customer_id
+            GROUP BY c.id ORDER BY real_spent DESC
+        """).fetchall()
+
+        segments = {'vip': [], 'frequent': [], 'seasonal': [], 'new': [], 'at_risk': [], 'lost': []}
+        today = datetime.now()
+
+        for cust in customers:
+            spent = cust['real_spent'] or 0
+            visits = cust['real_visits'] or 0
+            last = cust['last_visit_date']
+            days_since = (today - datetime.strptime(last, '%Y-%m-%d')).days if last else 999
+            avg_ticket = spent / max(visits, 1)
+
+            # Segment logic
+            if spent >= 2000 and visits >= 10:
+                segment = 'vip'
+                score = 95
+            elif visits >= 5 and days_since < 60:
+                segment = 'frequent'
+                score = 80
+            elif visits >= 2 and days_since > 60 and days_since < 180:
+                segment = 'seasonal'
+                score = 55
+            elif days_since < 30 and visits <= 2:
+                segment = 'new'
+                score = 60
+            elif days_since > 180:
+                segment = 'lost'
+                score = 15
+            elif days_since > 90:
+                segment = 'at_risk'
+                score = 30
+            else:
+                segment = 'frequent'
+                score = 65
+
+            segments[segment].append({
+                'id': cust['id'], 'name': cust['name'], 'phone': cust['phone'],
+                'spent': spent, 'visits': visits, 'last_visit': last,
+                'days_since': days_since, 'avg_ticket': avg_ticket, 'score': score
+            })
+
+            # Update DB
+            conn.execute("""INSERT OR REPLACE INTO customer_segments
+                (customer_id, segment, score, last_visit_days, total_spent, visit_count, avg_ticket, updated_at)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (cust['id'], segment, score, days_since, spent, visits, avg_ticket,
+                 datetime.now().strftime('%Y-%m-%d %H:%M')))
+
+        conn.commit()
+
+    return render_template('customer_segments.html', segments=segments,
+                          total=sum(len(v) for v in segments.values()))
+
+# ── 5. Service Cost Calculator ──
+@app.route('/service_cost_calculator')
+@login_required
+def service_cost_calculator():
+    with get_db() as conn:
+        services = conn.execute("""
+            SELECT s.*, COUNT(a.id) as usage_count,
+                   AVG(st.actual_minutes) as avg_time
+            FROM services s
+            LEFT JOIN appointments a ON a.service = s.name AND a.status = 'completed'
+            LEFT JOIN service_timer st ON st.service_name = s.name
+            GROUP BY s.id ORDER BY s.name
+        """).fetchall()
+        # Get hourly labor rate from settings
+        hourly_rate = 15  # DT/hour default
+        try:
+            rate_setting = conn.execute("SELECT value FROM settings WHERE key='hourly_labor_rate'").fetchone()
+            if rate_setting:
+                hourly_rate = float(rate_setting['value'])
+        except:
+            pass
+    return render_template('service_cost_calculator.html', services=services,
+                          hourly_rate=hourly_rate)
+
+@app.route('/service_cost/update', methods=['POST'])
+@login_required
+def service_cost_update():
+    service_id = int(request.form['service_id'])
+    with get_db() as conn:
+        conn.execute("""UPDATE services SET cost_products=?, cost_labor_minutes=? WHERE id=?""",
+            (float(request.form.get('cost_products', 0)),
+             int(request.form.get('cost_labor_minutes', 0)), service_id))
+        conn.commit()
+    flash("Coûts mis à jour", "success")
+    return redirect("/service_cost_calculator")
+
+# ── 6. Appointment Waitlist ──
+@app.route('/appointment_waitlist')
+@login_required
+def appointment_waitlist():
+    with get_db() as conn:
+        waitlist = conn.execute("""
+            SELECT w.*, c.name as cname, c.phone as cphone
+            FROM appointment_waitlist w
+            LEFT JOIN customers c ON w.customer_id = c.id
+            ORDER BY CASE w.status WHEN 'waiting' THEN 0 WHEN 'notified' THEN 1 ELSE 2 END,
+            w.created_at DESC
+        """).fetchall()
+        customers = conn.execute("SELECT id, name, phone FROM customers ORDER BY name").fetchall()
+        # Check for available slots today
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_count = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE date=? AND status != 'cancelled'",
+            (today,)).fetchone()[0]
+        max_daily = 10
+        try:
+            ms = conn.execute("SELECT value FROM settings WHERE key='max_daily_appointments'").fetchone()
+            if ms:
+                max_daily = int(ms['value'])
+        except:
+            pass
+        available_slots = max(0, max_daily - today_count)
+    return render_template('appointment_waitlist.html', waitlist=waitlist,
+                          customers=customers, available_slots=available_slots, today=today)
+
+@app.route('/waitlist/add', methods=['POST'])
+@login_required
+def waitlist_add():
+    with get_db() as conn:
+        cid = int(request.form.get('customer_id', 0))
+        cust = conn.execute("SELECT name, phone FROM customers WHERE id=?", (cid,)).fetchone()
+        conn.execute("""INSERT INTO appointment_waitlist
+            (customer_id, customer_name, phone, service_requested, preferred_date, preferred_time, notes)
+            VALUES (?,?,?,?,?,?,?)""",
+            (cid, cust['name'] if cust else request.form.get('customer_name', ''),
+             cust['phone'] if cust else request.form.get('phone', ''),
+             request.form.get('service_requested', ''),
+             request.form.get('preferred_date', ''),
+             request.form.get('preferred_time', ''),
+             request.form.get('notes', '')))
+        conn.commit()
+    flash("Ajouté à la liste d'attente", "success")
+    return redirect("/appointment_waitlist")
+
+@app.route('/waitlist/notify/<int:wid>')
+@login_required
+def waitlist_notify(wid):
+    with get_db() as conn:
+        conn.execute("UPDATE appointment_waitlist SET status='notified', notified_at=? WHERE id=?",
+                    (datetime.now().strftime('%Y-%m-%d %H:%M'), wid))
+        conn.commit()
+    flash("Client notifié", "success")
+    return redirect("/appointment_waitlist")
+
+@app.route('/waitlist/convert/<int:wid>')
+@login_required
+def waitlist_convert(wid):
+    with get_db() as conn:
+        w = conn.execute("SELECT * FROM appointment_waitlist WHERE id=?", (wid,)).fetchone()
+        if w:
+            conn.execute("""INSERT INTO appointments (customer_id, date, time, service, status)
+                VALUES (?,?,?,?,?)""",
+                (w['customer_id'], w['preferred_date'], w['preferred_time'],
+                 w['service_requested'], 'pending'))
+            appt_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute("UPDATE appointment_waitlist SET status='converted', assigned_appointment_id=? WHERE id=?",
+                        (appt_id, wid))
+            conn.commit()
+    flash("Converti en rendez-vous", "success")
+    return redirect("/appointment_waitlist")
+
+@app.route('/waitlist/remove/<int:wid>')
+@login_required
+def waitlist_remove(wid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM appointment_waitlist WHERE id=?", (wid,))
+        conn.commit()
+    flash("Retiré de la liste d'attente", "success")
+    return redirect("/appointment_waitlist")
+
+# ── 7. Employee Attendance ──
+@app.route('/employee_attendance')
+@login_required
+def employee_attendance():
+    month = request.args.get('month', datetime.now().strftime('%Y-%m'))
+    with get_db() as conn:
+        employees = conn.execute("SELECT id, full_name FROM users WHERE role != 'admin' ORDER BY full_name").fetchall()
+        records = conn.execute("""
+            SELECT * FROM employee_attendance
+            WHERE date LIKE ? ORDER BY date DESC, employee_name
+        """, (f"{month}%",)).fetchall()
+        # Monthly stats per employee
+        stats = conn.execute("""
+            SELECT employee_id, employee_name,
+                   COUNT(*) as total_days,
+                   SUM(CASE WHEN status='present' THEN 1 ELSE 0 END) as present,
+                   SUM(CASE WHEN status='absent' THEN 1 ELSE 0 END) as absent,
+                   SUM(CASE WHEN status='late' THEN 1 ELSE 0 END) as late,
+                   SUM(late_minutes) as total_late_min,
+                   SUM(overtime_minutes) as total_overtime_min
+            FROM employee_attendance WHERE date LIKE ?
+            GROUP BY employee_id ORDER BY employee_name
+        """, (f"{month}%",)).fetchall()
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template('employee_attendance.html', employees=employees,
+                          records=records, stats=stats, month=month, today=today)
+
+@app.route('/attendance/record', methods=['POST'])
+@login_required
+def attendance_record():
+    emp_id = int(request.form['employee_id'])
+    with get_db() as conn:
+        emp = conn.execute("SELECT full_name FROM users WHERE id=?", (emp_id,)).fetchone()
+        date = request.form['date']
+        check_in = request.form.get('check_in', '')
+        check_out = request.form.get('check_out', '')
+        status = request.form.get('status', 'present')
+        # Calculate late minutes (assume start is 08:00)
+        late_min = 0
+        if check_in and status == 'present':
+            try:
+                ci = datetime.strptime(check_in, '%H:%M')
+                start = datetime.strptime('08:00', '%H:%M')
+                if ci > start:
+                    late_min = int((ci - start).total_seconds() / 60)
+                    if late_min > 15:
+                        status = 'late'
+            except:
+                pass
+        # Calculate overtime
+        overtime = 0
+        if check_out:
+            try:
+                co = datetime.strptime(check_out, '%H:%M')
+                end = datetime.strptime('17:00', '%H:%M')
+                if co > end:
+                    overtime = int((co - end).total_seconds() / 60)
+            except:
+                pass
+
+        existing = conn.execute("SELECT id FROM employee_attendance WHERE employee_id=? AND date=?",
+                               (emp_id, date)).fetchone()
+        if existing:
+            conn.execute("""UPDATE employee_attendance SET check_in=?, check_out=?, status=?,
+                late_minutes=?, overtime_minutes=?, notes=? WHERE id=?""",
+                (check_in, check_out, status, late_min, overtime,
+                 request.form.get('notes', ''), existing['id']))
+        else:
+            conn.execute("""INSERT INTO employee_attendance
+                (employee_id, employee_name, date, check_in, check_out, status, late_minutes, overtime_minutes, notes)
+                VALUES (?,?,?,?,?,?,?,?,?)""",
+                (emp_id, emp['full_name'] if emp else '', date, check_in, check_out,
+                 status, late_min, overtime, request.form.get('notes', '')))
+        conn.commit()
+    flash("Présence enregistrée", "success")
+    return redirect(f"/employee_attendance?month={date[:7]}")
+
+# ── 8. Supplier Performance ──
+@app.route('/supplier_performance')
+@login_required
+def supplier_performance():
+    with get_db() as conn:
+        suppliers = conn.execute("""
+            SELECT s.*, COUNT(sr.id) as review_count,
+                   AVG(sr.delivery_rating) as avg_delivery,
+                   AVG(sr.quality_rating) as avg_quality,
+                   AVG(sr.price_rating) as avg_price,
+                   AVG(sr.overall_rating) as avg_overall
+            FROM suppliers s
+            LEFT JOIN supplier_reviews sr ON s.id = sr.supplier_id
+            GROUP BY s.id ORDER BY avg_overall DESC
+        """).fetchall()
+        recent_reviews = conn.execute("""
+            SELECT sr.*, s.name as supplier_name
+            FROM supplier_reviews sr
+            LEFT JOIN suppliers s ON sr.supplier_id = s.id
+            ORDER BY sr.created_at DESC LIMIT 20
+        """).fetchall()
+    return render_template('supplier_performance.html', suppliers=suppliers,
+                          recent_reviews=recent_reviews)
+
+@app.route('/supplier_review/add', methods=['POST'])
+@login_required
+def supplier_review_add():
+    delivery = int(request.form.get('delivery_rating', 5))
+    quality = int(request.form.get('quality_rating', 5))
+    price = int(request.form.get('price_rating', 5))
+    overall = (delivery + quality + price) / 3
+    with get_db() as conn:
+        conn.execute("""INSERT INTO supplier_reviews
+            (supplier_id, purchase_order_id, delivery_rating, quality_rating,
+             price_rating, overall_rating, comment)
+            VALUES (?,?,?,?,?,?,?)""",
+            (int(request.form['supplier_id']),
+             int(request.form.get('purchase_order_id', 0)),
+             delivery, quality, price, overall,
+             request.form.get('comment', '')))
+        # Update supplier average
+        sid = int(request.form['supplier_id'])
+        avg = conn.execute("SELECT AVG(overall_rating) FROM supplier_reviews WHERE supplier_id=?",
+                          (sid,)).fetchone()[0]
+        conn.execute("UPDATE suppliers SET rating=? WHERE id=?", (avg or 0, sid))
+        conn.commit()
+    flash("Évaluation ajoutée", "success")
+    return redirect("/supplier_performance")
+
+# ── 9. Multi-Currency ──
+@app.route('/multi_currency')
+@login_required
+def multi_currency():
+    with get_db() as conn:
+        rates = conn.execute("SELECT * FROM currency_rates ORDER BY currency_code").fetchall()
+        if not rates:
+            defaults = [
+                ('EUR', 'Euro', 3.35), ('USD', 'Dollar US', 3.10),
+                ('GBP', 'Livre Sterling', 3.95), ('SAR', 'Riyal Saoudien', 0.83),
+                ('AED', 'Dirham EAU', 0.84), ('LYD', 'Dinar Libyen', 0.64),
+                ('DZD', 'Dinar Algérien', 0.023), ('MAD', 'Dirham Marocain', 0.31)
+            ]
+            for code, name, rate in defaults:
+                conn.execute("INSERT INTO currency_rates (currency_code, currency_name, rate_to_tnd) VALUES (?,?,?)",
+                            (code, name, rate))
+            conn.commit()
+            rates = conn.execute("SELECT * FROM currency_rates ORDER BY currency_code").fetchall()
+    return render_template('multi_currency.html', rates=rates)
+
+@app.route('/currency/update', methods=['POST'])
+@login_required
+def currency_update():
+    with get_db() as conn:
+        rate_id = int(request.form['rate_id'])
+        conn.execute("UPDATE currency_rates SET rate_to_tnd=?, updated_at=? WHERE id=?",
+                    (float(request.form['rate_to_tnd']),
+                     datetime.now().strftime('%Y-%m-%d %H:%M'), rate_id))
+        conn.commit()
+    flash("Taux mis à jour", "success")
+    return redirect("/multi_currency")
+
+@app.route('/currency/add', methods=['POST'])
+@login_required
+def currency_add():
+    with get_db() as conn:
+        conn.execute("INSERT INTO currency_rates (currency_code, currency_name, rate_to_tnd) VALUES (?,?,?)",
+                    (request.form['currency_code'].upper(),
+                     request.form['currency_name'],
+                     float(request.form.get('rate_to_tnd', 1))))
+        conn.commit()
+    flash("Devise ajoutée", "success")
+    return redirect("/multi_currency")
+
+@app.route('/api/convert_currency')
+@login_required
+def convert_currency_api():
+    amount = float(request.args.get('amount', 0))
+    from_curr = request.args.get('from', 'TND')
+    to_curr = request.args.get('to', 'EUR')
+    with get_db() as conn:
+        if from_curr == 'TND':
+            rate = conn.execute("SELECT rate_to_tnd FROM currency_rates WHERE currency_code=?",
+                               (to_curr,)).fetchone()
+            result = amount / rate['rate_to_tnd'] if rate and rate['rate_to_tnd'] > 0 else 0
+        elif to_curr == 'TND':
+            rate = conn.execute("SELECT rate_to_tnd FROM currency_rates WHERE currency_code=?",
+                               (from_curr,)).fetchone()
+            result = amount * rate['rate_to_tnd'] if rate else 0
+        else:
+            from_rate = conn.execute("SELECT rate_to_tnd FROM currency_rates WHERE currency_code=?",
+                                    (from_curr,)).fetchone()
+            to_rate = conn.execute("SELECT rate_to_tnd FROM currency_rates WHERE currency_code=?",
+                                  (to_curr,)).fetchone()
+            if from_rate and to_rate and to_rate['rate_to_tnd'] > 0:
+                tnd = amount * from_rate['rate_to_tnd']
+                result = tnd / to_rate['rate_to_tnd']
+            else:
+                result = 0
+    return jsonify({'amount': amount, 'from': from_curr, 'to': to_curr, 'result': round(result, 2)})
+
+# ── 10. Knowledge Base ──
+@app.route('/knowledge_base')
+@login_required
+def knowledge_base():
+    category = request.args.get('category', 'all')
+    search = request.args.get('q', '')
+    with get_db() as conn:
+        query = "SELECT * FROM knowledge_base WHERE 1=1"
+        params = []
+        if category != 'all':
+            query += " AND category = ?"
+            params.append(category)
+        if search:
+            query += " AND (title LIKE ? OR content LIKE ? OR tags LIKE ?)"
+            params.extend([f"%{search}%"] * 3)
+        query += " ORDER BY is_pinned DESC, created_at DESC"
+        articles = conn.execute(query, params).fetchall()
+        categories = conn.execute("SELECT DISTINCT category FROM knowledge_base ORDER BY category").fetchall()
+    return render_template('knowledge_base.html', articles=articles,
+                          categories=categories, category=category, search=search)
+
+@app.route('/knowledge_base/add', methods=['POST'])
+@login_required
+def knowledge_base_add():
+    with get_db() as conn:
+        conn.execute("""INSERT INTO knowledge_base (title, category, content, tags, is_pinned)
+            VALUES (?,?,?,?,?)""",
+            (request.form['title'], request.form.get('category', 'general'),
+             request.form['content'], request.form.get('tags', ''),
+             1 if request.form.get('is_pinned') else 0))
+        conn.commit()
+    flash("Article ajouté", "success")
+    return redirect("/knowledge_base")
+
+@app.route('/knowledge_base/view/<int:article_id>')
+@login_required
+def knowledge_base_view(article_id):
+    with get_db() as conn:
+        article = conn.execute("SELECT * FROM knowledge_base WHERE id=?", (article_id,)).fetchone()
+        if not article:
+            flash("Article non trouvé", "danger")
+            return redirect("/knowledge_base")
+        conn.execute("UPDATE knowledge_base SET views = views + 1 WHERE id=?", (article_id,))
+        conn.commit()
+    return render_template('knowledge_base_view.html', article=article)
+
+@app.route('/knowledge_base/edit/<int:article_id>', methods=['POST'])
+@login_required
+def knowledge_base_edit(article_id):
+    with get_db() as conn:
+        conn.execute("""UPDATE knowledge_base SET title=?, category=?, content=?,
+            tags=?, is_pinned=?, updated_at=? WHERE id=?""",
+            (request.form['title'], request.form.get('category', 'general'),
+             request.form['content'], request.form.get('tags', ''),
+             1 if request.form.get('is_pinned') else 0,
+             datetime.now().strftime('%Y-%m-%d %H:%M'), article_id))
+        conn.commit()
+    flash("Article mis à jour", "success")
+    return redirect(f"/knowledge_base/view/{article_id}")
+
+@app.route('/knowledge_base/delete/<int:article_id>')
+@login_required
+def knowledge_base_delete(article_id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM knowledge_base WHERE id=?", (article_id,))
+        conn.commit()
+    flash("Article supprimé", "success")
+    return redirect("/knowledge_base")
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

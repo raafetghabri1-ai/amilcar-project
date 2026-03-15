@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Liste d'Attente — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-hourglass-split text-warning"></i> Liste d'Attente RDV</h2>
+        <p class="text-muted mb-0">{{ available_slots }} créneaux disponibles aujourd'hui ({{ today }})</p>
+    </div>
+    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#addWaitlistModal">
+        <i class="bi bi-plus-lg"></i> Ajouter
+    </button>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    {% set waiting = waitlist|selectattr('status', 'equalto', 'waiting')|list %}
+    {% set notified = waitlist|selectattr('status', 'equalto', 'notified')|list %}
+    {% set converted = waitlist|selectattr('status', 'equalto', 'converted')|list %}
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-warning">{{ waiting|length }}</div>
+                <small class="text-muted">En Attente</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-info">{{ notified|length }}</div>
+                <small class="text-muted">Notifiés</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-success">{{ converted|length }}</div>
+                <small class="text-muted">Convertis</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="display-6 fw-bold text-primary">{{ available_slots }}</div>
+                <small class="text-muted">Créneaux Libres</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Waitlist Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Client</th><th>Téléphone</th><th>Service</th><th>Date Souhaitée</th><th>Heure</th><th>Statut</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for w in waitlist %}
+            <tr>
+                <td><strong>{{ w.customer_name or w.cname or '—' }}</strong></td>
+                <td>{{ w.phone or w.cphone or '—' }}</td>
+                <td>{{ w.service_requested or '—' }}</td>
+                <td>{{ w.preferred_date }}</td>
+                <td>{{ w.preferred_time or '—' }}</td>
+                <td>
+                    <span class="badge bg-{{ 'warning' if w.status == 'waiting' else 'info' if w.status == 'notified' else 'success' if w.status == 'converted' else 'secondary' }}">
+                        {{ w.status }}
+                    </span>
+                </td>
+                <td class="small text-muted">{{ w.created_at[:16] if w.created_at else '' }}</td>
+                <td>
+                    {% if w.status == 'waiting' %}
+                    <div class="btn-group btn-group-sm">
+                        <a href="/waitlist/notify/{{ w.id }}" class="btn btn-outline-info" title="Notifier"><i class="bi bi-bell"></i></a>
+                        <a href="/waitlist/convert/{{ w.id }}" class="btn btn-outline-success" title="Convertir en RDV"><i class="bi bi-check-circle"></i></a>
+                        <a href="/waitlist/remove/{{ w.id }}" class="btn btn-outline-danger" onclick="return confirm('Retirer?')" title="Retirer"><i class="bi bi-trash"></i></a>
+                    </div>
+                    {% elif w.status == 'notified' %}
+                    <a href="/waitlist/convert/{{ w.id }}" class="btn btn-sm btn-success"><i class="bi bi-check-circle"></i> Convertir</a>
+                    {% else %}
+                    <span class="text-muted small">Terminé</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if not waitlist %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-hourglass display-1"></i>
+    <p class="mt-3">Liste d'attente vide</p>
+</div>
+{% endif %}
+
+<!-- Add Modal -->
+<div class="modal fade" id="addWaitlistModal">
+    <div class="modal-dialog">
+        <form method="post" action="/waitlist/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Ajouter à la Liste d'Attente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Client</label>
+                    <select name="customer_id" class="form-select" required>
+                        <option value="">Sélectionner...</option>
+                        {% for c in customers %}
+                        <option value="{{ c.id }}">{{ c.name }} — {{ c.phone }}</option>
+                        {% endfor %}
+                    </select></div>
+                <div class="mb-3"><label class="form-label">Service Souhaité</label>
+                    <input type="text" name="service_requested" class="form-control" placeholder="Ex: Detailing Complet"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label">Date Préférée</label>
+                        <input type="date" name="preferred_date" class="form-control" value="{{ today }}"></div>
+                    <div class="col-6"><label class="form-label">Heure Préférée</label>
+                        <input type="time" name="preferred_time" class="form-control"></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-warning">Ajouter</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}

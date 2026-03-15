@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Présence Employés — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-clock-history text-primary"></i> Gestion de Présence</h2>
+        <p class="text-muted mb-0">Suivi des heures, retards et heures supplémentaires</p>
+    </div>
+    <form method="get" class="d-flex gap-2">
+        <input type="month" name="month" class="form-control" value="{{ month }}">
+        <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </form>
+</div>
+
+<!-- Monthly Stats -->
+{% if stats %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Résumé {{ month }}</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr><th>Employé</th><th>Jours</th><th>Présent</th><th>Absent</th><th>Retard</th><th>Min. Retard</th><th>Heures Sup.</th><th>Taux</th></tr>
+            </thead>
+            <tbody>
+            {% for s in stats %}
+            {% set rate = ((s.present or 0) / s.total_days * 100) if s.total_days > 0 else 0 %}
+            <tr>
+                <td><strong>{{ s.employee_name }}</strong></td>
+                <td>{{ s.total_days }}</td>
+                <td class="text-success">{{ s.present or 0 }}</td>
+                <td class="text-danger">{{ s.absent or 0 }}</td>
+                <td class="text-warning">{{ s.late or 0 }}</td>
+                <td>{{ s.total_late_min or 0 }} min</td>
+                <td class="text-info">{{ s.total_overtime_min or 0 }} min</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if rate >= 90 else 'warning' if rate >= 70 else 'danger' }}">
+                        {{ "%.0f"|format(rate) }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Record Attendance -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Enregistrer Présence</h5></div>
+    <div class="card-body">
+        <form method="post" action="/attendance/record" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Employé</label>
+                <select name="employee_id" class="form-select" required>
+                    {% for e in employees %}
+                    <option value="{{ e.id }}">{{ e.full_name or 'Emp #' ~ e.id }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Date</label>
+                <input type="date" name="date" class="form-control" value="{{ today }}" required>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Arrivée</label>
+                <input type="time" name="check_in" class="form-control" value="08:00">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Départ</label>
+                <input type="time" name="check_out" class="form-control" value="17:00">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Statut</label>
+                <select name="status" class="form-select">
+                    <option value="present">Présent</option>
+                    <option value="absent">Absent</option>
+                    <option value="late">Retard</option>
+                    <option value="sick">Maladie</option>
+                    <option value="vacation">Congé</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Notes</label>
+                <input type="text" name="notes" class="form-control" placeholder="Optionnel">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Records -->
+{% if records %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0">Détail {{ month }}</h5></div>
+    <div class="card-body table-responsive">
+        <table class="table table-sm table-hover">
+            <thead><tr><th>Date</th><th>Employé</th><th>Arrivée</th><th>Départ</th><th>Statut</th><th>Retard</th><th>H. Sup.</th><th>Notes</th></tr></thead>
+            <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.date }}</td>
+                <td>{{ r.employee_name }}</td>
+                <td>{{ r.check_in or '—' }}</td>
+                <td>{{ r.check_out or '—' }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if r.status == 'present' else 'danger' if r.status == 'absent' else 'warning' if r.status == 'late' else 'info' }}">
+                        {{ r.status }}
+                    </span>
+                </td>
+                <td class="{{ 'text-warning' if r.late_minutes > 0 }}">{{ r.late_minutes or 0 }} min</td>
+                <td class="{{ 'text-info' if r.overtime_minutes > 0 }}">{{ r.overtime_minutes or 0 }} min</td>
+                <td class="small text-muted">{{ r.notes or '' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Calculateur de Coûts — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-calculator-fill text-primary"></i> Calculateur de Coûts Services</h2>
+        <p class="text-muted mb-0">Coûts produits + main d'œuvre = marge bénéficiaire par service</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Prix Vente</th>
+                    <th>Coût Produits</th>
+                    <th>Temps (min)</th>
+                    <th>Coût M.O.</th>
+                    <th>Coût Total</th>
+                    <th>Marge</th>
+                    <th>Marge %</th>
+                    <th>Utilisations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in services %}
+            {% set cost_products = s.cost_products or 0 %}
+            {% set labor_min = s.cost_labor_minutes or s.estimated_minutes or 60 %}
+            {% set cost_labor = (labor_min / 60) * hourly_rate %}
+            {% set total_cost = cost_products + cost_labor %}
+            {% set margin = s.price - total_cost %}
+            {% set margin_pct = (margin / s.price * 100) if s.price > 0 else 0 %}
+            <tr>
+                <td><strong>{{ s.name }}</strong></td>
+                <td class="fw-bold">{{ "%.2f"|format(s.price) }} DT</td>
+                <td>{{ "%.2f"|format(cost_products) }} DT</td>
+                <td>{{ labor_min }} min</td>
+                <td>{{ "%.2f"|format(cost_labor) }} DT</td>
+                <td class="text-danger">{{ "%.2f"|format(total_cost) }} DT</td>
+                <td class="fw-bold text-{{ 'success' if margin > 0 else 'danger' }}">{{ "%.2f"|format(margin) }} DT</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if margin_pct > 50 else 'warning' if margin_pct > 20 else 'danger' }}">
+                        {{ "%.0f"|format(margin_pct) }}%
+                    </span>
+                </td>
+                <td>{{ s.usage_count or 0 }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editCost{{ s.id }}">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </td>
+            </tr>
+            <!-- Edit Modal -->
+            <div class="modal fade" id="editCost{{ s.id }}">
+                <div class="modal-dialog modal-sm">
+                    <form method="post" action="/service_cost/update" class="modal-content">
+                        <div class="modal-header"><h6 class="modal-title">{{ s.name }}</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <input type="hidden" name="service_id" value="{{ s.id }}">
+                            <div class="mb-3"><label class="form-label">Coût Produits (DT)</label>
+                                <input type="number" name="cost_products" class="form-control" value="{{ cost_products }}" step="0.01"></div>
+                            <div class="mb-3"><label class="form-label">Temps M.O. (minutes)</label>
+                                <input type="number" name="cost_labor_minutes" class="form-control" value="{{ labor_min }}"></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary btn-sm">Sauvegarder</button></div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-success bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="h5 fw-bold text-success">{{ hourly_rate }} DT/h</div>
+                <small class="text-muted">Taux Horaire Main d'Œuvre</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+            <div class="card-body text-center">
+                <div class="h5 fw-bold text-primary">{{ services|length }}</div>
+                <small class="text-muted">Services Analysés</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+            <div class="card-body text-center">
+                {% set profitable = [] %}
+                {% for s in services %}
+                {% if s.price > 0 and ((s.price - (s.cost_products or 0) - ((s.cost_labor_minutes or 60) / 60 * hourly_rate)) / s.price * 100) > 50 %}
+                {% if profitable.append(1) %}{% endif %}
+                {% endif %}
+                {% endfor %}
+                <div class="h5 fw-bold text-warning">{{ profitable|length }}/{{ services|length }}</div>
+                <small class="text-muted">Marge >50%</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

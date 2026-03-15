@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Base de Connaissances — AMILCAR{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-book-fill text-primary"></i> Base de Connaissances</h2>
+        <p class="text-muted mb-0">Documentation interne, procédures et guides</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addArticleModal">
+        <i class="bi bi-plus-lg"></i> Nouvel Article
+    </button>
+</div>
+
+<!-- Search & Filter -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="q" class="form-control" value="{{ search }}" placeholder="Rechercher..." style="max-width:300px">
+            <select name="category" class="form-select" style="width:auto">
+                <option value="all" {{ 'selected' if category == 'all' }}>Toutes catégories</option>
+                <option value="procedures" {{ 'selected' if category == 'procedures' }}>Procédures</option>
+                <option value="products" {{ 'selected' if category == 'products' }}>Produits</option>
+                <option value="equipment" {{ 'selected' if category == 'equipment' }}>Équipement</option>
+                <option value="safety" {{ 'selected' if category == 'safety' }}>Sécurité</option>
+                <option value="training" {{ 'selected' if category == 'training' }}>Formation</option>
+                <option value="troubleshooting" {{ 'selected' if category == 'troubleshooting' }}>Dépannage</option>
+                <option value="general" {{ 'selected' if category == 'general' }}>Général</option>
+                {% for cat in categories %}
+                {% if cat.category not in ['procedures','products','equipment','safety','training','troubleshooting','general'] %}
+                <option value="{{ cat.category }}" {{ 'selected' if category == cat.category }}>{{ cat.category }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+</div>
+
+{% set cat_icons = {'procedures': '📋', 'products': '🧴', 'equipment': '🔧', 'safety': '⛑️', 'training': '🎓', 'troubleshooting': '🔍', 'general': '📄'} %}
+
+<!-- Articles Grid -->
+<div class="row g-3">
+{% for a in articles %}
+<div class="col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100 {{ 'border-warning border-2' if a.is_pinned }}">
+        <div class="card-body">
+            {% if a.is_pinned %}<span class="badge bg-warning text-dark float-end">📌 Épinglé</span>{% endif %}
+            <div class="mb-2">
+                <span class="badge bg-secondary">{{ cat_icons.get(a.category, '📄') }} {{ a.category }}</span>
+            </div>
+            <h5 class="card-title">
+                <a href="/knowledge_base/view/{{ a.id }}" class="text-decoration-none">{{ a.title }}</a>
+            </h5>
+            <p class="text-muted small mb-2">{{ a.content[:120] }}{% if a.content|length > 120 %}...{% endif %}</p>
+            {% if a.tags %}
+            <div class="mb-2">
+                {% for tag in a.tags.split(',') %}
+                <span class="badge bg-light text-dark">#{{ tag.strip() }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="small text-muted">
+                <i class="bi bi-eye"></i> {{ a.views }} vues · {{ a.created_at[:10] if a.created_at else '' }}
+            </div>
+        </div>
+        <div class="card-footer bg-transparent">
+            <a href="/knowledge_base/view/{{ a.id }}" class="btn btn-sm btn-outline-primary">Lire</a>
+            <a href="/knowledge_base/delete/{{ a.id }}" class="btn btn-sm btn-outline-danger float-end"
+               onclick="return confirm('Supprimer?')"><i class="bi bi-trash"></i></a>
+        </div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+{% if not articles %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-book display-1"></i>
+    <p class="mt-3">Aucun article. Commencez à documenter vos procédures!</p>
+</div>
+{% endif %}
+
+<!-- Add Article Modal -->
+<div class="modal fade" id="addArticleModal">
+    <div class="modal-dialog modal-lg">
+        <form method="post" action="/knowledge_base/add" class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Nouvel Article</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Titre</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Ex: Procédure Polissage Céramique"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-8"><label class="form-label">Catégorie</label>
+                        <select name="category" class="form-select">
+                            <option value="procedures">Procédures</option>
+                            <option value="products">Produits</option>
+                            <option value="equipment">Équipement</option>
+                            <option value="safety">Sécurité</option>
+                            <option value="training">Formation</option>
+                            <option value="troubleshooting">Dépannage</option>
+                            <option value="general">Général</option>
+                        </select></div>
+                    <div class="col-4"><label class="form-label">Épingler</label>
+                        <div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="is_pinned" value="1">
+                            <label class="form-check-label">📌 Épinglé</label></div></div>
+                </div>
+                <div class="mb-3"><label class="form-label">Contenu</label>
+                    <textarea name="content" class="form-control" rows="10" required placeholder="Décrivez la procédure en détail..."></textarea></div>
+                <div class="mb-3"><label class="form-label">Tags (séparés par virgule)</label>
+                    <input type="text" name="tags" class="form-control" placeholder="céramique, polissage, protection"></div>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Publier</button></div>
+        </form>
+    </div>
+</div>
+{% endblock %}
