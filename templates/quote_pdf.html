@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Devis PDF - #{{ quote.id }}{% endblock %}
+{% block content %}
+<style>
+    @media print { 
+        .sidebar, .topbar, .no-print { display:none !important; }
+        .layout-main { margin:0 !important; padding:0 !important; }
+        .quote-doc { box-shadow:none !important; border:none !important; }
+    }
+    .quote-doc { max-width:800px; margin:0 auto; background:white; border-radius:16px; 
+        box-shadow:0 4px 20px rgba(0,0,0,.1); overflow:hidden; color:#333; }
+    .quote-header { background:linear-gradient(135deg, #1e40af, #3b82f6); color:white; padding:30px 40px; }
+    .quote-body { padding:40px; }
+    .quote-table th { background:#f0f4ff; padding:12px 15px; }
+    .quote-table td { padding:12px 15px; }
+    .quote-footer { border-top:2px solid #e5e7eb; padding:20px 40px; background:#f8fafc; }
+    .quote-total { font-size:1.8rem; font-weight:bold; color:#1e40af; }
+    .stamp { border:3px solid #22c55e; color:#22c55e; border-radius:12px; padding:8px 20px; 
+        font-weight:bold; font-size:1.1rem; display:inline-block; transform:rotate(-5deg); }
+</style>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between mb-3 no-print">
+        <a href="/quotes" class="btn btn-outline-secondary">← Retour</a>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-primary">🖨️ Imprimer / PDF</button>
+            <a href="/quote_whatsapp/{{ quote.id }}" class="btn btn-success">💬 Envoyer WhatsApp</a>
+        </div>
+    </div>
+
+    <div class="quote-doc">
+        <div class="quote-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 style="margin:0;font-size:2rem">{{ shop.get('shop_name', 'AMILCAR') }}</h1>
+                    <p style="margin:5px 0 0;opacity:.9">{{ shop.get('shop_tagline', 'Car & Moto Care Center') }}</p>
+                </div>
+                <div class="text-end">
+                    <div style="font-size:2rem;font-weight:bold">DEVIS</div>
+                    <div style="opacity:.8">#{{ "%04d"|format(quote.id) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quote-body">
+            <div class="row mb-4">
+                <div class="col-6">
+                    <h6 class="text-muted">DE</h6>
+                    <strong>{{ shop.get('shop_name', 'AMILCAR') }}</strong><br>
+                    {{ shop.get('shop_address', '') }}<br>
+                    📞 {{ shop.get('shop_phone', '') }}
+                </div>
+                <div class="col-6 text-end">
+                    <h6 class="text-muted">POUR</h6>
+                    <strong>{{ quote.name }}</strong><br>
+                    📞 {{ quote.phone }}<br>
+                    📅 Date: {{ quote.created_at or 'N/A' }}
+                </div>
+            </div>
+
+            <table class="table quote-table">
+                <thead>
+                    <tr><th>Description</th><th class="text-end">Montant</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong>{{ quote.service }}</strong>
+                            {% if quote.details %}<br><small class="text-muted">{{ quote.details }}</small>{% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if quote.price %}{{ "%.0f"|format(quote.price) }} DT{% else %}<em>Sur devis</em>{% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {% if quote.price %}
+            <div class="text-end mt-3">
+                <div class="quote-total">Total : {{ "%.0f"|format(quote.price) }} DT</div>
+                {% if shop.get('tax_rate') %}
+                <small class="text-muted">TVA {{ shop.get('tax_rate') }}% incluse</small>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if quote.photos %}
+            <div class="mt-4">
+                <h6>📸 Photos jointes</h6>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% for photo in quote.photos.split(',') %}
+                    {% if photo.strip() %}
+                    <img src="/static/uploads/{{ photo.strip() }}" style="width:120px;height:90px;object-fit:cover;border-radius:8px">
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="quote-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted">
+                        Ce devis est valable 30 jours.<br>
+                        {{ shop.get('shop_name', 'AMILCAR') }} — {{ shop.get('shop_address', '') }}
+                    </small>
+                </div>
+                {% if quote.status == 'approved' %}
+                <div class="stamp">✓ APPROUVÉ</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

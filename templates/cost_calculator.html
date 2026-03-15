@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Calculateur de Marges{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>💰 Calculateur de Marges & Coûts Matériaux</h2>
+    <p class="text-muted">Basé sur les liaisons service-inventaire et les coûts unitaires du stock</p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                <div style="font-size:1.5rem;font-weight:bold;color:var(--primary)">{{ services|length }}</div>
+                <div class="text-muted">Services</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                {% set avg_margin = services|map(attribute='margin_pct')|list %}
+                <div style="font-size:1.5rem;font-weight:bold;color:var(--green)">{{ "%.0f"|format(avg_margin|sum / (avg_margin|length or 1)) }}%</div>
+                <div class="text-muted">Marge Moyenne</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                {% set low_margin = services|selectattr('margin_pct', 'lt', 50)|list %}
+                <div style="font-size:1.5rem;font-weight:bold;color:var(--red)">{{ low_margin|length }}</div>
+                <div class="text-muted">Marge &lt; 50%</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3">
+                {% set no_link = services|selectattr('materials', 'equalto', [])|list %}
+                <div style="font-size:1.5rem;font-weight:bold;color:var(--yellow)">{{ no_link|length }}</div>
+                <div class="text-muted">Sans Liaison</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+            <table class="table table-hover" id="marginTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Service</th>
+                        <th>Prix Vente</th>
+                        <th>Coût Matériaux</th>
+                        <th>Marge</th>
+                        <th>Marge %</th>
+                        <th>Détails</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for s in services %}
+                <tr>
+                    <td><strong>{{ s.name }}</strong></td>
+                    <td>{{ "%.0f"|format(s.price) }} DT</td>
+                    <td>{{ "%.2f"|format(s.material_cost) }} DT</td>
+                    <td style="color:{% if s.margin > 0 %}var(--green){% else %}var(--red){% endif %};font-weight:bold">
+                        {{ "%.0f"|format(s.margin) }} DT
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px">
+                                <div class="progress-bar {% if s.margin_pct >= 70 %}bg-success{% elif s.margin_pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     style="width:{{ s.margin_pct }}%"></div>
+                            </div>
+                            <span style="font-weight:bold;min-width:50px">{{ s.margin_pct }}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if s.materials %}
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#mat{{ s.id }}">📋</button>
+                        {% else %}
+                        <span class="text-muted small">Pas de liaison</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if s.materials %}
+                <tr class="collapse" id="mat{{ s.id }}">
+                    <td colspan="6" style="background:var(--bg)">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Produit</th><th>Quantité</th><th>Coût Unit.</th><th>Total</th></tr></thead>
+                            <tbody>
+                            {% for m in s.materials %}
+                            <tr>
+                                <td>{{ m.name }}</td>
+                                <td>{{ m.qty }}</td>
+                                <td>{{ "%.2f"|format(m.unit_cost) }} DT</td>
+                                <td>{{ "%.2f"|format(m.total) }} DT</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-3">
+        💡 <strong>Conseil :</strong> Pour améliorer la précision, allez dans <a href="/service_inventory">Liaison Services-Inventaire</a> pour lier chaque service à ses produits utilisés, et mettez à jour les <a href="/inventory">coûts unitaires du stock</a>.
+    </div>
+</div>
+{% endblock %}

@@ -702,6 +702,20 @@ def update_appointment(appointment_id, status):
                         "UPDATE inventory SET quantity = MAX(0, quantity - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                         (link[1], link[0]))
         conn.commit()
+        
+        # Auto WhatsApp notification on status change
+        if status in STATUS_MESSAGES:
+            appt_data = conn.execute("""SELECT a.date, a.service, c.name, c.phone, car.brand, car.model
+                FROM appointments a JOIN cars car ON a.car_id=car.id 
+                JOIN customers c ON car.customer_id=c.id WHERE a.id=?""", (appointment_id,)).fetchone()
+            if appt_data and appt_data['phone']:
+                shop_name = get_setting('shop_name', 'AMILCAR')
+                msg = STATUS_MESSAGES[status].format(
+                    name=appt_data['name'], car=f"{appt_data['brand']} {appt_data['model']}",
+                    shop=shop_name, service=appt_data['service'], date=appt_data['date'])
+                wa_url = _build_wa_status_url(appt_data['phone'], msg)
+                return redirect(wa_url)
+    
     return redirect("/appointments")
 
 @app.route("/customer/<int:customer_id>")
@@ -10846,6 +10860,401 @@ def espace_client_suivi(appointment_id):
             ORDER BY photo_type, uploaded_at""", (appointment_id,)).fetchall()
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_suivi.html", appt=appt, photos=photos, shop=shop)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── PHASE 18: EXPERT IMPROVEMENTS (10 features) ─────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── 18.1 WhatsApp Auto-Notify on Status Change ─────────────────────────────
+
+def _build_wa_status_url(phone, message):
+    """Build wa.me URL for status notification."""
+    import urllib.parse
+    phone = phone.strip().replace(' ', '').replace('-', '')
+    if phone.startswith('0'):
+        phone = '216' + phone[1:]
+    elif not phone.startswith('+') and not phone.startswith('216'):
+        phone = '216' + phone
+    phone = phone.replace('+', '')
+    return f"https://wa.me/{phone}?text={urllib.parse.quote(message)}"
+
+STATUS_MESSAGES = {
+    'in_progress': "🔧 Bonjour {name}, votre véhicule ({car}) est maintenant en cours de traitement chez {shop}. Service : {service}.",
+    'completed': "✅ Bonjour {name}, votre véhicule ({car}) est prêt ! Vous pouvez passer le récupérer chez {shop}. Merci de votre confiance !",
+    'cancelled': "ℹ️ Bonjour {name}, votre RDV du {date} chez {shop} a été annulé. N'hésitez pas à nous recontacter pour reprogrammer.",
+}
+
+# ─── 18.2 End of Day Report ──────────────────────────────────────────────────
+
+@app.route("/end_of_day")
+@login_required
+def end_of_day_report():
+    from datetime import date as d, timedelta
+    day = request.args.get("date", str(d.today()))
+    with get_db() as conn:
+        appointments = conn.execute("""SELECT a.id, a.service, a.status, a.time, 
+            c.name as customer_name, car.brand, car.model, car.plate
+            FROM appointments a
+            LEFT JOIN cars car ON a.car_id=car.id
+            LEFT JOIN customers c ON car.customer_id=c.id
+            WHERE a.date=? ORDER BY a.time""", (day,)).fetchall()
+        
+        revenue_paid = conn.execute("""SELECT COALESCE(SUM(i.amount),0) FROM invoices i
+            JOIN appointments a ON i.appointment_id=a.id
+            WHERE a.date=? AND i.status='paid'""", (day,)).fetchone()[0]
+        revenue_unpaid = conn.execute("""SELECT COALESCE(SUM(i.amount),0) FROM invoices i
+            JOIN appointments a ON i.appointment_id=a.id
+            WHERE a.date=? AND i.status='unpaid'""", (day,)).fetchone()[0]
+        expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date=?", (day,)).fetchone()[0]
+        
+        stats = {
+            'total_appointments': len(appointments),
+            'completed': sum(1 for a in appointments if a['status'] == 'completed'),
+            'in_progress': sum(1 for a in appointments if a['status'] == 'in_progress'),
+            'pending': sum(1 for a in appointments if a['status'] == 'pending'),
+            'cancelled': sum(1 for a in appointments if a['status'] == 'cancelled'),
+            'revenue_paid': revenue_paid,
+            'revenue_unpaid': revenue_unpaid,
+            'expenses': expenses,
+            'profit': revenue_paid - expenses,
+        }
+        
+        by_service = conn.execute("""SELECT a.service, COUNT(*) as count,
+            COALESCE(SUM(CASE WHEN i.status='paid' THEN i.amount ELSE 0 END),0) as revenue
+            FROM appointments a LEFT JOIN invoices i ON a.id=i.appointment_id
+            WHERE a.date=? GROUP BY a.service ORDER BY revenue DESC""", (day,)).fetchall()
+        
+        by_employee = conn.execute("""SELECT COALESCE(u.full_name, u.username, 'Non assigné') as name,
+            COUNT(*) as count, SUM(CASE WHEN a.status='completed' THEN 1 ELSE 0 END) as completed
+            FROM appointments a LEFT JOIN users u ON a.assigned_employee_id=u.id
+            WHERE a.date=? GROUP BY a.assigned_employee_id""", (day,)).fetchall()
+        
+        payment_methods = conn.execute("""SELECT COALESCE(i.payment_method,'cash') as method,
+            COUNT(*) as count, SUM(i.amount) as total
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            WHERE a.date=? AND i.status='paid' GROUP BY i.payment_method""", (day,)).fetchall()
+        
+        shop = get_all_settings()
+    return render_template("end_of_day.html", appointments=appointments, stats=stats,
+                          by_service=by_service, by_employee=by_employee, 
+                          payment_methods=payment_methods, day=day, shop=shop)
+
+
+# ─── 18.3 Quick POS Mode ────────────────────────────────────────────────────
+
+@app.route("/pos")
+@login_required
+def pos_view():
+    with get_db() as conn:
+        services = conn.execute("SELECT id, name, price FROM services WHERE active=1 ORDER BY name").fetchall()
+        customers = conn.execute("SELECT id, name, phone FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT id, plate, brand, model, customer_id FROM cars ORDER BY plate").fetchall()
+    return render_template("pos.html", services=services, customers=customers, cars=cars)
+
+@app.route("/pos/checkout", methods=["POST"])
+@login_required
+def pos_checkout():
+    car_id = request.form.get("car_id", 0, type=int)
+    service_name = request.form.get("service", "")
+    amount = request.form.get("amount", 0, type=float)
+    payment_method = request.form.get("payment_method", "cash")
+    payment_method2 = request.form.get("payment_method2", "")
+    amount1 = request.form.get("amount1", 0, type=float)
+    amount2 = request.form.get("amount2", 0, type=float)
+    
+    if not car_id or not service_name or amount <= 0:
+        flash("Données manquantes", "danger")
+        return redirect("/pos")
+    
+    today = str(date.today())
+    now = datetime.now().strftime("%H:%M")
+    
+    with get_db() as conn:
+        cursor = conn.execute("""INSERT INTO appointments (car_id, date, time, service, status)
+            VALUES (?,?,?,?,'completed')""", (car_id, today, now, service_name))
+        appt_id = cursor.lastrowid
+        
+        if payment_method2 and amount1 > 0 and amount2 > 0:
+            pm = f"{payment_method}/{payment_method2}"
+            notes = f"Split: {amount1} DT ({payment_method}) + {amount2} DT ({payment_method2})"
+            conn.execute("""INSERT INTO invoices (appointment_id, amount, status, payment_method, paid_amount, created_at)
+                VALUES (?,?,'paid',?,?,?)""", (appt_id, amount, pm, amount, today))
+        else:
+            conn.execute("""INSERT INTO invoices (appointment_id, amount, status, payment_method, paid_amount, created_at)
+                VALUES (?,?,'paid',?,?,?)""", (appt_id, amount, payment_method, amount, today))
+        
+        appt_data = conn.execute("""SELECT a.service, car.brand, car.model FROM appointments a
+            JOIN cars car ON a.car_id=car.id WHERE a.id=?""", (appt_id,)).fetchone()
+        if appt_data:
+            svc_name = appt_data['service'].split(' - ')[0].strip()
+            links = conn.execute("SELECT inventory_id, quantity_used FROM service_inventory WHERE service_name=?",
+                (svc_name,)).fetchall()
+            for link in links:
+                conn.execute("UPDATE inventory SET quantity=MAX(0,quantity-?), updated_at=CURRENT_TIMESTAMP WHERE id=?",
+                    (link[1], link[0]))
+        conn.commit()
+    
+    log_activity('POS Sale', f'{service_name} - {amount} DT ({payment_method})')
+    flash(f"✅ Vente enregistrée : {amount} DT", "success")
+    return redirect("/pos")
+
+
+# ─── 18.4 Protection Renewal Reminders ──────────────────────────────────────
+
+@app.route("/protection_renewals")
+@login_required
+def protection_renewals():
+    with get_db() as conn:
+        renewals = conn.execute("""
+            SELECT a.id as appt_id, a.date, a.service, c.id as customer_id, c.name, c.phone,
+                   car.brand, car.model, car.plate,
+                   CASE 
+                       WHEN LOWER(a.service) LIKE '%ppf%' THEN date(a.date, '+5 years')
+                       WHEN LOWER(a.service) LIKE '%céramique%' OR LOWER(a.service) LIKE '%ceramique%' OR LOWER(a.service) LIKE '%ceramic%' THEN date(a.date, '+2 years')
+                       WHEN LOWER(a.service) LIKE '%nano%' THEN date(a.date, '+1 year')
+                       ELSE date(a.date, '+1 year')
+                   END as renewal_date,
+                   CASE
+                       WHEN LOWER(a.service) LIKE '%ppf%' THEN 'PPF'
+                       WHEN LOWER(a.service) LIKE '%céramique%' OR LOWER(a.service) LIKE '%ceramique%' OR LOWER(a.service) LIKE '%ceramic%' THEN 'Céramique'
+                       WHEN LOWER(a.service) LIKE '%nano%' THEN 'Nano'
+                       ELSE 'Protection'
+                   END as protection_type
+            FROM appointments a
+            JOIN cars car ON a.car_id=car.id
+            JOIN customers c ON car.customer_id=c.id
+            WHERE a.status='completed'
+              AND (LOWER(a.service) LIKE '%ppf%' OR LOWER(a.service) LIKE '%céramique%' 
+                   OR LOWER(a.service) LIKE '%ceramique%' OR LOWER(a.service) LIKE '%ceramic%'
+                   OR LOWER(a.service) LIKE '%nano%')
+            ORDER BY renewal_date ASC
+        """).fetchall()
+        
+        today = str(date.today())
+        upcoming = [r for r in renewals if r['renewal_date'] and r['renewal_date'] >= today 
+                    and r['renewal_date'] <= str(date.today() + timedelta(days=90))]
+        overdue = [r for r in renewals if r['renewal_date'] and r['renewal_date'] < today]
+        
+        shop = get_all_settings()
+    return render_template("protection_renewals.html", upcoming=upcoming, overdue=overdue,
+                          all_renewals=renewals, shop=shop, day=str(date.today()))
+
+@app.route("/protection_renewal/remind/<int:appt_id>")
+@login_required
+def protection_renewal_remind(appt_id):
+    with get_db() as conn:
+        data = conn.execute("""SELECT c.name, c.phone, car.brand, car.model, a.service, a.date
+            FROM appointments a JOIN cars car ON a.car_id=car.id JOIN customers c ON car.customer_id=c.id
+            WHERE a.id=?""", (appt_id,)).fetchone()
+    if not data:
+        flash("Données introuvables", "danger")
+        return redirect("/protection_renewals")
+    
+    shop = get_all_settings()
+    shop_name = shop.get('shop_name', 'AMILCAR')
+    msg = f"Bonjour {data['name']}, votre traitement {data['service']} appliqué sur votre {data['brand']} {data['model']} le {data['date']} arrive à échéance. Prenez RDV chez {shop_name} pour renouveler votre protection ! 🛡️"
+    wa_url = _build_wa_status_url(data['phone'], msg)
+    return redirect(wa_url)
+
+
+# ─── 18.5 Split Payment Support ─────────────────────────────────────────────
+# (Integrated into POS above + modify pay_invoice to support split)
+
+@app.route("/pay_invoice_split/<int:invoice_id>", methods=["POST"])
+@login_required
+def pay_invoice_split(invoice_id):
+    method1 = request.form.get("payment_method1", "cash")
+    method2 = request.form.get("payment_method2", "card")
+    amount1 = request.form.get("amount1", 0, type=float)
+    amount2 = request.form.get("amount2", 0, type=float)
+    
+    with get_db() as conn:
+        inv = conn.execute("SELECT amount, COALESCE(paid_amount,0) as paid FROM invoices WHERE id=?", (invoice_id,)).fetchone()
+        if not inv:
+            flash("Facture introuvable", "danger")
+            return redirect("/invoices")
+        
+        total_pay = amount1 + amount2
+        already_paid = inv['paid']
+        new_paid = already_paid + total_pay
+        pm = f"{method1}/{method2}"
+        
+        if new_paid >= inv['amount']:
+            conn.execute("UPDATE invoices SET status='paid', payment_method=?, paid_amount=? WHERE id=?",
+                (pm, inv['amount'], invoice_id))
+        else:
+            conn.execute("UPDATE invoices SET status='partial', payment_method=?, paid_amount=? WHERE id=?",
+                (pm, new_paid, invoice_id))
+        conn.commit()
+    
+    log_activity('Split Payment', f'Invoice #{invoice_id}: {amount1} ({method1}) + {amount2} ({method2})')
+    flash(f"Paiement divisé enregistré ✅", "success")
+    return redirect("/invoices")
+
+
+# ─── 18.6 Daily Technician Work Summary ─────────────────────────────────────
+
+@app.route("/tech_summary")
+@login_required
+def tech_daily_summary():
+    from datetime import date as d
+    day = request.args.get("date", str(d.today()))
+    with get_db() as conn:
+        employees = conn.execute("SELECT id, full_name, username FROM users WHERE role IN ('employee','admin') ORDER BY full_name").fetchall()
+        summaries = []
+        for emp in employees:
+            tasks = conn.execute("""SELECT a.service, a.status, a.time, 
+                c.name as customer_name, car.brand, car.model, car.plate,
+                COALESCE(i.amount,0) as revenue
+                FROM appointments a
+                LEFT JOIN cars car ON a.car_id=car.id
+                LEFT JOIN customers c ON car.customer_id=c.id
+                LEFT JOIN invoices i ON a.id=i.appointment_id
+                WHERE a.date=? AND a.assigned_employee_id=?
+                ORDER BY a.time""", (day, emp['id'])).fetchall()
+            
+            completed = sum(1 for t in tasks if t['status'] == 'completed')
+            total_revenue = sum(t['revenue'] for t in tasks if t['status'] == 'completed')
+            
+            timer = conn.execute("""SELECT COUNT(*) as count, 
+                COALESCE(AVG(efficiency_pct),0) as avg_eff,
+                COALESCE(SUM(actual_minutes),0) as total_minutes
+                FROM service_timer WHERE employee_id=? AND date(created_at)=?""",
+                (emp['id'], day)).fetchone()
+            
+            summaries.append({
+                'employee': emp,
+                'tasks': tasks,
+                'completed': completed,
+                'total_tasks': len(tasks),
+                'revenue': total_revenue,
+                'avg_efficiency': round(timer['avg_eff'], 1) if timer else 0,
+                'total_minutes': timer['total_minutes'] if timer else 0,
+            })
+    return render_template("tech_summary.html", summaries=summaries, day=day)
+
+
+# ─── 18.7 Material Cost Calculator ──────────────────────────────────────────
+
+@app.route("/cost_calculator")
+@login_required 
+def cost_calculator():
+    with get_db() as conn:
+        services = conn.execute("""SELECT s.id, s.name, s.price,
+            GROUP_CONCAT(si.service_name || ':' || si.quantity_used || ':' || COALESCE(inv.unit_cost,0), '|') as materials
+            FROM services s
+            LEFT JOIN service_inventory si ON s.name=si.service_name
+            LEFT JOIN inventory inv ON si.inventory_id=inv.id
+            WHERE s.active=1
+            GROUP BY s.id ORDER BY s.name""").fetchall()
+        
+        results = []
+        for svc in services:
+            material_cost = 0
+            materials = []
+            if svc['materials']:
+                for m in svc['materials'].split('|'):
+                    parts = m.split(':')
+                    if len(parts) >= 3:
+                        qty = float(parts[1]) if parts[1] else 0
+                        cost = float(parts[2]) if parts[2] else 0
+                        material_cost += qty * cost
+                        materials.append({'name': parts[0], 'qty': qty, 'unit_cost': cost, 'total': qty * cost})
+            
+            margin = svc['price'] - material_cost if svc['price'] else 0
+            margin_pct = (margin / svc['price'] * 100) if svc['price'] and svc['price'] > 0 else 0
+            
+            results.append({
+                'id': svc['id'],
+                'name': svc['name'],
+                'price': svc['price'],
+                'material_cost': round(material_cost, 2),
+                'margin': round(margin, 2),
+                'margin_pct': round(margin_pct, 1),
+                'materials': materials,
+            })
+    return render_template("cost_calculator.html", services=results)
+
+
+# ─── 18.8 Visual Subscription Counter ───────────────────────────────────────
+
+@app.route("/subscription_cards")
+@login_required
+def subscription_cards():
+    with get_db() as conn:
+        subs = conn.execute("""SELECT ws.*, c.name as customer_name, c.phone,
+            car.brand, car.model, car.plate
+            FROM wash_subscriptions ws
+            JOIN customers c ON ws.customer_id=c.id
+            LEFT JOIN cars car ON ws.car_id=car.id
+            WHERE ws.status='active'
+            ORDER BY ws.end_date ASC""").fetchall()
+    return render_template("subscription_cards.html", subscriptions=subs)
+
+
+# ─── 18.9 Professional PDF Quote ────────────────────────────────────────────
+
+@app.route("/quote_pdf/<int:quote_id>")
+@login_required
+def quote_pdf(quote_id):
+    with get_db() as conn:
+        quote = conn.execute("SELECT * FROM quotes WHERE id=?", (quote_id,)).fetchone()
+        if not quote:
+            flash("Devis introuvable", "danger")
+            return redirect("/quotes")
+        shop = get_all_settings()
+    return render_template("quote_pdf.html", quote=quote, shop=shop)
+
+@app.route("/quote_whatsapp/<int:quote_id>")
+@login_required
+def quote_whatsapp(quote_id):
+    with get_db() as conn:
+        quote = conn.execute("SELECT * FROM quotes WHERE id=?", (quote_id,)).fetchone()
+    if not quote:
+        flash("Devis introuvable", "danger")
+        return redirect("/quotes")
+    
+    shop = get_all_settings()
+    shop_name = shop.get('shop_name', 'AMILCAR')
+    price_text = f" - Montant: {quote['price']} DT" if quote['price'] else ""
+    msg = f"Bonjour {quote['name']},\n\nVoici votre devis chez {shop_name} :\n📋 Service : {quote['service']}{price_text}\n\nPour confirmer, répondez à ce message ou appelez-nous.\nMerci ! 🙏"
+    wa_url = _build_wa_status_url(quote['phone'], msg)
+    return redirect(wa_url)
+
+
+# ─── 18.10 Waiting Room TV Display ──────────────────────────────────────────
+
+@app.route("/tv_display")
+def tv_display():
+    """Public route - no login needed. Displays in-progress work on a TV screen."""
+    with get_db() as conn:
+        today = str(date.today())
+        in_progress = conn.execute("""SELECT a.service, a.time, car.brand, car.model, 
+            COALESCE(car.plate,'') as plate, c.name,
+            CASE a.status 
+                WHEN 'in_progress' THEN 'En cours'
+                WHEN 'pending' THEN 'En attente'
+                WHEN 'completed' THEN 'Terminé'
+                ELSE a.status 
+            END as status_label,
+            a.status
+            FROM appointments a
+            LEFT JOIN cars car ON a.car_id=car.id
+            LEFT JOIN customers c ON car.customer_id=c.id
+            WHERE a.date=? AND a.status IN ('pending','in_progress','completed')
+            ORDER BY 
+                CASE a.status WHEN 'in_progress' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 END,
+                a.time""", (today,)).fetchall()
+        
+        stats = {
+            'in_progress': sum(1 for a in in_progress if a['status'] == 'in_progress'),
+            'pending': sum(1 for a in in_progress if a['status'] == 'pending'),
+            'completed': sum(1 for a in in_progress if a['status'] == 'completed'),
+        }
+        shop = get_all_settings()
+    return render_template("tv_display.html", appointments=in_progress, stats=stats, 
+                          shop=shop, today=today)
+
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)

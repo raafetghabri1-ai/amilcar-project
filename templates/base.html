@@ -96,6 +96,7 @@
                 <li><a href="/notifications"><span class="icon">🔔</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
                 <li><a href="/live_board"><span class="icon">📺</span> Atelier Live</a></li>
                 <li><a href="/live_tracking"><span class="icon">⚡</span> Suivi Temps Réel</a></li>
+                <li><a href="/pos"><span class="icon">💳</span> Caisse POS</a></li>
             </ul>
         </div>
 
@@ -114,6 +115,7 @@
                 <li><a href="/product_usage"><span class="icon">🧴</span> Produits</a></li>
                 <li><a href="/upsell_rules"><span class="icon">💡</span> Upsell</a></li>
                 <li><a href="/smart_reminders"><span class="icon">🔔</span> Rappels</a></li>
+                <li><a href="/protection_renewals"><span class="icon">🛡️</span> Renouvellements</a></li>
                 <li><a href="/product_trends"><span class="icon">📈</span> Tendances Produits</a></li>
                 <li><a href="/profitability_vehicle_type"><span class="icon">🚗</span> Rentabilité Type</a></li>
                 <li><a href="/pack_configurations"><span class="icon">📦</span> Configs Packs</a></li>
@@ -189,6 +191,7 @@
                 <li><a href="/damage_claims"><span class="icon">⚠️</span> Réclamations</a></li>
                 <li><a href="/appointment_waitlist"><span class="icon">⏳</span> Liste d'Attente</a></li>
                 <li><a href="/service_cost_calculator"><span class="icon">🧮</span> Coûts Services</a></li>
+                <li><a href="/cost_calculator"><span class="icon">💰</span> Marge Produits</a></li>
                 <li><a href="/knowledge_base"><span class="icon">📚</span> Base Connaissances</a></li>
             </ul>
         </div>
@@ -243,6 +246,8 @@
                 <li><a href="/monthly_comparison"><span class="icon">📈</span> Comparaison</a></li>
                 <li><a href="/quality_dashboard"><span class="icon">✅</span> Qualité</a></li>
                 <li><a href="/ceo_dashboard"><span class="icon">📊</span> CEO</a></li>
+                <li><a href="/end_of_day"><span class="icon">📊</span> Bilan Journée</a></li>
+                <li><a href="/tech_summary"><span class="icon">👷</span> Bilan Techniciens</a></li>
                 <li><a href="/advanced_report"><span class="icon">📊</span> Rapport+</a></li>
                 <li><a href="/profitability"><span class="icon">💰</span> Rentabilité</a></li>
                 <li><a href="/retention_analysis"><span class="icon">📊</span> Rétention</a></li>
@@ -306,6 +311,8 @@
             <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▼</span></div>
             <ul class="sidebar-links">
                 <li><a href="/mobile"><span class="icon">📱</span> Vue Mobile</a></li>
+                <li><a href="/tv_display" target="_blank"><span class="icon">📺</span> Écran Salle</a></li>
+                <li><a href="/subscription_cards"><span class="icon">🎫</span> Cartes Abonnements</a></li>
                 {% if session.get('role') == 'admin' %}
                 <li><a href="/espace-client" target="_blank"><span class="icon">👤</span> Portail Client</a></li>
                 {% endif %}

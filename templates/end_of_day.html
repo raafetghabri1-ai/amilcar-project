@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Bilan de Journée - {{ day }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📊 Bilan de Journée</h2>
+        <div class="d-flex gap-2">
+            <input type="date" id="dayPicker" class="form-control" value="{{ day }}" onchange="location.href='/end_of_day?date='+this.value" style="width:180px">
+            <button onclick="window.print()" class="btn btn-outline-secondary">🖨️ Imprimer</button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3" style="border-left:4px solid var(--primary)">
+                <div style="font-size:2rem;font-weight:bold;color:var(--primary)">{{ stats.total_appointments }}</div>
+                <div class="text-muted">Total RDV</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3" style="border-left:4px solid var(--green)">
+                <div style="font-size:2rem;font-weight:bold;color:var(--green)">{{ stats.completed }}</div>
+                <div class="text-muted">Terminés</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3" style="border-left:4px solid var(--green)">
+                <div style="font-size:2rem;font-weight:bold;color:var(--green)">{{ "%.0f"|format(stats.revenue_paid) }} DT</div>
+                <div class="text-muted">Revenus Encaissés</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3" style="border-left:4px solid {% if stats.profit > 0 %}var(--green){% else %}var(--red){% endif %}">
+                <div style="font-size:2rem;font-weight:bold;color:{% if stats.profit > 0 %}var(--green){% else %}var(--red){% endif %}">{{ "%.0f"|format(stats.profit) }} DT</div>
+                <div class="text-muted">Profit Net</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3">
+                <span class="text-warning" style="font-size:1.5rem">⏳ {{ stats.pending }}</span>
+                <div class="text-muted small">En attente</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3">
+                <span class="text-info" style="font-size:1.5rem">🔧 {{ stats.in_progress }}</span>
+                <div class="text-muted small">En cours</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3">
+                <span class="text-danger" style="font-size:1.5rem">❌ {{ stats.cancelled }}</span>
+                <div class="text-muted small">Annulés</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center p-3">
+                <span class="text-danger" style="font-size:1.5rem">💸 {{ "%.0f"|format(stats.expenses) }} DT</span>
+                <div class="text-muted small">Dépenses</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Revenue by Service -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>📋 Par Service</h5>
+                <table class="table table-sm">
+                    <thead><tr><th>Service</th><th>Nombre</th><th>Revenu</th></tr></thead>
+                    <tbody>
+                    {% for s in by_service %}
+                    <tr><td>{{ s.service }}</td><td>{{ s.count }}</td><td>{{ "%.0f"|format(s.revenue) }} DT</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- By Employee -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>👷 Par Technicien</h5>
+                <table class="table table-sm">
+                    <thead><tr><th>Technicien</th><th>Total</th><th>Terminés</th></tr></thead>
+                    <tbody>
+                    {% for e in by_employee %}
+                    <tr><td>{{ e.name }}</td><td>{{ e.count }}</td><td><span class="badge bg-success">{{ e.completed }}</span></td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>💳 Modes de Paiement</h5>
+                <table class="table table-sm">
+                    <thead><tr><th>Mode</th><th>Nombre</th><th>Total</th></tr></thead>
+                    <tbody>
+                    {% for p in payment_methods %}
+                    <tr>
+                        <td>{% if p.method == 'cash' %}💵 Espèces{% elif p.method == 'card' %}💳 Carte{% elif p.method == 'transfer' %}🏦 Virement{% else %}{{ p.method }}{% endif %}</td>
+                        <td>{{ p.count }}</td>
+                        <td>{{ "%.0f"|format(p.total) }} DT</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Appointments -->
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>📅 Détail des RDV</h5>
+                <div style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm">
+                    <thead><tr><th>Heure</th><th>Client</th><th>Véhicule</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for a in appointments %}
+                    <tr>
+                        <td>{{ a.time or '-' }}</td>
+                        <td>{{ a.customer_name }}</td>
+                        <td>{{ a.brand }} {{ a.model }}</td>
+                        <td>
+                            {% if a.status == 'completed' %}<span class="badge bg-success">Terminé</span>
+                            {% elif a.status == 'in_progress' %}<span class="badge bg-info">En cours</span>
+                            {% elif a.status == 'cancelled' %}<span class="badge bg-danger">Annulé</span>
+                            {% else %}<span class="badge bg-warning">En attente</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Summary Bar -->
+    <div class="card p-3 mt-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div><strong>💰 Encaissé:</strong> <span class="text-success">{{ "%.0f"|format(stats.revenue_paid) }} DT</span></div>
+            <div><strong>⏳ Impayé:</strong> <span class="text-warning">{{ "%.0f"|format(stats.revenue_unpaid) }} DT</span></div>
+            <div><strong>💸 Dépenses:</strong> <span class="text-danger">{{ "%.0f"|format(stats.expenses) }} DT</span></div>
+            <div><strong>📈 Profit:</strong> <span style="color:{% if stats.profit > 0 %}var(--green){% else %}var(--red){% endif %}">{{ "%.0f"|format(stats.profit) }} DT</span></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

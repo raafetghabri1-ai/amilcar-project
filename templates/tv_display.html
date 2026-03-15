@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ shop.get('shop_name', 'AMILCAR') }} - Écran Salle d'Attente</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Segoe UI',system-ui,sans-serif; background:#0f172a; color:white; min-height:100vh; overflow:hidden; }
+        .tv-header { background:linear-gradient(135deg, #1e40af, #3b82f6); padding:20px 40px; 
+            display:flex; justify-content:space-between; align-items:center; }
+        .tv-logo { font-size:2.5rem; font-weight:800; letter-spacing:2px; }
+        .tv-tagline { opacity:.8; font-size:1rem; }
+        .tv-time { font-size:2rem; font-weight:bold; }
+        .tv-stats { display:flex; gap:30px; padding:15px 40px; background:#1e293b; }
+        .tv-stat { display:flex; align-items:center; gap:10px; }
+        .tv-stat-num { font-size:2rem; font-weight:bold; }
+        .tv-stat-label { font-size:.9rem; opacity:.7; }
+        .tv-stat.progress-c .tv-stat-num { color:#3b82f6; }
+        .tv-stat.pending-c .tv-stat-num { color:#f59e0b; }
+        .tv-stat.done-c .tv-stat-num { color:#22c55e; }
+        
+        .tv-body { padding:30px 40px; }
+        .tv-section-title { font-size:1.3rem; font-weight:600; margin-bottom:15px; opacity:.8; }
+        
+        .tv-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(350px, 1fr)); gap:15px; }
+        .tv-card { border-radius:16px; padding:20px; transition:all .3s; }
+        .tv-card.in_progress { background:linear-gradient(135deg, #1e3a5f, #1e40af); border:2px solid #3b82f6; 
+            animation:pulse 2s ease-in-out infinite; }
+        .tv-card.pending { background:#1e293b; border:2px solid #475569; }
+        .tv-card.completed { background:rgba(34,197,94,.1); border:2px solid #22c55e; opacity:.8; }
+        
+        .tv-car-name { font-size:1.4rem; font-weight:bold; }
+        .tv-plate { background:rgba(255,255,255,.15); padding:3px 12px; border-radius:6px; font-size:.9rem; 
+            display:inline-block; margin:5px 0; }
+        .tv-service { font-size:1rem; opacity:.8; margin-top:5px; }
+        .tv-status-badge { padding:5px 15px; border-radius:20px; font-weight:bold; font-size:.85rem; display:inline-block; margin-top:8px; }
+        .badge-progress { background:#3b82f6; }
+        .badge-pending { background:#f59e0b; color:#000; }
+        .badge-done { background:#22c55e; }
+        
+        .tv-customer { font-size:.9rem; opacity:.7; margin-top:5px; }
+        .tv-time-slot { font-size:.9rem; opacity:.6; }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow:0 0 0 0 rgba(59,130,246,.3); }
+            50% { box-shadow:0 0 20px 5px rgba(59,130,246,.2); }
+        }
+        
+        .tv-footer { position:fixed; bottom:0; left:0; right:0; background:#1e293b; padding:10px 40px;
+            display:flex; justify-content:space-between; align-items:center; font-size:.9rem; opacity:.6; }
+        
+        .tv-marquee { overflow:hidden; white-space:nowrap; padding:10px 0; background:#1e293b; border-top:1px solid #334155; }
+        .tv-marquee span { display:inline-block; animation:marquee 30s linear infinite; }
+        @keyframes marquee { 0% { transform:translateX(100vw); } 100% { transform:translateX(-100%); } }
+    </style>
+</head>
+<body>
+    <div class="tv-header">
+        <div>
+            <div class="tv-logo">{{ shop.get('shop_name', 'AMILCAR') }}</div>
+            <div class="tv-tagline">{{ shop.get('shop_tagline', 'Car & Moto Care Center') }}</div>
+        </div>
+        <div class="text-end">
+            <div class="tv-time" id="clock"></div>
+            <div style="opacity:.7">{{ today }}</div>
+        </div>
+    </div>
+
+    <div class="tv-stats">
+        <div class="tv-stat progress-c">
+            <div class="tv-stat-num">🔧 {{ stats.in_progress }}</div>
+            <div class="tv-stat-label">En cours</div>
+        </div>
+        <div class="tv-stat pending-c">
+            <div class="tv-stat-num">⏳ {{ stats.pending }}</div>
+            <div class="tv-stat-label">En attente</div>
+        </div>
+        <div class="tv-stat done-c">
+            <div class="tv-stat-num">✅ {{ stats.completed }}</div>
+            <div class="tv-stat-label">Terminés</div>
+        </div>
+    </div>
+
+    <div class="tv-body">
+        {% set in_progress_list = appointments|selectattr('status', 'equalto', 'in_progress')|list %}
+        {% set pending_list = appointments|selectattr('status', 'equalto', 'pending')|list %}
+        {% set completed_list = appointments|selectattr('status', 'equalto', 'completed')|list %}
+
+        {% if in_progress_list %}
+        <div class="tv-section-title">🔧 EN COURS DE TRAITEMENT</div>
+        <div class="tv-grid" style="margin-bottom:25px">
+            {% for a in in_progress_list %}
+            <div class="tv-card in_progress">
+                <div class="d-flex justify-content-between">
+                    <div class="tv-car-name">{{ a.brand }} {{ a.model }}</div>
+                    <div class="tv-time-slot">{{ a.time or '' }}</div>
+                </div>
+                <div class="tv-plate">{{ a.plate }}</div>
+                <div class="tv-service">{{ a.service }}</div>
+                <div class="tv-customer">👤 {{ a.name }}</div>
+                <div class="tv-status-badge badge-progress">🔧 En cours</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if pending_list %}
+        <div class="tv-section-title">⏳ EN ATTENTE</div>
+        <div class="tv-grid" style="margin-bottom:25px">
+            {% for a in pending_list %}
+            <div class="tv-card pending">
+                <div class="d-flex justify-content-between">
+                    <div class="tv-car-name">{{ a.brand }} {{ a.model }}</div>
+                    <div class="tv-time-slot">{{ a.time or '' }}</div>
+                </div>
+                <div class="tv-plate">{{ a.plate }}</div>
+                <div class="tv-service">{{ a.service }}</div>
+                <div class="tv-status-badge badge-pending">⏳ En attente</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if completed_list %}
+        <div class="tv-section-title">✅ TERMINÉS — PRÊTS À RÉCUPÉRER</div>
+        <div class="tv-grid">
+            {% for a in completed_list %}
+            <div class="tv-card completed">
+                <div class="tv-car-name">{{ a.brand }} {{ a.model }}</div>
+                <div class="tv-plate">{{ a.plate }}</div>
+                <div class="tv-service">{{ a.service }}</div>
+                <div class="tv-status-badge badge-done">✅ Prêt</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tv-footer">
+        <span>{{ shop.get('shop_name', 'AMILCAR') }} — {{ shop.get('shop_address', '') }}</span>
+        <span>📞 {{ shop.get('shop_phone', '') }}</span>
+    </div>
+
+    <script>
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Auto-refresh every 30 seconds
+    setTimeout(() => location.reload(), 30000);
+    </script>
+</body>
+</html>

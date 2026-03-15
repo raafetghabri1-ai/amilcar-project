@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Bilan Techniciens{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>👷 Bilan Techniciens</h2>
+        <input type="date" class="form-control" value="{{ day }}" onchange="location.href='/tech_summary?date='+this.value" style="width:180px">
+    </div>
+
+    {% if not summaries %}
+    <div class="alert alert-info">Aucun technicien trouvé</div>
+    {% endif %}
+
+    <div class="row g-4">
+    {% for s in summaries %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">👤 {{ s.employee.full_name or s.employee.username }}</h5>
+                    <span class="badge bg-primary">{{ s.completed }}/{{ s.total_tasks }} terminés</span>
+                </div>
+                <div class="card-body">
+                    <!-- Stats -->
+                    <div class="row g-2 mb-3 text-center">
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--bg)">
+                                <div style="font-size:1.3rem;font-weight:bold;color:var(--green)">{{ "%.0f"|format(s.revenue) }}</div>
+                                <small class="text-muted">DT Revenu</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--bg)">
+                                <div style="font-size:1.3rem;font-weight:bold;color:var(--primary)">{{ s.avg_efficiency }}%</div>
+                                <small class="text-muted">Efficacité</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:var(--bg)">
+                                <div style="font-size:1.3rem;font-weight:bold">{{ s.total_minutes }}</div>
+                                <small class="text-muted">Minutes</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    {% if s.total_tasks > 0 %}
+                    <div class="progress mb-3" style="height:8px">
+                        <div class="progress-bar bg-success" style="width:{{ (s.completed / s.total_tasks * 100)|round }}%"></div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tasks List -->
+                    <div style="max-height:200px;overflow-y:auto">
+                        {% for t in s.tasks %}
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size:.85rem">
+                            <div>
+                                <span>{{ t.time or '-' }}</span>
+                                <span class="ms-2">{{ t.service }}</span>
+                            </div>
+                            <div>
+                                {% if t.status == 'completed' %}<span class="badge bg-success">✓</span>
+                                {% elif t.status == 'in_progress' %}<span class="badge bg-info">⏳</span>
+                                {% else %}<span class="badge bg-secondary">○</span>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not s.tasks %}
+                        <p class="text-muted text-center mb-0">Aucune tâche assignée</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endblock %}

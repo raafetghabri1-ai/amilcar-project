@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Renouvellements Protection{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>🛡️ Renouvellements Protection (Céramique/PPF/Nano)</h2>
+    <p class="text-muted">Suivi automatique des protections appliquées et leurs dates de renouvellement</p>
+
+    {% if overdue %}
+    <div class="card mb-4" style="border-left:4px solid var(--red)">
+        <div class="card-body">
+            <h5 class="text-danger">⚠️ Protections Expirées ({{ overdue|length }})</h5>
+            <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Client</th><th>Véhicule</th><th>Protection</th><th>Appliquée le</th><th>Expirée</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for r in overdue %}
+                <tr>
+                    <td><a href="/customer/{{ r.customer_id }}">{{ r.name }}</a></td>
+                    <td>{{ r.brand }} {{ r.model }} <small class="text-muted">{{ r.plate }}</small></td>
+                    <td><span class="badge bg-danger">{{ r.protection_type }}</span></td>
+                    <td>{{ r.date }}</td>
+                    <td class="text-danger fw-bold">{{ r.renewal_date }}</td>
+                    <td>
+                        <a href="/protection_renewal/remind/{{ r.appt_id }}" class="btn btn-sm btn-success" title="WhatsApp">💬</a>
+                        <a href="/add_appointment?customer={{ r.customer_id }}" class="btn btn-sm btn-primary" title="Nouveau RDV">📅</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if upcoming %}
+    <div class="card mb-4" style="border-left:4px solid var(--yellow)">
+        <div class="card-body">
+            <h5 class="text-warning">📅 À Renouveler sous 90 jours ({{ upcoming|length }})</h5>
+            <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Client</th><th>Véhicule</th><th>Protection</th><th>Appliquée le</th><th>Renouvellement</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for r in upcoming %}
+                <tr>
+                    <td><a href="/customer/{{ r.customer_id }}">{{ r.name }}</a></td>
+                    <td>{{ r.brand }} {{ r.model }} <small class="text-muted">{{ r.plate }}</small></td>
+                    <td><span class="badge bg-warning text-dark">{{ r.protection_type }}</span></td>
+                    <td>{{ r.date }}</td>
+                    <td>{{ r.renewal_date }}</td>
+                    <td>
+                        <a href="/protection_renewal/remind/{{ r.appt_id }}" class="btn btn-sm btn-success" title="WhatsApp">💬</a>
+                        <a href="/add_appointment?customer={{ r.customer_id }}" class="btn btn-sm btn-primary" title="Nouveau RDV">📅</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Protections -->
+    <div class="card">
+        <div class="card-body">
+            <h5>🗂️ Toutes les protections ({{ all_renewals|length }})</h5>
+            <div class="table-responsive" style="max-height:500px;overflow-y:auto">
+            <table class="table table-sm table-hover">
+                <thead class="table-light"><tr><th>Client</th><th>Véhicule</th><th>Type</th><th>Service</th><th>Date</th><th>Renouvellement</th><th>Status</th></tr></thead>
+                <tbody>
+                {% for r in all_renewals %}
+                {% set today_str = day %}
+                <tr>
+                    <td><a href="/customer/{{ r.customer_id }}">{{ r.name }}</a></td>
+                    <td>{{ r.brand }} {{ r.model }}</td>
+                    <td><span class="badge {% if r.protection_type == 'PPF' %}bg-primary{% elif r.protection_type == 'Céramique' %}bg-info{% else %}bg-secondary{% endif %}">{{ r.protection_type }}</span></td>
+                    <td>{{ r.service }}</td>
+                    <td>{{ r.date }}</td>
+                    <td>{{ r.renewal_date }}</td>
+                    <td>
+                        {% if r in overdue %}
+                        <span class="badge bg-danger">Expiré</span>
+                        {% elif r in upcoming %}
+                        <span class="badge bg-warning text-dark">Bientôt</span>
+                        {% else %}
+                        <span class="badge bg-success">Actif</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
