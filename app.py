@@ -7409,6 +7409,565 @@ def api_notification_count():
             WHERE (user_id=? OR user_id=0) AND is_read=0""", (user_id,)).fetchone()[0]
     return jsonify({'count': count})
 
+# ══════════════════════════════════════════════════════════════
+# ██  PHASE 12 — Operational Intelligence                    ██
+# ══════════════════════════════════════════════════════════════
+
+# ─── 1. Système de Réclamations & Tickets ───
+
+@app.route("/tickets")
+@login_required
+def tickets():
+    from datetime import datetime
+    with get_db() as conn:
+        all_tickets = conn.execute("""SELECT t.*, cu.name as customer_name, cu.phone,
+            u.full_name as assigned_name
+            FROM tickets t 
+            JOIN customers cu ON t.customer_id=cu.id 
+            LEFT JOIN users u ON t.assigned_to=u.id
+            ORDER BY CASE t.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END, 
+            t.created_at DESC""").fetchall()
+        now = datetime.now().isoformat()
+        stats = {
+            'total': len(all_tickets),
+            'open': sum(1 for t in all_tickets if t['status'] == 'open'),
+            'in_progress': sum(1 for t in all_tickets if t['status'] == 'in_progress'),
+            'resolved': sum(1 for t in all_tickets if t['status'] in ('resolved', 'closed')),
+            'overdue': sum(1 for t in all_tickets if t['sla_deadline'] and t['sla_deadline'] < now and t['status'] not in ('resolved', 'closed')),
+            'avg_satisfaction': 0,
+        }
+        sat = conn.execute("SELECT AVG(satisfaction_score) FROM tickets WHERE satisfaction_score > 0").fetchone()[0]
+        stats['avg_satisfaction'] = sat or 0
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        staff = conn.execute("SELECT id, full_name, username FROM users WHERE role IN ('admin','employee')").fetchall()
+    return render_template("tickets.html", tickets=all_tickets, stats=stats, customers=customers, staff=staff)
+
+@app.route("/ticket/add", methods=["POST"])
+@login_required
+def add_ticket():
+    from datetime import datetime, timedelta
+    customer_id = request.form.get("customer_id", type=int)
+    subject = request.form.get("subject", "").strip()
+    description = request.form.get("description", "").strip()
+    category = request.form.get("category", "general")
+    priority = request.form.get("priority", "medium")
+    assigned_to = request.form.get("assigned_to", 0, type=int)
+    sla_map = {'urgent': 24, 'high': 48, 'medium': 72, 'low': 120}
+    sla_hours = sla_map.get(priority, 72)
+    sla_deadline = (datetime.now() + timedelta(hours=sla_hours)).isoformat()
+    if customer_id and subject:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO tickets 
+                (customer_id, subject, description, category, priority, sla_hours, sla_deadline, assigned_to)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (customer_id, subject, description, category, priority, sla_hours, sla_deadline, assigned_to))
+            conn.commit()
+        flash("Ticket créé !", "success")
+    return redirect("/tickets")
+
+@app.route("/ticket/<int:tid>")
+@login_required
+def view_ticket(tid):
+    with get_db() as conn:
+        ticket = conn.execute("""SELECT t.*, cu.name as customer_name, cu.phone, cu.email,
+            u.full_name as assigned_name
+            FROM tickets t JOIN customers cu ON t.customer_id=cu.id 
+            LEFT JOIN users u ON t.assigned_to=u.id WHERE t.id=?""", (tid,)).fetchone()
+        if not ticket:
+            flash("Ticket introuvable", "danger")
+            return redirect("/tickets")
+        messages = conn.execute("""SELECT tm.*, 
+            CASE WHEN tm.sender_type='staff' THEN u.full_name ELSE cu.name END as sender_name
+            FROM ticket_messages tm 
+            LEFT JOIN users u ON tm.sender_type='staff' AND tm.sender_id=u.id
+            LEFT JOIN customers cu ON tm.sender_type='customer' AND tm.sender_id=cu.id
+            WHERE tm.ticket_id=? ORDER BY tm.created_at ASC""", (tid,)).fetchall()
+        staff = conn.execute("SELECT id, full_name, username FROM users WHERE role IN ('admin','employee')").fetchall()
+    return render_template("ticket_detail.html", ticket=ticket, messages=messages, staff=staff)
+
+@app.route("/ticket/<int:tid>/reply", methods=["POST"])
+@login_required
+def reply_ticket(tid):
+    message = request.form.get("message", "").strip()
+    if message:
+        with get_db() as conn:
+            conn.execute("INSERT INTO ticket_messages (ticket_id, sender_type, sender_id, message) VALUES (?,?,?,?)",
+                        (tid, 'staff', session.get('user_id', 0), message))
+            conn.execute("UPDATE tickets SET updated_at=CURRENT_TIMESTAMP WHERE id=?", (tid,))
+            conn.commit()
+    return redirect(f"/ticket/{tid}")
+
+@app.route("/ticket/<int:tid>/update", methods=["POST"])
+@login_required
+def update_ticket(tid):
+    from datetime import datetime
+    status = request.form.get("status", "")
+    assigned = request.form.get("assigned_to", 0, type=int)
+    satisfaction = request.form.get("satisfaction_score", 0, type=int)
+    resolution = request.form.get("resolution", "").strip()
+    with get_db() as conn:
+        updates = ["updated_at=CURRENT_TIMESTAMP"]
+        params = []
+        if status:
+            updates.append("status=?"); params.append(status)
+            if status in ('resolved', 'closed'):
+                updates.append("closed_at=?"); params.append(datetime.now().isoformat())
+        if assigned:
+            updates.append("assigned_to=?"); params.append(assigned)
+        if satisfaction:
+            updates.append("satisfaction_score=?"); params.append(satisfaction)
+        if resolution:
+            updates.append("resolution=?"); params.append(resolution)
+        params.append(tid)
+        conn.execute(f"UPDATE tickets SET {','.join(updates)} WHERE id=?", params)
+        conn.commit()
+    flash("Ticket mis à jour", "success")
+    return redirect(f"/ticket/{tid}")
+
+# ─── 2. Benchmarking Inter-Succursales ───
+
+@app.route("/branch_benchmark")
+@login_required
+@admin_required
+def branch_benchmark():
+    with get_db() as conn:
+        branches = conn.execute("SELECT * FROM branches WHERE active=1 ORDER BY name").fetchall()
+        data = []
+        for b in branches:
+            bid = b['id']
+            revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE branch_id=?", (bid,)).fetchone()[0]
+            appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE branch_id=?", (bid,)).fetchone()[0]
+            completed = conn.execute("SELECT COUNT(*) FROM appointments WHERE branch_id=? AND status='completed'", (bid,)).fetchone()[0]
+            staff = conn.execute("SELECT COUNT(*) FROM users WHERE branch_id=?", (bid,)).fetchone()[0]
+            avg_quality = conn.execute("""SELECT AVG(qc.overall_score) FROM quality_checks qc 
+                JOIN appointments a ON qc.appointment_id=a.id WHERE a.branch_id=?""", (bid,)).fetchone()[0] or 0
+            avg_nps = conn.execute("""SELECT AVG(qc.nps_score) FROM quality_checks qc 
+                JOIN appointments a ON qc.appointment_id=a.id WHERE a.branch_id=? AND qc.nps_score>0""", (bid,)).fetchone()[0] or 0
+            tickets_open = conn.execute("""SELECT COUNT(*) FROM tickets t 
+                JOIN customers cu ON t.customer_id=cu.id WHERE t.status IN ('open','in_progress')""").fetchone()[0]
+            rev_per_staff = revenue / staff if staff else 0
+            data.append({
+                'branch': b, 'revenue': revenue, 'appointments': appts, 'completed': completed,
+                'completion_rate': (completed/appts*100) if appts else 0,
+                'staff': staff, 'rev_per_staff': rev_per_staff,
+                'avg_quality': avg_quality, 'avg_nps': avg_nps, 'tickets': tickets_open
+            })
+    return render_template("branch_benchmark.html", data=data)
+
+# ─── 3. Prédiction Churn Client ───
+
+@app.route("/churn_prediction")
+@login_required
+@admin_required
+def churn_prediction():
+    from datetime import date, timedelta
+    with get_db() as conn:
+        today = date.today()
+        customers = conn.execute("""SELECT cu.*, 
+            MAX(a.date) as last_visit_date,
+            COUNT(a.id) as visit_count,
+            COALESCE(SUM(i.amount),0) as lifetime_value
+            FROM customers cu 
+            LEFT JOIN cars c ON c.customer_id=cu.id
+            LEFT JOIN appointments a ON a.car_id=c.id AND a.status='completed'
+            LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid'
+            GROUP BY cu.id HAVING visit_count > 0
+            ORDER BY last_visit_date ASC""").fetchall()
+        predictions = []
+        for cu in customers:
+            last_visit = cu['last_visit_date'] or ''
+            if not last_visit:
+                continue
+            try:
+                last_dt = date.fromisoformat(last_visit)
+            except:
+                continue
+            days_since = (today - last_dt).days
+            visits = cu['visit_count']
+            # Calculate average interval
+            all_dates = conn.execute("""SELECT DISTINCT a.date FROM appointments a 
+                JOIN cars c ON a.car_id=c.id WHERE c.customer_id=? AND a.status='completed' 
+                ORDER BY a.date""", (cu['id'],)).fetchall()
+            if len(all_dates) > 1:
+                intervals = []
+                for j in range(1, len(all_dates)):
+                    try:
+                        d1 = date.fromisoformat(all_dates[j-1]['date'])
+                        d2 = date.fromisoformat(all_dates[j]['date'])
+                        intervals.append((d2-d1).days)
+                    except:
+                        pass
+                avg_interval = sum(intervals)/len(intervals) if intervals else 90
+            else:
+                avg_interval = 90
+            # Risk score: higher = more likely to churn
+            if avg_interval > 0:
+                ratio = days_since / avg_interval
+            else:
+                ratio = days_since / 90
+            if ratio >= 3:
+                risk_score = min(100, 60 + ratio * 5)
+                risk_level = 'critical'
+            elif ratio >= 2:
+                risk_score = 40 + ratio * 10
+                risk_level = 'high'
+            elif ratio >= 1.5:
+                risk_score = 30 + ratio * 5
+                risk_level = 'medium'
+            else:
+                risk_score = ratio * 20
+                risk_level = 'low'
+            risk_score = min(100, max(0, risk_score))
+            predicted_churn = (last_dt + timedelta(days=int(avg_interval * 2.5))).isoformat()
+            predictions.append({
+                'customer': cu, 'days_since': days_since, 'visits': visits,
+                'avg_interval': avg_interval, 'risk_score': risk_score,
+                'risk_level': risk_level, 'predicted_churn': predicted_churn,
+                'lifetime_value': cu['lifetime_value']
+            })
+            # Save
+            existing = conn.execute("SELECT id FROM churn_predictions WHERE customer_id=?", (cu['id'],)).fetchone()
+            if existing:
+                conn.execute("""UPDATE churn_predictions SET risk_score=?, risk_level=?, 
+                    days_since_last_visit=?, avg_visit_interval=?, predicted_churn_date=? WHERE customer_id=?""",
+                    (risk_score, risk_level, days_since, avg_interval, predicted_churn, cu['id']))
+            else:
+                conn.execute("""INSERT INTO churn_predictions 
+                    (customer_id, risk_score, risk_level, days_since_last_visit, avg_visit_interval, predicted_churn_date)
+                    VALUES (?,?,?,?,?,?)""",
+                    (cu['id'], risk_score, risk_level, days_since, avg_interval, predicted_churn))
+            conn.execute("UPDATE customers SET churn_risk=?, last_churn_check=? WHERE id=?",
+                        (risk_level, today.isoformat(), cu['id']))
+        conn.commit()
+        predictions.sort(key=lambda x: x['risk_score'], reverse=True)
+    return render_template("churn_prediction.html", predictions=predictions)
+
+# ─── 4. Portail Client 2.0 ───
+
+@app.route("/client_portal/<token>")
+def client_portal(token):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE portal_token=?", (token,)).fetchone()
+        if not customer:
+            return "Lien invalide", 404
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (customer['id'],)).fetchall()
+        appointments = conn.execute("""SELECT a.*, c.plate, c.brand, c.model FROM appointments a 
+            JOIN cars c ON a.car_id=c.id WHERE c.customer_id=? 
+            ORDER BY a.date DESC LIMIT 20""", (customer['id'],)).fetchall()
+        invoices = conn.execute("""SELECT i.*, a.service FROM invoices i 
+            JOIN appointments a ON i.appointment_id=a.id 
+            WHERE a.car_id IN (SELECT id FROM cars WHERE customer_id=?)
+            ORDER BY i.date DESC LIMIT 20""", (customer['id'],)).fetchall()
+        contracts = conn.execute("""SELECT * FROM maintenance_contracts 
+            WHERE customer_id=? ORDER BY created_at DESC""", (customer['id'],)).fetchall()
+        docs = conn.execute("""SELECT vd.*, c.plate FROM vehicle_documents vd 
+            JOIN cars c ON vd.car_id=c.id WHERE c.customer_id=? 
+            ORDER BY vd.created_at DESC""", (customer['id'],)).fetchall()
+        vip = conn.execute("SELECT * FROM vip_levels WHERE name=?", (customer.get('vip_level', ''),)).fetchone()
+    return render_template("client_portal.html", customer=customer, cars=cars, 
+                          appointments=appointments, invoices=invoices, contracts=contracts,
+                          docs=docs, vip=vip, token=token)
+
+@app.route("/client_portal/<token>/book", methods=["POST"])
+def client_portal_book(token):
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE portal_token=?", (token,)).fetchone()
+        if not customer:
+            return "Lien invalide", 404
+        car_id = request.form.get("car_id", type=int)
+        service = request.form.get("service", "").strip()
+        date_val = request.form.get("date", "")
+        time_val = request.form.get("time", "")
+        notes = request.form.get("notes", "").strip()
+        if car_id and service and date_val:
+            conn.execute("""INSERT INTO appointments (car_id, service, date, time, status, notes)
+                VALUES (?,?,?,?,?,?)""", (car_id, service, date_val, time_val, 'pending', notes))
+            conn.commit()
+            flash("Rendez-vous demandé avec succès !", "success")
+    return redirect(f"/client_portal/{token}")
+
+# ─── 5. Journal Comptable & TVA ───
+
+@app.route("/accounting")
+@login_required
+@admin_required
+def accounting():
+    from datetime import date
+    month = request.args.get("month", date.today().strftime("%Y-%m"))
+    with get_db() as conn:
+        # Auto-generate entries from invoices
+        invoices = conn.execute("""SELECT i.*, a.service FROM invoices i 
+            JOIN appointments a ON i.appointment_id=a.id 
+            WHERE strftime('%%Y-%%m', i.date) = ? AND i.status='paid'""", (month,)).fetchall()
+        for inv in invoices:
+            existing = conn.execute("SELECT id FROM accounting_entries WHERE reference_type='invoice' AND reference_id=?",
+                                  (inv['id'],)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO accounting_entries 
+                    (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (inv['date'], '701', 'Ventes de services', 0, inv['amount'],
+                     f"Facture #{inv['id']} — {inv['service']}", 'invoice', inv['id']))
+                conn.execute("""INSERT INTO accounting_entries 
+                    (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (inv['date'], '411', 'Clients', inv['amount'], 0,
+                     f"Facture #{inv['id']} — {inv['service']}", 'invoice', inv['id']))
+        # Auto-generate from expenses
+        expenses = conn.execute("SELECT * FROM expenses WHERE strftime('%%Y-%%m', date) = ?", (month,)).fetchall()
+        for exp in expenses:
+            existing = conn.execute("SELECT id FROM accounting_entries WHERE reference_type='expense' AND reference_id=?",
+                                  (exp['id'],)).fetchone()
+            if not existing:
+                conn.execute("""INSERT INTO accounting_entries 
+                    (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (exp['date'], '6', 'Charges', exp['amount'], 0,
+                     f"Dépense: {exp.get('description','')}", 'expense', exp['id']))
+                conn.execute("""INSERT INTO accounting_entries 
+                    (entry_date, account_code, account_name, debit, credit, description, reference_type, reference_id)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (exp['date'], '512', 'Banque', 0, exp['amount'],
+                     f"Dépense: {exp.get('description','')}", 'expense', exp['id']))
+        conn.commit()
+        entries = conn.execute("""SELECT * FROM accounting_entries 
+            WHERE strftime('%%Y-%%m', entry_date) = ? ORDER BY entry_date, id""", (month,)).fetchall()
+        total_debit = sum(e['debit'] for e in entries)
+        total_credit = sum(e['credit'] for e in entries)
+        # TVA calculation
+        settings = conn.execute("SELECT value FROM settings WHERE key='tax_rate'").fetchone()
+        tax_rate = float(settings['value']) if settings and settings['value'] else 0
+        total_revenue = conn.execute("""SELECT COALESCE(SUM(amount),0) FROM invoices 
+            WHERE strftime('%%Y-%%m', date)=? AND status='paid'""", (month,)).fetchone()[0]
+        tva_collected = total_revenue * tax_rate / 100 if tax_rate else 0
+        total_expenses_month = conn.execute("""SELECT COALESCE(SUM(amount),0) FROM expenses 
+            WHERE strftime('%%Y-%%m', date)=?""", (month,)).fetchone()[0]
+        tva_deductible = total_expenses_month * tax_rate / 100 if tax_rate else 0
+        tva_due = tva_collected - tva_deductible
+    return render_template("accounting.html", entries=entries, month=month,
+                          total_debit=total_debit, total_credit=total_credit,
+                          tax_rate=tax_rate, tva_collected=tva_collected,
+                          tva_deductible=tva_deductible, tva_due=tva_due,
+                          total_revenue=total_revenue, total_expenses=total_expenses_month)
+
+# ─── 6. Contrats de Maintenance ───
+
+@app.route("/contracts")
+@login_required
+def contracts():
+    with get_db() as conn:
+        all_contracts = conn.execute("""SELECT mc.*, cu.name as customer_name, c.plate, c.brand, c.model
+            FROM maintenance_contracts mc 
+            JOIN customers cu ON mc.customer_id=cu.id 
+            JOIN cars c ON mc.car_id=c.id 
+            ORDER BY mc.created_at DESC""").fetchall()
+        stats = {
+            'active': sum(1 for c in all_contracts if c['status'] == 'active'),
+            'total_value': sum(c['price'] for c in all_contracts if c['status'] == 'active'),
+            'total_paid': sum(c['paid'] for c in all_contracts),
+            'visits_remaining': sum(c['total_visits'] - c['used_visits'] for c in all_contracts if c['status'] == 'active'),
+        }
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        cars = conn.execute("SELECT c.id, c.plate, c.brand, c.model, cu.name FROM cars c JOIN customers cu ON c.customer_id=cu.id ORDER BY c.plate").fetchall()
+        services = conn.execute("SELECT name FROM services ORDER BY name").fetchall()
+    return render_template("contracts.html", contracts=all_contracts, stats=stats,
+                          customers=customers, cars=cars, services=services)
+
+@app.route("/contract/add", methods=["POST"])
+@login_required
+def add_contract():
+    customer_id = request.form.get("customer_id", type=int)
+    car_id = request.form.get("car_id", type=int)
+    contract_name = request.form.get("contract_name", "").strip()
+    start_date = request.form.get("start_date", "")
+    end_date = request.form.get("end_date", "")
+    total_visits = request.form.get("total_visits", 4, type=int)
+    services = request.form.get("included_services", "").strip()
+    price = request.form.get("price", 0, type=float)
+    notes = request.form.get("notes", "").strip()
+    if customer_id and car_id and start_date and end_date:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO maintenance_contracts 
+                (customer_id, car_id, contract_name, start_date, end_date, total_visits, included_services, price, notes)
+                VALUES (?,?,?,?,?,?,?,?,?)""",
+                (customer_id, car_id, contract_name, start_date, end_date, total_visits, services, price, notes))
+            conn.commit()
+        flash("Contrat créé !", "success")
+    return redirect("/contracts")
+
+@app.route("/contract/use/<int:cid>", methods=["POST"])
+@login_required
+def use_contract_visit(cid):
+    with get_db() as conn:
+        contract = conn.execute("SELECT * FROM maintenance_contracts WHERE id=?", (cid,)).fetchone()
+        if contract and contract['used_visits'] < contract['total_visits']:
+            conn.execute("UPDATE maintenance_contracts SET used_visits = used_visits + 1 WHERE id=?", (cid,))
+            if contract['used_visits'] + 1 >= contract['total_visits']:
+                conn.execute("UPDATE maintenance_contracts SET status='completed' WHERE id=?", (cid,))
+            conn.commit()
+            flash("Visite utilisée !", "success")
+    return redirect("/contracts")
+
+# ─── 7. Capacity Planning ───
+
+@app.route("/capacity")
+@login_required
+@admin_required
+def capacity_planning():
+    from datetime import date, timedelta
+    with get_db() as conn:
+        days = []
+        for i in range(14):
+            d = date.today() + timedelta(days=i)
+            d_str = d.isoformat()
+            total_bays = conn.execute("SELECT COUNT(*) FROM service_bays WHERE active=1").fetchone()[0] or 1
+            total_techs = conn.execute("SELECT COUNT(*) FROM users WHERE role IN ('admin','employee')").fetchone()[0] or 1
+            booked = conn.execute("SELECT COUNT(*) FROM appointments WHERE date=? AND status!='cancelled'", (d_str,)).fetchone()[0]
+            booked_hours = booked * 1.5
+            available_hours = min(total_bays, total_techs) * 8
+            utilization = (booked_hours / available_hours * 100) if available_hours else 0
+            # Save
+            existing = conn.execute("SELECT id FROM capacity_planning WHERE date=?", (d_str,)).fetchone()
+            if existing:
+                conn.execute("""UPDATE capacity_planning SET total_bays=?, total_technicians=?,
+                    available_hours=?, booked_hours=?, utilization_pct=? WHERE date=?""",
+                    (total_bays, total_techs, available_hours, booked_hours, utilization, d_str))
+            else:
+                conn.execute("""INSERT INTO capacity_planning 
+                    (date, total_bays, total_technicians, available_hours, booked_hours, utilization_pct)
+                    VALUES (?,?,?,?,?,?)""",
+                    (d_str, total_bays, total_techs, available_hours, booked_hours, utilization))
+            days.append({
+                'date': d_str, 'weekday': d.strftime("%A"), 'bays': total_bays,
+                'techs': total_techs, 'available': available_hours, 'booked': booked_hours,
+                'utilization': utilization, 'appointments': booked
+            })
+        conn.commit()
+    return render_template("capacity.html", days=days)
+
+# ─── 8. Chat Interne ───
+
+@app.route("/team_chat")
+@login_required
+def team_chat():
+    channel = request.args.get("channel", "general")
+    with get_db() as conn:
+        messages = conn.execute("""SELECT tm.*, u.full_name, u.username 
+            FROM team_messages tm JOIN users u ON tm.sender_id=u.id 
+            WHERE tm.channel=? ORDER BY tm.created_at DESC LIMIT 100""", (channel,)).fetchall()
+        messages = list(reversed(messages))
+        users = conn.execute("SELECT id, full_name, username FROM users ORDER BY full_name").fetchall()
+        channels = ['general', 'technique', 'admin', 'urgent']
+        # Mark as read
+        conn.execute("""UPDATE team_messages SET is_read=1 
+            WHERE channel=? AND recipient_id IN (0, ?)""", (channel, session.get('user_id', 0)))
+        conn.commit()
+    return render_template("team_chat.html", messages=messages, users=users,
+                          channels=channels, current_channel=channel)
+
+@app.route("/team_chat/send", methods=["POST"])
+@login_required
+def send_team_message():
+    channel = request.form.get("channel", "general")
+    message = request.form.get("message", "").strip()
+    if message:
+        with get_db() as conn:
+            conn.execute("INSERT INTO team_messages (sender_id, channel, message) VALUES (?,?,?)",
+                        (session.get('user_id', 0), channel, message))
+            conn.commit()
+    return redirect(f"/team_chat?channel={channel}")
+
+# ─── 9. Tableau Comparatif Mensuel ───
+
+@app.route("/monthly_comparison")
+@login_required
+@admin_required
+def monthly_comparison_view():
+    from datetime import date
+    today = date.today()
+    current_month = today.strftime("%Y-%m")
+    if today.month == 1:
+        prev_month = f"{today.year - 1}-12"
+    else:
+        prev_month = f"{today.year}-{today.month - 1:02d}"
+    with get_db() as conn:
+        def month_stats(m):
+            revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE strftime('%%Y-%%m',date)=? AND status='paid'", (m,)).fetchone()[0]
+            appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE strftime('%%Y-%%m',date)=?", (m,)).fetchone()[0]
+            completed = conn.execute("SELECT COUNT(*) FROM appointments WHERE strftime('%%Y-%%m',date)=? AND status='completed'", (m,)).fetchone()[0]
+            new_customers = conn.execute("SELECT COUNT(*) FROM customers WHERE strftime('%%Y-%%m',created_at)=?", (m,)).fetchone()[0]
+            expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%%Y-%%m',date)=?", (m,)).fetchone()[0]
+            avg_ticket = revenue / completed if completed else 0
+            profit = revenue - expenses
+            return {'month': m, 'revenue': revenue, 'appointments': appts, 'completed': completed,
+                    'new_customers': new_customers, 'expenses': expenses, 'avg_ticket': avg_ticket, 'profit': profit}
+        current = month_stats(current_month)
+        previous = month_stats(prev_month)
+        # Calculate deltas
+        def delta(curr, prev):
+            if prev == 0:
+                return 100 if curr > 0 else 0
+            return ((curr - prev) / prev) * 100
+        deltas = {}
+        for key in ['revenue', 'appointments', 'completed', 'new_customers', 'expenses', 'avg_ticket', 'profit']:
+            deltas[key] = delta(current[key], previous[key])
+        # Last 6 months for chart
+        months_data = []
+        for i in range(5, -1, -1):
+            m = today.month - i
+            y = today.year
+            while m <= 0:
+                m += 12; y -= 1
+            ms = f"{y}-{m:02d}"
+            months_data.append(month_stats(ms))
+    return render_template("monthly_comparison.html", current=current, previous=previous,
+                          deltas=deltas, months_data=months_data)
+
+# ─── 10. Audit Trail Complet ───
+
+def log_audit(action, entity_type='', entity_id=0, old_value='', new_value=''):
+    """Helper to log audit entries"""
+    try:
+        with get_db() as conn:
+            user_id = session.get('user_id', 0)
+            username = session.get('username', 'system')
+            ip = request.remote_addr if request else ''
+            conn.execute("""INSERT INTO audit_log 
+                (user_id, username, action, entity_type, entity_id, old_value, new_value, ip_address)
+                VALUES (?,?,?,?,?,?,?,?)""",
+                (user_id, username, action, entity_type, entity_id, 
+                 str(old_value)[:500], str(new_value)[:500], ip))
+            conn.commit()
+    except:
+        pass
+
+@app.route("/audit_trail")
+@login_required
+@admin_required
+def audit_trail():
+    page = request.args.get("page", 1, type=int)
+    entity_filter = request.args.get("entity", "")
+    user_filter = request.args.get("user", "", type=str)
+    with get_db() as conn:
+        where_clauses = []
+        params = []
+        if entity_filter:
+            where_clauses.append("entity_type=?")
+            params.append(entity_filter)
+        if user_filter:
+            where_clauses.append("username=?")
+            params.append(user_filter)
+        where = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        total = conn.execute(f"SELECT COUNT(*) FROM audit_log {where}", params).fetchone()[0]
+        logs = conn.execute(f"""SELECT * FROM audit_log {where} 
+            ORDER BY created_at DESC LIMIT ? OFFSET ?""", params + [50, (page-1)*50]).fetchall()
+        entity_types = conn.execute("SELECT DISTINCT entity_type FROM audit_log WHERE entity_type!='' ORDER BY entity_type").fetchall()
+        usernames = conn.execute("SELECT DISTINCT username FROM audit_log WHERE username!='' ORDER BY username").fetchall()
+    total_pages = (total + 49) // 50
+    return render_template("audit_trail.html", logs=logs, page=page, total_pages=total_pages,
+                          total=total, entity_types=entity_types, usernames=usernames,
+                          entity_filter=entity_filter, user_filter=user_filter)
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
 

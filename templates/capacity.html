@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %} — Planification Capacité{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📊 Planification de Capacité</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Vue 14 jours — Optimisez l'utilisation de vos ressources</p>
+
+<!-- Capacity Grid -->
+<div class="row g-3">
+{% for d in days %}
+<div class="col-md-3 col-sm-6">
+    <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid {{ 'var(--red)' if d.utilization > 85 else 'var(--gold)' if d.utilization > 70 else 'var(--green-light)' }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+                <strong style="color:var(--text-primary);font-size:.85rem">{{ d.weekday }}</strong><br>
+                <small style="color:var(--text-muted)">{{ d.date }}</small>
+            </div>
+            <div style="width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;
+                background:{{ 'rgba(231,76,60,.15)' if d.utilization > 85 else 'rgba(241,196,15,.15)' if d.utilization > 70 else 'rgba(46,204,113,.15)' }};
+                color:{{ 'var(--red)' if d.utilization > 85 else 'var(--gold)' if d.utilization > 70 else 'var(--green-light)' }}">
+                {{ d.utilization|int }}%
+            </div>
+        </div>
+
+        <div style="background:var(--bg-darker);border-radius:10px;height:8px;overflow:hidden;margin-bottom:10px">
+            <div style="width:{{ d.utilization|int }}%;height:100%;border-radius:10px;background:{{ 'var(--red)' if d.utilization > 85 else 'var(--gold)' if d.utilization > 70 else 'var(--green-light)' }};transition:width .3s"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted)">
+            <span>🔧 {{ d.bays }} baies</span>
+            <span>👨‍🔧 {{ d.techs }} techs</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);margin-top:4px">
+            <span>📅 {{ d.booked }}h réservées</span>
+            <span>✅ {{ d.available }}h dispo</span>
+        </div>
+
+        {% if d.appointments %}
+        <hr style="border-color:var(--border-color);margin:8px 0">
+        <small style="color:var(--gold);font-weight:600">RDV ({{ d.appointments|length }})</small>
+        {% for apt in d.appointments[:3] %}
+        <div style="font-size:.65rem;color:var(--text-muted);padding:2px 0">
+            {{ apt.time[:5] if apt.time else '—' }} • {{ apt.customer_name|default('—') }}
+        </div>
+        {% endfor %}
+        {% if d.appointments|length > 3 %}
+        <small style="color:var(--gold);font-size:.6rem">+{{ d.appointments|length - 3 }} autres</small>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Legend -->
+<div class="card mt-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
+    <span style="font-size:.75rem;color:var(--text-muted)">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--green-light);vertical-align:middle;margin-right:4px"></span>
+        &lt; 70% — Disponible
+    </span>
+    <span style="font-size:.75rem;color:var(--text-muted)">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--gold);vertical-align:middle;margin-right:4px"></span>
+        70-85% — Chargé
+    </span>
+    <span style="font-size:.75rem;color:var(--text-muted)">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--red);vertical-align:middle;margin-right:4px"></span>
+        &gt; 85% — Saturé
+    </span>
+</div>
+{% endblock %}

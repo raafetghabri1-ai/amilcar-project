@@ -112,6 +112,7 @@
                 <li><a href="/rfm_analysis"><span class="icon">📊</span> Analyse RFM</a></li>
                 <li><a href="/marketing_campaigns"><span class="icon">📧</span> Campagnes</a></li>
                 <li><a href="/vip_program"><span class="icon">👑</span> Programme VIP</a></li>
+                <li><a href="/churn_prediction"><span class="icon">🔮</span> Churn</a></li>
             </ul>
         </div>
 
@@ -127,6 +128,7 @@
                 <li><a href="/maintenance_plans"><span class="icon">🔄</span> Plans entretien</a></li>
                 <li><a href="/bays"><span class="icon">🏗️</span> Baies service</a></li>
                 <li><a href="/vin_decode"><span class="icon">🔍</span> VIN Decoder</a></li>
+                <li><a href="/capacity"><span class="icon">📊</span> Capacité</a></li>
             </ul>
         </div>
 
@@ -139,6 +141,8 @@
                 <li><a href="/quotes_advanced"><span class="icon">📋</span> Devis+</a></li>
                 <li><a href="/expenses"><span class="icon">💸</span> Dépenses</a></li>
                 <li><a href="/warranties"><span class="icon">🛡️</span> Garanties</a></li>
+                <li><a href="/accounting"><span class="icon">🧾</span> Comptabilité</a></li>
+                <li><a href="/contracts"><span class="icon">📋</span> Contrats</a></li>
                 {% if session.get('role') == 'admin' %}
                 <li><a href="/invoice_terms"><span class="icon">📄</span> CGV</a></li>
                 <li><a href="/coupons"><span class="icon">🏷️</span> Coupons</a></li>
@@ -173,6 +177,8 @@
                 <li><a href="/pnl_dashboard"><span class="icon">💵</span> P&L</a></li>
                 <li><a href="/ar_aging"><span class="icon">📊</span> Créances</a></li>
                 <li><a href="/cashflow"><span class="icon">💰</span> Cash Flow</a></li>
+                <li><a href="/branch_benchmark"><span class="icon">📊</span> Benchmark</a></li>
+                <li><a href="/monthly_comparison"><span class="icon">📈</span> Comparaison</a></li>
                 <li><a href="/quality_dashboard"><span class="icon">✅</span> Qualité</a></li>
                 {% if session.get('role') == 'admin' %}
                 <li><a href="/ceo_dashboard"><span class="icon">📊</span> CEO</a></li>
@@ -197,6 +203,8 @@
                 <li><a href="/technician_performance"><span class="icon">🏆</span> Performance</a></li>
                 <li><a href="/time_tracking"><span class="icon">⏱️</span> Temps</a></li>
                 <li><a href="/manage_roles"><span class="icon">🔐</span> Rôles</a></li>
+                <li><a href="/team_chat"><span class="icon">💬</span> Chat</a></li>
+                <li><a href="/tickets"><span class="icon">🎫</span> Tickets</a></li>
             </ul>
         </div>
 
@@ -224,6 +232,7 @@
                 <li><a href="/insurance"><span class="icon">🏥</span> Assurances</a></li>
                 <li><a href="/branches"><span class="icon">🏢</span> Succursales</a></li>
                 <li><a href="/notifications_center_view"><span class="icon">🔔</span> Notifications</a></li>
+                <li><a href="/audit_trail"><span class="icon">🔐</span> Audit</a></li>
             </ul>
         </div>
         {% endif %}

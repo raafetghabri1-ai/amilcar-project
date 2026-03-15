@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %} — Ticket #{{ ticket.id }}{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+        <h2 style="color:var(--gold);margin-bottom:4px">🎫 Ticket #{{ ticket.id }} — {{ ticket.subject }}</h2>
+        <p style="color:var(--text-muted);font-size:.8rem;margin:0">{{ ticket.customer_name }} — {{ ticket.phone or '' }}</p>
+    </div>
+    <a href="/tickets" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold)">← Tickets</a>
+</div>
+
+{% set prio_colors = {'urgent':'var(--red)','high':'#f97316','medium':'#f59e0b','low':'var(--green-light)'} %}
+{% set status_colors = {'open':'#f59e0b','in_progress':'#60a5fa','resolved':'var(--green-light)','closed':'var(--text-muted)'} %}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Description -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="display:flex;gap:12px;align-items:start;margin-bottom:12px">
+                <span style="padding:4px 10px;border-radius:var(--radius);font-size:.7rem;font-weight:700;background:{{ prio_colors.get(ticket.priority,'var(--bg-hover)') }};color:#000">{{ ticket.priority|upper }}</span>
+                <span style="padding:4px 10px;border-radius:var(--radius);font-size:.7rem;background:{{ status_colors.get(ticket.status,'var(--bg-hover)') }};color:#000">{{ ticket.status }}</span>
+                <span style="padding:4px 10px;border-radius:var(--radius);font-size:.7rem;background:var(--bg-hover);color:var(--text-muted)">{{ ticket.category }}</span>
+                <span style="font-size:.7rem;color:var(--text-muted)">SLA: {{ ticket.sla_hours }}h</span>
+            </div>
+            {% if ticket.description %}
+            <div style="padding:12px;background:var(--bg-hover);border-radius:var(--radius);color:var(--text-primary);font-size:.85rem">{{ ticket.description }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Messages Thread -->
+        <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:12px">💬 Conversation</h5>
+            {% for m in messages %}
+            <div style="margin-bottom:12px;padding:10px;border-radius:var(--radius);{{ 'background:rgba(212,175,55,.08);border-left:3px solid var(--gold)' if m.sender_type == 'staff' else 'background:var(--bg-hover);border-left:3px solid #60a5fa' }}">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <strong style="font-size:.8rem;color:{{ 'var(--gold)' if m.sender_type == 'staff' else '#60a5fa' }}">{{ m.sender_name or 'Staff' }}</strong>
+                    <span style="font-size:.6rem;color:var(--text-muted)">{{ m.created_at[:16] if m.created_at else '' }}</span>
+                </div>
+                <div style="font-size:.85rem;color:var(--text-primary)">{{ m.message }}</div>
+            </div>
+            {% endfor %}
+            {% if not messages %}
+            <p style="color:var(--text-muted);text-align:center;font-size:.8rem">Aucun message</p>
+            {% endif %}
+
+            <!-- Reply -->
+            {% if ticket.status not in ('closed',) %}
+            <form method="POST" action="{{ url_for('reply_ticket', tid=ticket.id) }}" style="margin-top:12px">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-10"><textarea name="message" class="form-control form-control-sm" rows="2" placeholder="Répondre..." required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></textarea></div>
+                    <div class="col-2"><button type="submit" class="btn h-100 w-100" style="background:var(--gold);color:#000;font-weight:600">📤</button></div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <h5 style="color:var(--gold);margin-bottom:12px">⚙️ Gérer</h5>
+            <form method="POST" action="{{ url_for('update_ticket', tid=ticket.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label style="color:var(--text-muted);font-size:.7rem">Statut</label>
+                    <select name="status" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        {% for s in ['open','in_progress','resolved','closed'] %}
+                        <option value="{{ s }}" {{ 'selected' if ticket.status == s }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label style="color:var(--text-muted);font-size:.7rem">Assigné à</label>
+                    <select name="assigned_to" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="0">Non assigné</option>
+                        {% for s in staff %}<option value="{{ s.id }}" {{ 'selected' if ticket.assigned_to == s.id }}>{{ s.full_name or s.username }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label style="color:var(--text-muted);font-size:.7rem">Satisfaction (1-5)</label>
+                    <select name="satisfaction_score" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                        <option value="0">—</option>
+                        {% for n in range(1,6) %}<option value="{{ n }}" {{ 'selected' if ticket.satisfaction_score == n }}>{{ '⭐' * n }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label style="color:var(--text-muted);font-size:.7rem">Résolution</label>
+                    <textarea name="resolution" class="form-control form-control-sm" rows="3" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">{{ ticket.resolution or '' }}</textarea>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Mettre à jour</button>
+            </form>
+        </div>
+        <div class="card mt-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;font-size:.75rem;color:var(--text-muted)">
+            <div>📅 Créé: {{ ticket.created_at[:16] if ticket.created_at else '—' }}</div>
+            <div>⏰ SLA Deadline: {{ ticket.sla_deadline[:16] if ticket.sla_deadline else '—' }}</div>
+            {% if ticket.closed_at %}<div>✅ Fermé: {{ ticket.closed_at[:16] }}</div>{% endif %}
+            {% if ticket.updated_at %}<div>🔄 Mis à jour: {{ ticket.updated_at[:16] }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

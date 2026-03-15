@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %} — Tickets{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🎫 Réclamations & Tickets</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Suivi des réclamations avec SLA — Objectif: réponse sous 48h</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--gold)">{{ stats.total }}</div><small style="color:var(--text-muted)">Total</small></div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:#f59e0b">{{ stats.open }}</div><small style="color:var(--text-muted)">Ouverts</small></div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:#60a5fa">{{ stats.in_progress }}</div><small style="color:var(--text-muted)">En cours</small></div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--green-light)">{{ stats.resolved }}</div><small style="color:var(--text-muted)">Résolus</small></div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--red)">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--red)">{{ stats.overdue }}</div><small style="color:var(--text-muted)">SLA dépassé</small></div></div>
+    <div class="col"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <div style="font-size:1.8rem;font-weight:800;color:var(--gold)">{{ "%.1f"|format(stats.avg_satisfaction) }}/5</div><small style="color:var(--text-muted)">Satisfaction</small></div></div>
+</div>
+
+<!-- New Ticket -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">+ Nouveau Ticket</h5>
+    <form method="POST" action="{{ url_for('add_ticket') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="customer_id" class="form-select form-select-sm" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="">Client...</option>
+                    {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3"><input type="text" name="subject" class="form-control form-control-sm" placeholder="Sujet" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+            <div class="col-md-2">
+                <select name="category" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="general">Général</option>
+                    <option value="quality">Qualité</option>
+                    <option value="billing">Facturation</option>
+                    <option value="delay">Retard</option>
+                    <option value="damage">Dommage</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="priority" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="low">🟢 Basse</option>
+                    <option value="medium" selected>🟡 Moyenne</option>
+                    <option value="high">🟠 Haute</option>
+                    <option value="urgent">🔴 Urgente</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="assigned_to" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                    <option value="0">Assigner à...</option>
+                    {% for s in staff %}<option value="{{ s.id }}">{{ s.full_name or s.username }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-12"><textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Description..." style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></textarea></div>
+            <div class="col-12"><button type="submit" class="btn" style="background:var(--gold);color:#000;font-weight:600">Créer le ticket</button></div>
+        </div>
+    </form>
+</div>
+
+<!-- Tickets Table -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover" style="color:var(--text-primary);font-size:.8rem">
+            <thead><tr><th>#</th><th>Client</th><th>Sujet</th><th>Catégorie</th><th>Priorité</th><th>SLA</th><th>Assigné</th><th>Statut</th><th>Créé</th><th></th></tr></thead>
+            <tbody>
+            {% set prio_colors = {'urgent':'var(--red)','high':'#f97316','medium':'#f59e0b','low':'var(--green-light)'} %}
+            {% set status_colors = {'open':'#f59e0b','in_progress':'#60a5fa','resolved':'var(--green-light)','closed':'var(--text-muted)'} %}
+            {% for t in tickets %}
+            <tr style="{{ 'background:rgba(239,68,68,.08)' if t.sla_deadline and t.sla_deadline < now and t.status not in ('resolved','closed') }}">
+                <td style="font-weight:600">#{{ t.id }}</td>
+                <td>{{ t.customer_name }}</td>
+                <td><a href="/ticket/{{ t.id }}" style="color:var(--gold);text-decoration:none;font-weight:600">{{ t.subject }}</a></td>
+                <td>{{ t.category }}</td>
+                <td><span style="color:{{ prio_colors.get(t.priority,'var(--text-muted)') }};font-weight:700;font-size:.7rem">● {{ t.priority|upper }}</span></td>
+                <td style="font-size:.65rem;color:var(--text-muted)">{{ t.sla_hours }}h</td>
+                <td>{{ t.assigned_name or '—' }}</td>
+                <td><span style="padding:2px 8px;border-radius:4px;font-size:.65rem;font-weight:600;background:{{ status_colors.get(t.status,'var(--bg-hover)') }};color:#000">{{ t.status }}</span></td>
+                <td style="font-size:.65rem;color:var(--text-muted)">{{ t.created_at[:10] if t.created_at else '' }}</td>
+                <td><a href="/ticket/{{ t.id }}" class="btn btn-sm" style="background:var(--bg-hover);color:var(--gold);font-size:.6rem">Voir</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

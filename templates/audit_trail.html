@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %} — Journal d'Audit{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔐 Journal d'Audit</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Traçabilité complète — Qui a fait quoi et quand</p>
+
+<!-- Filters -->
+<div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+    <form method="GET" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select name="entity_type" class="form-select form-select-sm" style="width:160px;background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+            <option value="">Toutes les entités</option>
+            {% for et in entity_types %}<option value="{{ et }}" {{ 'selected' if et == entity_filter }}>{{ et }}</option>{% endfor %}
+        </select>
+        <select name="username" class="form-select form-select-sm" style="width:160px;background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+            <option value="">Tous les utilisateurs</option>
+            {% for u in usernames %}<option value="{{ u }}" {{ 'selected' if u == user_filter }}>{{ u }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">Filtrer</button>
+        <a href="/audit_trail" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary)">Réinitialiser</a>
+        <span style="margin-left:auto;color:var(--text-muted);font-size:.75rem">{{ total }} entrées</span>
+    </form>
+</div>
+
+<!-- Audit Log -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.78rem">
+            <thead><tr>
+                <th style="width:140px">Date/Heure</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Entité</th>
+                <th>ID</th>
+                <th>Ancienne valeur</th>
+                <th>Nouvelle valeur</th>
+                <th>IP</th>
+            </tr></thead>
+            <tbody>
+            {% for log in logs %}
+            <tr>
+                <td style="color:var(--text-muted);white-space:nowrap">{{ log.created_at }}</td>
+                <td><span style="background:var(--gold);color:#000;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:600">{{ log.username }}</span></td>
+                <td>
+                    {% if 'create' in log.action|lower or 'add' in log.action|lower %}
+                    <span style="color:var(--green-light)">{{ log.action }}</span>
+                    {% elif 'delete' in log.action|lower or 'remove' in log.action|lower %}
+                    <span style="color:var(--red)">{{ log.action }}</span>
+                    {% elif 'update' in log.action|lower or 'edit' in log.action|lower %}
+                    <span style="color:var(--gold)">{{ log.action }}</span>
+                    {% else %}
+                    <span>{{ log.action }}</span>
+                    {% endif %}
+                </td>
+                <td style="font-weight:600">{{ log.entity_type }}</td>
+                <td style="color:var(--text-muted)">#{{ log.entity_id }}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted)" title="{{ log.old_value or '' }}">{{ log.old_value or '—' }}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted)" title="{{ log.new_value or '' }}">{{ log.new_value or '—' }}</td>
+                <td style="color:var(--text-muted);font-size:.65rem">{{ log.ip_address or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:30px">Aucune entrée d'audit</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav style="margin-top:14px;display:flex;justify-content:center;gap:4px">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="/audit_trail?page={{ p }}{% if entity_filter %}&entity_type={{ entity_filter }}{% endif %}{% if user_filter %}&username={{ user_filter }}{% endif %}"
+           style="display:inline-block;padding:4px 10px;border-radius:var(--radius);font-size:.75rem;text-decoration:none;
+           background:{{ 'var(--gold)' if p == page else 'var(--bg-input)' }};
+           color:{{ '#000' if p == page else 'var(--text-primary)' }};
+           font-weight:{{ '600' if p == page else '400' }}">{{ p }}</a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

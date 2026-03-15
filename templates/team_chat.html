@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %} — Chat Équipe{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">💬 Chat Interne</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Communication instantanée entre l'équipe</p>
+
+<div class="row g-3">
+    <!-- Channels -->
+    <div class="col-md-2">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+            <h6 style="color:var(--gold);margin-bottom:10px">📡 Canaux</h6>
+            {% set channel_icons = {'general': '💬', 'technique': '🔧', 'admin': '📋', 'urgent': '🚨'} %}
+            {% for ch in channels %}
+            <a href="/team_chat?channel={{ ch }}" style="display:block;padding:8px 10px;border-radius:var(--radius);margin-bottom:4px;text-decoration:none;font-size:.8rem;
+                background:{{ 'var(--gold)' if ch == current_channel else 'transparent' }};
+                color:{{ '#000' if ch == current_channel else 'var(--text-primary)' }};
+                font-weight:{{ '600' if ch == current_channel else '400' }}">
+                {{ channel_icons.get(ch, '💬') }} #{{ ch }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="col-md-10">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border-color);padding-bottom:10px">
+                <h5 style="color:var(--gold);margin:0">{{ channel_icons.get(current_channel, '💬') }} #{{ current_channel }}</h5>
+                <small style="color:var(--text-muted)">{{ messages|length }} messages</small>
+            </div>
+
+            <!-- Message List -->
+            <div id="chatMessages" style="max-height:450px;overflow-y:auto;margin-bottom:14px;padding-right:8px">
+                {% for m in messages %}
+                <div style="margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+                    <div style="min-width:36px;width:36px;height:36px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem">
+                        {{ m.username[:2]|upper if m.username else '??' }}
+                    </div>
+                    <div style="flex:1">
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+                            <strong style="color:var(--gold);font-size:.8rem">{{ m.username }}</strong>
+                            <small style="color:var(--text-muted);font-size:.65rem">{{ m.created_at }}</small>
+                        </div>
+                        <div style="color:var(--text-primary);font-size:.82rem;line-height:1.4">{{ m.message }}</div>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color:var(--text-muted);text-align:center;padding:40px;font-size:.85rem">Aucun message dans ce canal. Soyez le premier ! 🎉</p>
+                {% endfor %}
+            </div>
+
+            <!-- Send Form -->
+            <form method="POST" action="/team_chat/send" style="display:flex;gap:8px">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="channel" value="{{ current_channel }}">
+                <input type="text" name="message" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color);flex:1" placeholder="Écrire un message..." required autocomplete="off">
+                <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600;padding:6px 18px">Envoyer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var c = document.getElementById('chatMessages');
+    if(c) c.scrollTop = c.scrollHeight;
+});
+</script>
+{% endblock %}

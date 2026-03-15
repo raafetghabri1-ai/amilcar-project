@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %} — Contrats de Maintenance{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📋 Contrats de Maintenance</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Forfaits annuels — Fidélisation premium</p>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--gold)">
+        <small style="color:var(--text-muted)">Contrats actifs</small><h3 style="color:var(--gold);margin:4px 0">{{ stats.active }}</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--green-light)">
+        <small style="color:var(--text-muted)">Valeur totale</small><h3 style="color:var(--green-light);margin:4px 0">{{ "%.0f"|format(stats.total_value) }} DT</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--blue)">
+        <small style="color:var(--text-muted)">Encaissé</small><h3 style="color:var(--blue);margin:4px 0">{{ "%.0f"|format(stats.total_paid) }} DT</h3></div></div>
+    <div class="col-md-3"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid #e67e22">
+        <small style="color:var(--text-muted)">Visites restantes</small><h3 style="color:#e67e22;margin:4px 0">{{ stats.visits_remaining }}</h3></div></div>
+</div>
+
+<div class="row g-3">
+    <!-- New Contract Form -->
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouveau contrat</h5>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Client</label>
+                    <select name="customer_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                        {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Véhicule</label>
+                    <select name="car_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                        <option value="">Choisir...</option>
+                        {% for car in cars %}<option value="{{ car.id }}">{{ car.plate }} — {{ car.brand }} {{ car.model }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Nom du contrat</label>
+                    <input type="text" name="contract_name" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" placeholder="Ex: Pack Premium 12 mois" required>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Début</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Fin</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" required>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Nbre de visites</label>
+                        <input type="number" name="total_visits" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" value="12" min="1" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Prix (DT)</label>
+                        <input type="number" name="price" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)" step="0.01" required>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="color:var(--text-muted);font-size:.75rem">Services inclus</label>
+                    <div style="max-height:120px;overflow-y:auto">
+                    {% for s in services %}
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="services" value="{{ s.name }}" id="svc{{ s.id }}"><label class="form-check-label" for="svc{{ s.id }}" style="color:var(--text-primary);font-size:.75rem">{{ s.name }}</label></div>
+                    {% endfor %}
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="paid" id="paidCheck">
+                    <label class="form-check-label" for="paidCheck" style="color:var(--text-primary);font-size:.75rem">Payé</label>
+                </div>
+                <button type="submit" class="btn w-100" style="background:var(--gold);color:#000;font-weight:600">Créer le contrat</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contracts List -->
+    <div class="col-md-8">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📄 Contrats</h5>
+            {% for c in contracts %}
+            <div class="card mb-2" style="background:var(--bg-darker);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-left:4px solid {{ 'var(--green-light)' if c.status == 'active' else 'var(--red)' if c.status == 'completed' else 'var(--text-muted)' }}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <strong style="color:var(--text-primary)">{{ c.contract_name }}</strong>
+                        <span style="background:{{ 'var(--green-light)' if c.status == 'active' else '#e74c3c' if c.status == 'completed' else 'var(--text-muted)' }};color:{{ '#000' if c.status == 'active' else '#fff' }};padding:2px 8px;border-radius:10px;font-size:.65rem;margin-left:8px">{{ c.status|upper }}</span>
+                        <br><small style="color:var(--text-muted)">{{ c.customer_name }} — {{ c.plate }} {{ c.brand }} {{ c.model }}</small>
+                        <br><small style="color:var(--text-muted)">{{ c.start_date }} ➜ {{ c.end_date }}</small>
+                        {% if c.included_services %}<br><small style="color:var(--gold)">{{ c.included_services }}</small>{% endif %}
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="color:var(--gold);font-size:1.1rem">{{ "%.0f"|format(c.price) }} DT</strong>
+                        {% if c.paid %}<span style="color:var(--green-light);font-size:.65rem;display:block">✅ Payé</span>{% else %}<span style="color:var(--red);font-size:.65rem;display:block">⏳ Non payé</span>{% endif %}
+                    </div>
+                </div>
+                <div style="margin-top:8px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <small style="color:var(--text-muted)">Visites: {{ c.used_visits }}/{{ c.total_visits }}</small>
+                        <small style="color:var(--gold)">{{ ((c.used_visits / c.total_visits) * 100)|int if c.total_visits > 0 else 0 }}%</small>
+                    </div>
+                    <div style="background:var(--bg-card);border-radius:10px;height:8px;overflow:hidden">
+                        <div style="background:var(--gold);height:100%;width:{{ ((c.used_visits / c.total_visits) * 100)|int if c.total_visits > 0 else 0 }}%;border-radius:10px;transition:width .3s"></div>
+                    </div>
+                    {% if c.status == 'active' and c.used_visits < c.total_visits %}
+                    <form method="POST" action="/contract/use/{{ c.id }}" style="margin-top:8px;text-align:right">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm" style="background:var(--green-light);color:#000;font-weight:600;font-size:.7rem">▶ Utiliser une visite</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <p style="color:var(--text-muted);text-align:center;padding:30px">Aucun contrat pour le moment</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

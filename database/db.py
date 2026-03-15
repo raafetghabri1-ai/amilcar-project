@@ -947,6 +947,134 @@ def create_tables():
         )
     ''')
 
+    # ── Phase 12: Operational Intelligence ──
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            subject TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            category TEXT DEFAULT 'general',
+            priority TEXT DEFAULT 'medium',
+            sla_hours INTEGER DEFAULT 48,
+            sla_deadline TEXT DEFAULT '',
+            assigned_to INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'open',
+            resolution TEXT DEFAULT '',
+            satisfaction_score INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT '',
+            closed_at TEXT DEFAULT '',
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ticket_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id INTEGER NOT NULL,
+            sender_type TEXT DEFAULT 'staff',
+            sender_id INTEGER DEFAULT 0,
+            message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (ticket_id) REFERENCES tickets (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS churn_predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            risk_score REAL DEFAULT 0,
+            risk_level TEXT DEFAULT 'low',
+            days_since_last_visit INTEGER DEFAULT 0,
+            avg_visit_interval REAL DEFAULT 0,
+            predicted_churn_date TEXT DEFAULT '',
+            action_taken TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS accounting_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entry_date TEXT NOT NULL,
+            account_code TEXT NOT NULL,
+            account_name TEXT DEFAULT '',
+            debit REAL DEFAULT 0,
+            credit REAL DEFAULT 0,
+            description TEXT DEFAULT '',
+            reference_type TEXT DEFAULT '',
+            reference_id INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS maintenance_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            contract_name TEXT DEFAULT '',
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            total_visits INTEGER DEFAULT 4,
+            used_visits INTEGER DEFAULT 0,
+            included_services TEXT DEFAULT '',
+            price REAL DEFAULT 0,
+            paid REAL DEFAULT 0,
+            status TEXT DEFAULT 'active',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS capacity_planning (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            total_bays INTEGER DEFAULT 0,
+            total_technicians INTEGER DEFAULT 0,
+            available_hours REAL DEFAULT 0,
+            booked_hours REAL DEFAULT 0,
+            utilization_pct REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(date)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS team_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL,
+            recipient_id INTEGER DEFAULT 0,
+            channel TEXT DEFAULT 'general',
+            message TEXT NOT NULL,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (sender_id) REFERENCES users (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER DEFAULT 0,
+            username TEXT DEFAULT '',
+            action TEXT NOT NULL,
+            entity_type TEXT DEFAULT '',
+            entity_id INTEGER DEFAULT 0,
+            old_value TEXT DEFAULT '',
+            new_value TEXT DEFAULT '',
+            ip_address TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -1003,6 +1131,9 @@ def create_tables():
         ("ALTER TABLE users ADD COLUMN branch_id INTEGER DEFAULT 0", None),
         ("ALTER TABLE cars ADD COLUMN vin TEXT DEFAULT ''", None),
         ("ALTER TABLE inventory ADD COLUMN branch_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN churn_risk TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN last_churn_check TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN contract_id INTEGER DEFAULT 0", None),
     ]
     for sql, _ in migrations:
         try:
@@ -1068,6 +1199,22 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_cashflow_month ON cashflow_projections(month)",
         "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications_center(user_id)",
         "CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications_center(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_customer ON tickets(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_priority ON tickets(priority)",
+        "CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket ON ticket_messages(ticket_id)",
+        "CREATE INDEX IF NOT EXISTS idx_churn_customer ON churn_predictions(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_churn_risk ON churn_predictions(risk_level)",
+        "CREATE INDEX IF NOT EXISTS idx_accounting_date ON accounting_entries(entry_date)",
+        "CREATE INDEX IF NOT EXISTS idx_accounting_account ON accounting_entries(account_code)",
+        "CREATE INDEX IF NOT EXISTS idx_contracts_customer ON maintenance_contracts(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_contracts_status ON maintenance_contracts(status)",
+        "CREATE INDEX IF NOT EXISTS idx_capacity_date ON capacity_planning(date)",
+        "CREATE INDEX IF NOT EXISTS idx_team_messages_channel ON team_messages(channel)",
+        "CREATE INDEX IF NOT EXISTS idx_team_messages_recipient ON team_messages(recipient_id)",
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id)",
+        "CREATE INDEX IF NOT EXISTS idx_audit_log_date ON audit_log(created_at)",
     ]
     for idx in indexes:
         try:

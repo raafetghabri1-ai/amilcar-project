@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %} — Comptabilité{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🧾 Journal Comptable & TVA</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Écritures comptables automatiques — Prêt pour le comptable</p>
+
+<!-- Month Selector -->
+<div class="mb-4" style="display:flex;gap:10px;align-items:center">
+    <form method="GET" style="display:flex;gap:8px;align-items:center">
+        <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="width:160px;background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+        <button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">Charger</button>
+    </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--green-light)">
+        <small style="color:var(--text-muted)">Chiffre d'affaires</small><h4 style="color:var(--green-light);margin:4px 0">{{ "%.0f"|format(total_revenue) }}</h4></div></div>
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--red)">
+        <small style="color:var(--text-muted)">Charges</small><h4 style="color:var(--red);margin:4px 0">{{ "%.0f"|format(total_expenses) }}</h4></div></div>
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid var(--gold)">
+        <small style="color:var(--text-muted)">Résultat</small><h4 style="color:var(--gold);margin:4px 0">{{ "%.0f"|format(total_revenue - total_expenses) }}</h4></div></div>
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <small style="color:var(--text-muted)">TVA collectée</small><h4 style="color:var(--text-primary);margin:4px 0">{{ "%.2f"|format(tva_collected) }}</h4></div></div>
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+        <small style="color:var(--text-muted)">TVA déductible</small><h4 style="color:var(--text-primary);margin:4px 0">{{ "%.2f"|format(tva_deductible) }}</h4></div></div>
+    <div class="col-md-2"><div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;border-top:3px solid {{ 'var(--red)' if tva_due > 0 else 'var(--green-light)' }}">
+        <small style="color:var(--text-muted)">TVA à payer</small><h4 style="color:{{ 'var(--red)' if tva_due > 0 else 'var(--green-light)' }};margin:4px 0">{{ "%.2f"|format(tva_due) }}</h4></div></div>
+</div>
+
+<!-- Balance Check -->
+<div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+        <strong style="color:var(--gold)">⚖️ Balance</strong>
+        <span style="color:var(--text-muted);margin-left:12px">Débits: {{ "%.2f"|format(total_debit) }} DT</span>
+        <span style="color:var(--text-muted);margin-left:12px">Crédits: {{ "%.2f"|format(total_credit) }} DT</span>
+    </div>
+    {% if "%.2f"|format(total_debit) == "%.2f"|format(total_credit) %}
+    <span style="background:var(--green-light);color:#000;padding:4px 12px;border-radius:var(--radius);font-size:.75rem;font-weight:600">✅ Équilibrée</span>
+    {% else %}
+    <span style="background:var(--red);color:#fff;padding:4px 12px;border-radius:var(--radius);font-size:.75rem;font-weight:600">⚠️ Écart: {{ "%.2f"|format(total_debit - total_credit) }}</span>
+    {% endif %}
+</div>
+
+<!-- Journal Entries -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <h5 style="color:var(--gold);margin-bottom:10px">📒 Journal — {{ month }}</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.78rem">
+            <thead><tr><th>Date</th><th>Compte</th><th>Libellé</th><th>Description</th><th style="text-align:right">Débit</th><th style="text-align:right">Crédit</th></tr></thead>
+            <tbody>
+            {% for e in entries %}
+            <tr>
+                <td>{{ e.entry_date }}</td>
+                <td style="font-weight:600;color:var(--gold)">{{ e.account_code }}</td>
+                <td>{{ e.account_name }}</td>
+                <td style="color:var(--text-muted)">{{ e.description }}</td>
+                <td style="text-align:right;{{ 'color:var(--green-light);font-weight:600' if e.debit > 0 }}">{{ "%.2f"|format(e.debit) if e.debit > 0 else '' }}</td>
+                <td style="text-align:right;{{ 'color:var(--red);font-weight:600' if e.credit > 0 }}">{{ "%.2f"|format(e.credit) if e.credit > 0 else '' }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top:2px solid var(--gold);font-weight:700">
+                <td colspan="4" style="text-align:right;color:var(--gold)">TOTAUX</td>
+                <td style="text-align:right;color:var(--green-light)">{{ "%.2f"|format(total_debit) }}</td>
+                <td style="text-align:right;color:var(--red)">{{ "%.2f"|format(total_credit) }}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

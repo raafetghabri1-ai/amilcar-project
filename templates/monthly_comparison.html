@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} — Comparaison Mensuelle{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📈 Comparaison Mensuelle</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Mois actuel vs mois précédent — Évolution des performances</p>
+
+<!-- Comparison Cards -->
+<div class="row g-3 mb-4">
+    {% set metrics = [
+        ('Chiffre d\'affaires', 'revenue', 'DT', '💰'),
+        ('Rendez-vous', 'appointments', '', '📅'),
+        ('Complétés', 'completed', '', '✅'),
+        ('Nouveaux clients', 'new_customers', '', '👤'),
+        ('Dépenses', 'expenses', 'DT', '💸'),
+        ('Ticket moyen', 'avg_ticket', 'DT', '🎫')
+    ] %}
+    {% for label, key, unit, icon in metrics %}
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                    <small style="color:var(--text-muted)">{{ icon }} {{ label }}</small>
+                    <h3 style="color:var(--text-primary);margin:4px 0">{{ "%.0f"|format(current[key]) }} <small style="font-size:.6rem;color:var(--text-muted)">{{ unit }}</small></h3>
+                    <small style="color:var(--text-muted)">Précédent: {{ "%.0f"|format(previous[key]) }} {{ unit }}</small>
+                </div>
+                <div style="text-align:right">
+                    {% set delta = deltas[key] %}
+                    {% if key == 'expenses' %}
+                        {% set is_good = delta <= 0 %}
+                    {% else %}
+                        {% set is_good = delta >= 0 %}
+                    {% endif %}
+                    <span style="font-size:1.5rem">{{ '📈' if delta > 0 else '📉' if delta < 0 else '➡️' }}</span>
+                    <br>
+                    <span style="font-size:.85rem;font-weight:700;color:{{ 'var(--green-light)' if is_good else 'var(--red)' }}">
+                        {{ '+' if delta > 0 }}{{ "%.1f"|format(delta) }}%
+                    </span>
+                </div>
+            </div>
+            <!-- Mini bar comparison -->
+            <div style="margin-top:10px;display:flex;gap:4px;align-items:end;height:30px">
+                {% set max_val = [current[key], previous[key], 1]|max %}
+                <div style="flex:1;background:var(--text-muted);opacity:.4;border-radius:4px 4px 0 0;height:{{ ((previous[key] / max_val) * 100)|int }}%" title="Précédent"></div>
+                <div style="flex:1;background:var(--gold);border-radius:4px 4px 0 0;height:{{ ((current[key] / max_val) * 100)|int }}%" title="Actuel"></div>
+            </div>
+            <div style="display:flex;gap:4px;font-size:.55rem;color:var(--text-muted);margin-top:2px">
+                <span style="flex:1;text-align:center">Préc.</span>
+                <span style="flex:1;text-align:center">Actuel</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Profit Comparison -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;border-top:3px solid var(--gold)">
+            <small style="color:var(--text-muted)">Profit mois actuel</small>
+            <h2 style="color:{{ 'var(--green-light)' if current.profit >= 0 else 'var(--red)' }};margin:6px 0">{{ "%.0f"|format(current.profit) }} DT</h2>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;border-top:3px solid var(--border-color)">
+            <small style="color:var(--text-muted)">Profit mois précédent</small>
+            <h2 style="color:{{ 'var(--green-light)' if previous.profit >= 0 else 'var(--red)' }};margin:6px 0">{{ "%.0f"|format(previous.profit) }} DT</h2>
+        </div>
+    </div>
+</div>
+
+<!-- 6 Month Trend Chart -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:18px">
+    <h5 style="color:var(--gold);margin-bottom:14px">📊 Tendance 6 mois</h5>
+    <canvas id="trendChart" height="100"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+        labels: {{ months_data|map(attribute='month')|list|tojson }},
+        datasets: [{
+            label: 'Chiffre d\'affaires',
+            data: {{ months_data|map(attribute='revenue')|list|tojson }},
+            borderColor: '#f1c40f',
+            backgroundColor: 'rgba(241,196,15,.1)',
+            fill: true,
+            tension: 0.3
+        },{
+            label: 'Dépenses',
+            data: {{ months_data|map(attribute='expenses')|list|tojson }},
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231,76,60,.1)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#ccc' } } },
+        scales: {
+            x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,.05)' } },
+            y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,.05)' } }
+        }
+    }
+});
+</script>
+{% endblock %}

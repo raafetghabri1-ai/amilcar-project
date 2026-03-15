@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Espace Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{--bg-dark:#0a0a1a;--bg-card:#12122a;--gold:#D4AF37;--green:#34d399;--red:#ef4444;--text:#e2e2f0;--muted:#9a9ab0;--border:#2a2a4a;--radius:12px}
+        body{background:var(--bg-dark);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+        .portal-header{background:linear-gradient(135deg,#12122a 0%,#1a1a3e 100%);padding:30px;text-align:center;border-bottom:2px solid var(--gold)}
+        .portal-header h1{color:var(--gold);font-size:1.8rem;font-weight:800;margin-bottom:4px}
+        .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
+        .nav-pills .nav-link{color:var(--muted);border-radius:var(--radius);font-size:.85rem}
+        .nav-pills .nav-link.active{background:var(--gold);color:#000;font-weight:600}
+        .status-badge{padding:3px 10px;border-radius:var(--radius);font-size:.7rem;font-weight:600}
+        .btn-gold{background:var(--gold);color:#000;font-weight:600;border:none;border-radius:var(--radius)}
+    </style>
+</head>
+<body>
+    <div class="portal-header">
+        <h1>🚗 AMILCAR</h1>
+        <p style="color:var(--muted);font-size:.85rem;margin:0">Espace Client — {{ customer.name }}</p>
+        {% if vip %}<span style="color:{{ vip.color }};font-size:.9rem;font-weight:700">{{ vip.icon }} {{ vip.name }}</span>{% endif %}
+    </div>
+
+    <div class="container py-4">
+        <!-- Nav Tabs -->
+        <ul class="nav nav-pills mb-4 justify-content-center gap-2">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-overview">📊 Aperçu</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-appointments">📅 RDV</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-invoices">📄 Factures</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-cars">🚗 Véhicules</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-contracts">📋 Contrats</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-book">➕ Réserver</a></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Overview -->
+            <div class="tab-pane fade show active" id="tab-overview">
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-3"><div class="card p-3 text-center"><div style="font-size:1.8rem;font-weight:800;color:var(--gold)">{{ cars|length }}</div><small style="color:var(--muted)">Véhicules</small></div></div>
+                    <div class="col-6 col-md-3"><div class="card p-3 text-center"><div style="font-size:1.8rem;font-weight:800;color:var(--green)">{{ appointments|length }}</div><small style="color:var(--muted)">RDV</small></div></div>
+                    <div class="col-6 col-md-3"><div class="card p-3 text-center"><div style="font-size:1.8rem;font-weight:800;color:var(--text)">{{ invoices|length }}</div><small style="color:var(--muted)">Factures</small></div></div>
+                    <div class="col-6 col-md-3"><div class="card p-3 text-center"><div style="font-size:1.8rem;font-weight:800;color:var(--gold)">{{ contracts|length }}</div><small style="color:var(--muted)">Contrats</small></div></div>
+                </div>
+                {% if docs %}
+                <div class="card p-3">
+                    <h5 style="color:var(--gold);margin-bottom:10px">📄 Documents récents</h5>
+                    {% for d in docs[:5] %}
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+                        <span>{{ d.doc_type }} — {{ d.plate }}</span>
+                        <span style="color:var(--muted)">{{ d.expiry_date or '—' }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Appointments -->
+            <div class="tab-pane fade" id="tab-appointments">
+                <div class="card p-3">
+                    <h5 style="color:var(--gold);margin-bottom:10px">📅 Historique des rendez-vous</h5>
+                    {% for a in appointments %}
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--border)">
+                        <div>
+                            <strong>{{ a.service }}</strong>
+                            <div style="font-size:.75rem;color:var(--muted)">{{ a.plate }} — {{ a.brand }} {{ a.model }}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:.85rem">{{ a.date }}</div>
+                            <span class="status-badge" style="background:{{ 'var(--green)' if a.status == 'completed' else '#f59e0b' if a.status == 'pending' else 'var(--muted)' }};color:#000">{{ a.status }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Invoices -->
+            <div class="tab-pane fade" id="tab-invoices">
+                <div class="card p-3">
+                    <h5 style="color:var(--gold);margin-bottom:10px">📄 Factures</h5>
+                    {% for i in invoices %}
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--border)">
+                        <div>
+                            <strong>Facture #{{ i.id }}</strong>
+                            <div style="font-size:.75rem;color:var(--muted)">{{ i.service }} — {{ i.date }}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">{{ "%.0f"|format(i.amount) }} DT</div>
+                            <span class="status-badge" style="background:{{ 'var(--green)' if i.status == 'paid' else 'var(--red)' }};color:{{ '#000' if i.status == 'paid' else '#fff' }}">{{ i.status }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Cars -->
+            <div class="tab-pane fade" id="tab-cars">
+                <div class="row g-3">
+                    {% for c in cars %}
+                    <div class="col-md-4">
+                        <div class="card p-3 text-center">
+                            <div style="font-size:2rem">🚗</div>
+                            <h5 style="color:var(--gold);margin:6px 0">{{ c.plate }}</h5>
+                            <div>{{ c.brand }} {{ c.model }}</div>
+                            <div style="font-size:.75rem;color:var(--muted)">{{ c.year or '' }} {{ c.color or '' }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Contracts -->
+            <div class="tab-pane fade" id="tab-contracts">
+                <div class="card p-3">
+                    <h5 style="color:var(--gold);margin-bottom:10px">📋 Contrats de maintenance</h5>
+                    {% for c in contracts %}
+                    <div style="padding:12px;border-bottom:1px solid var(--border)">
+                        <div style="display:flex;justify-content:space-between">
+                            <strong>{{ c.contract_name or 'Contrat #' + c.id|string }}</strong>
+                            <span class="status-badge" style="background:{{ 'var(--green)' if c.status == 'active' else 'var(--muted)' }};color:#000">{{ c.status }}</span>
+                        </div>
+                        <div style="font-size:.8rem;color:var(--muted);margin-top:4px">{{ c.start_date }} → {{ c.end_date }} — Visites: {{ c.used_visits }}/{{ c.total_visits }}</div>
+                        <div style="margin-top:6px;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                            <div style="width:{{ (c.used_visits/c.total_visits*100) if c.total_visits else 0 }}%;height:100%;background:var(--gold)"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not contracts %}<p style="color:var(--muted);text-align:center;padding:20px">Aucun contrat actif</p>{% endif %}
+                </div>
+            </div>
+
+            <!-- Book -->
+            <div class="tab-pane fade" id="tab-book">
+                <div class="card p-4">
+                    <h5 style="color:var(--gold);margin-bottom:16px">➕ Demander un rendez-vous</h5>
+                    <form method="POST" action="/client_portal/{{ token }}/book">
+                        <div class="mb-3">
+                            <label style="color:var(--muted);font-size:.8rem">Véhicule</label>
+                            <select name="car_id" class="form-select" required style="background:var(--bg-card);color:var(--text);border-color:var(--border)">
+                                {% for c in cars %}<option value="{{ c.id }}">{{ c.plate }} — {{ c.brand }} {{ c.model }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label style="color:var(--muted);font-size:.8rem">Service</label>
+                            <select name="service" class="form-select" required style="background:var(--bg-card);color:var(--text);border-color:var(--border)">
+                                <option>Lavage Normal</option><option>Céramique Spray</option>
+                                <option>Detailing Intérieur</option><option>Detailing Extérieur</option>
+                                <option>Detailing Complet</option><option>Polissage</option>
+                                <option>Autre</option>
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6"><label style="color:var(--muted);font-size:.8rem">Date</label><input type="date" name="date" class="form-control" required style="background:var(--bg-card);color:var(--text);border-color:var(--border)"></div>
+                            <div class="col-6"><label style="color:var(--muted);font-size:.8rem">Heure</label><input type="time" name="time" class="form-control" style="background:var(--bg-card);color:var(--text);border-color:var(--border)"></div>
+                        </div>
+                        <div class="mb-3"><textarea name="notes" class="form-control" rows="2" placeholder="Notes..." style="background:var(--bg-card);color:var(--text);border-color:var(--border)"></textarea></div>
+                        <button type="submit" class="btn btn-gold w-100 py-2" style="font-size:1rem">📅 Réserver</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
