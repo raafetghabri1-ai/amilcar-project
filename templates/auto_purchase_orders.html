@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %} — Commandes Auto{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔄 Commandes d'Achat Automatiques</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Articles sous le stock minimum → suggestions de commande automatiques</p>
+
+{% set suggested = orders|selectattr(7, 'equalto', 'suggested')|list %}
+{% if suggested %}
+<div class="alert" style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:var(--radius);padding:14px;margin-bottom:20px;color:var(--gold);font-size:.85rem">
+    ⚠️ {{ suggested|length }} article(s) nécessitent un réapprovisionnement
+</div>
+{% endif %}
+
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)">
+            <thead><tr><th>Article</th><th>Stock actuel</th><th>Minimum</th><th>Qté à commander</th><th>Fournisseur</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for o in orders %}
+            <tr>
+                <td style="font-weight:600">{{ o[3] }}</td>
+                <td>
+                    <span style="color:{% if o[4] <= o[5] %}var(--red){% else %}var(--green-light){% endif %};font-weight:600">{{ o[4] }}</span>
+                </td>
+                <td style="color:var(--text-muted)">{{ o[5] }}</td>
+                <td style="color:var(--gold);font-weight:600">{{ o[6] }}</td>
+                <td style="font-size:.8rem">{{ o[9] or '—' }}</td>
+                <td>
+                    {% if o[7] == 'suggested' %}<span style="color:var(--gold)">⏳ Suggéré</span>
+                    {% elif o[7] == 'approved' %}<span style="color:var(--green-light)">✅ Approuvé</span>
+                    {% else %}<span style="color:var(--text-muted)">✕ Rejeté</span>{% endif %}
+                </td>
+                <td>
+                    {% if o[7] == 'suggested' %}
+                    <a href="/auto_purchase_order/approve/{{ o[0] }}" class="btn btn-sm" style="background:var(--green);color:#fff;padding:2px 10px;border-radius:4px;font-size:.7rem;margin-right:4px">✅ Approuver</a>
+                    <a href="/auto_purchase_order/dismiss/{{ o[0] }}" style="color:var(--red);font-size:.75rem">✕</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not orders %}<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">✅ Tous les stocks sont suffisants</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

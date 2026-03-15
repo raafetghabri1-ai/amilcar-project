@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} — Campagnes Saisonnières{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:20px">📅 Campagnes Saisonnières</h2>
+
+<!-- Add Campaign -->
+<div class="card mb-4" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouvelle Campagne Saisonnière</h5>
+    <form method="POST" action="/seasonal_campaign/add">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" name="name" placeholder="Nom (ex: Promo Été 2026)" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <select name="season" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="summer">☀️ Été</option>
+                    <option value="winter">❄️ Hiver</option>
+                    <option value="spring">🌸 Printemps</option>
+                    <option value="ramadan">🌙 Ramadan</option>
+                    <option value="back_to_school">📚 Rentrée</option>
+                    <option value="holiday">🎄 Fêtes</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="start_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="end_date" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="discount_percent" placeholder="% off" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" min="0" max="80">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="target_services" placeholder="Services ciblés" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-10">
+                <textarea name="message" placeholder="Message de la campagne..." class="form-control form-control-sm" rows="2" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)"></textarea>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Créer</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Campaigns -->
+<div class="row g-4">
+{% for c in campaigns %}
+<div class="col-md-6">
+    <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;border-left:4px solid {% if c[8]=='active' %}var(--green-light){% elif c[8]=='draft' %}var(--gold){% else %}var(--text-muted){% endif %}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <h5 style="color:var(--gold);margin:0">{% if c[2]=='summer' %}☀️{% elif c[2]=='winter' %}❄️{% elif c[2]=='ramadan' %}🌙{% elif c[2]=='spring' %}🌸{% else %}🎄{% endif %} {{ c[1] }}</h5>
+                <p style="color:var(--text-muted);font-size:.75rem;margin:4px 0 0">{{ c[3] }} → {{ c[4] }}</p>
+            </div>
+            <span style="font-size:.65rem;font-weight:700;color:{% if c[8]=='active' %}var(--green-light){% elif c[8]=='draft' %}var(--gold){% else %}var(--text-muted){% endif %}">{{ c[8]|upper }}</span>
+        </div>
+        <div class="d-flex gap-3" style="font-size:.8rem;color:var(--text-secondary);margin-bottom:10px">
+            <span>🏷️ {{ c[5] }}% remise</span>
+            <span>📧 {{ c[9] }} envoyés</span>
+        </div>
+        {% if c[7] %}<p style="color:var(--text-secondary);font-size:.8rem;margin:0">{{ c[7] }}</p>{% endif %}
+        {% if c[8] == 'draft' %}
+        <div class="mt-2">
+            <a href="/seasonal_campaign/launch/{{ c[0] }}" class="btn btn-sm" style="background:var(--gold);color:#000;padding:4px 16px;border-radius:4px;font-size:.75rem;font-weight:600">🚀 Lancer</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% if not campaigns %}
+<div class="col-12 text-center" style="color:var(--text-muted);padding:40px">Aucune campagne saisonnière</div>
+{% endif %}
+</div>
+{% endblock %}

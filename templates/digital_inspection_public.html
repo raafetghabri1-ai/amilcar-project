@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapport d'Inspection — AMILCAR</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Segoe UI',sans-serif;background:#f5f5f5;color:#333;padding:20px}
+        .container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);overflow:hidden}
+        .header{background:linear-gradient(135deg,#0a0a0a,#1a1a2e);color:#D4AF37;padding:24px;text-align:center}
+        .header h1{font-size:1.5rem;letter-spacing:3px}
+        .header p{color:#9a9ab0;font-size:.8rem;margin-top:4px}
+        .car-info{background:#f8f8f8;padding:16px 24px;border-bottom:1px solid #eee;display:flex;justify-content:space-between}
+        .car-info span{font-size:.85rem}
+        .section{padding:16px 24px}
+        .section h3{color:#D4AF37;font-size:.9rem;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #D4AF37}
+        .item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+        .item-name{font-size:.85rem}
+        .badge-ok{background:#dcfce7;color:#166534;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600}
+        .badge-attention{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600}
+        .badge-urgent{background:#fecaca;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:600}
+        .overall{padding:20px 24px;text-align:center;border-top:2px solid #D4AF37}
+        .note{font-size:.8rem;color:#666;padding:0 24px 16px;font-style:italic}
+        .footer{background:#0a0a0a;color:#666;text-align:center;padding:12px;font-size:.7rem}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AMILCAR</h1>
+            <p>RAPPORT D'INSPECTION</p>
+        </div>
+        <div class="car-info">
+            <span>🚗 {{ insp[11] if insp|length > 11 else '' }} {{ insp[12] if insp|length > 12 else '' }}</span>
+            <span>{{ insp[13] if insp|length > 13 else '' }}</span>
+            <span>👤 {{ insp[14] if insp|length > 14 else '' }}</span>
+        </div>
+
+        {% set current_cat = '' %}
+        {% for item in items %}
+        {% if item.category != current_cat %}
+        {% if current_cat %}</div>{% endif %}
+        <div class="section">
+            <h3>{{ item.category }}</h3>
+        {% endif %}
+        {% set current_cat = item.category %}
+            <div class="item">
+                <span class="item-name">{{ item.item }}</span>
+                <div>
+                    {% if item.status == 'ok' %}<span class="badge-ok">✅ OK</span>
+                    {% elif item.status == 'attention' %}<span class="badge-attention">⚠️ Attention</span>
+                    {% else %}<span class="badge-urgent">❌ Urgent</span>{% endif %}
+                </div>
+            </div>
+            {% if item.note %}<div style="font-size:.75rem;color:#888;padding:2px 0 4px 10px">📝 {{ item.note }}</div>{% endif %}
+        {% endfor %}
+        {% if items %}</div>{% endif %}
+
+        <div class="overall">
+            {% if insp[5] == 'pass' %}
+            <span style="color:#166534;font-size:1.2rem;font-weight:700">✅ Véhicule en bon état</span>
+            {% elif insp[5] == 'needs_attention' %}
+            <span style="color:#92400e;font-size:1.2rem;font-weight:700">⚠️ Attention requise</span>
+            {% else %}
+            <span style="color:#991b1b;font-size:1.2rem;font-weight:700">❌ Réparation urgente recommandée</span>
+            {% endif %}
+        </div>
+        {% if insp[8] %}<div class="note">📝 {{ insp[8] }}</div>{% endif %}
+        <div class="footer">AMILCAR — Where Cars Become Art | Inspection effectuée par {{ insp[3] }}</div>
+    </div>
+</body>
+</html>

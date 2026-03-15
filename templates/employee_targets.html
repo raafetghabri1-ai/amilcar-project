@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %} — Objectifs Employés{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">🎯 Objectifs & Commissions</h2>
+    <form method="GET" class="d-flex gap-2">
+        <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle);width:160px" onchange="this.form.submit()">
+    </form>
+</div>
+
+<!-- Scoreboard -->
+<div class="row g-3 mb-4">
+{% for t in targets %}
+{% set pct = (t[5]/t[4]*100) if t[4] > 0 else 0 %}
+<div class="col-md-4 col-sm-6">
+    <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 style="color:var(--gold);margin:0">{{ t[2] }}</h5>
+            {% if pct >= 100 %}<span style="color:var(--green-light);font-size:.7rem;font-weight:700">🏆 OBJECTIF ATTEINT</span>
+            {% elif pct >= 75 %}<span style="color:var(--gold);font-size:.7rem">En bonne voie</span>
+            {% else %}<span style="color:var(--red);font-size:.7rem">En retard</span>{% endif %}
+        </div>
+        <!-- Revenue -->
+        <div style="margin-bottom:10px">
+            <div class="d-flex justify-content-between" style="font-size:.75rem;color:var(--text-secondary)">
+                <span>CA: {{ "%.0f"|format(t[5]) }} / {{ "%.0f"|format(t[4]) }} DT</span>
+                <span>{{ "%.0f"|format(pct) }}%</span>
+            </div>
+            <div style="background:var(--bg-input);border-radius:4px;height:10px;margin-top:4px;overflow:hidden">
+                <div style="background:{% if pct >= 100 %}var(--green-light){% elif pct >= 75 %}var(--gold){% else %}var(--red){% endif %};height:100%;width:{{ [pct,100]|min }}%;transition:width .5s"></div>
+            </div>
+        </div>
+        <!-- Jobs -->
+        {% set jpct = (t[7]/t[6]*100) if t[6] > 0 else 0 %}
+        <div style="margin-bottom:10px">
+            <div class="d-flex justify-content-between" style="font-size:.75rem;color:var(--text-secondary)">
+                <span>Jobs: {{ t[7] }} / {{ t[6] }}</span>
+                <span>{{ "%.0f"|format(jpct) }}%</span>
+            </div>
+            <div style="background:var(--bg-input);border-radius:4px;height:6px;margin-top:4px;overflow:hidden">
+                <div style="background:var(--blue);height:100%;width:{{ [jpct,100]|min }}%"></div>
+            </div>
+        </div>
+        <!-- Commission -->
+        <div class="d-flex justify-content-between" style="font-size:.8rem;border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:4px">
+            <span style="color:var(--text-muted)">Commission ({{ t[8] }}%)</span>
+            <span style="color:var(--green-light);font-weight:700">{{ "%.0f"|format(t[9]) }} DT</span>
+        </div>
+        {% if t[10] > 0 %}
+        <div class="d-flex justify-content-between" style="font-size:.8rem">
+            <span style="color:var(--text-muted)">Bonus</span>
+            <span style="color:var(--gold);font-weight:700">{{ "%.0f"|format(t[10]) }} DT</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Set Targets -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">⚙ Définir les objectifs — {{ month }}</h5>
+    <form method="POST" action="/employee_target/set">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="user_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">Employé</option>
+                    {% for u in users %}<option value="{{ u[0] }}">{{ u[2] or u[1] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="target_revenue" placeholder="Objectif CA (DT)" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" step="100">
+            </div>
+            <div class="col-md-1">
+                <input type="number" name="target_jobs" placeholder="Jobs" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="commission_rate" placeholder="Commission %" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" step="0.5">
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="bonus" placeholder="Bonus DT" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" step="10">
+            </div>
+            <div class="col-md-2">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Définir</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

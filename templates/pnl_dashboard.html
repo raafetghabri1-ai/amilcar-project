@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %} — P&L{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">💵 Profit & Loss — Compte de Résultat</h2>
+    <form method="GET" class="d-flex gap-2">
+        <input type="month" name="month" value="{{ month }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle);width:160px" onchange="this.form.submit()">
+    </form>
+</div>
+
+<!-- P&L Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center;border-top:3px solid var(--green-light)">
+            <small style="color:var(--text-muted)">REVENUS</small>
+            <h2 style="color:var(--green-light);margin:8px 0 0">{{ "%.0f"|format(revenue) }} DT</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center;border-top:3px solid var(--red)">
+            <small style="color:var(--text-muted)">DÉPENSES</small>
+            <h2 style="color:var(--red);margin:8px 0 0">{{ "%.0f"|format(expenses) }} DT</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center;border-top:3px solid var(--gold)">
+            <small style="color:var(--text-muted)">MATÉRIAUX</small>
+            <h2 style="color:var(--gold);margin:8px 0 0">{{ "%.0f"|format(materials) }} DT</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center;border-top:3px solid {% if net_profit >= 0 %}var(--green-light){% else %}var(--red){% endif %}">
+            <small style="color:var(--text-muted)">BÉNÉFICE NET</small>
+            <h2 style="color:{% if net_profit >= 0 %}var(--green-light){% else %}var(--red){% endif %};margin:8px 0 0">{{ "%.0f"|format(net_profit) }} DT</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- P&L Breakdown -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:16px">📊 Détail P&L — {{ month }}</h5>
+            <table class="table table-sm" style="color:var(--text-primary)">
+                <tr><td>Revenus services (payés)</td><td style="text-align:right;color:var(--green-light);font-weight:700">+ {{ "%.0f"|format(revenue) }} DT</td></tr>
+                <tr><td colspan="2" style="border-top:2px solid var(--border-color);font-weight:700;color:var(--red)">CHARGES</td></tr>
+                {% for cat in expense_cats %}
+                <tr><td style="padding-left:20px;font-size:.85rem">{{ cat[0] }}</td><td style="text-align:right;color:var(--red)">- {{ "%.0f"|format(cat[1]) }} DT</td></tr>
+                {% endfor %}
+                <tr><td style="padding-left:20px;font-size:.85rem">Achats matériaux</td><td style="text-align:right;color:var(--red)">- {{ "%.0f"|format(materials) }} DT</td></tr>
+                <tr style="border-top:2px solid var(--gold)"><td style="font-weight:700;font-size:1.1rem">RÉSULTAT NET</td><td style="text-align:right;font-weight:700;font-size:1.1rem;color:{% if net_profit >= 0 %}var(--green-light){% else %}var(--red){% endif %}">{{ "%.0f"|format(net_profit) }} DT</td></tr>
+                <tr><td style="color:var(--text-muted)">Marge nette</td><td style="text-align:right;color:var(--text-muted)">{{ "%.1f"|format(net_profit/revenue*100 if revenue > 0 else 0) }}%</td></tr>
+            </table>
+        </div>
+    </div>
+    <!-- Historical Chart -->
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📈 Évolution sur 12 mois</h5>
+            <canvas id="pnlChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var hist = {{ history|tojson }};
+new Chart(document.getElementById('pnlChart'),{type:'bar',data:{
+    labels:hist.map(r=>r[1]).reverse(),
+    datasets:[
+        {label:'Revenus',data:hist.map(r=>r[2]).reverse(),backgroundColor:'rgba(52,211,153,.6)'},
+        {label:'Charges',data:hist.map(r=>(r[3]+r[4])*-1).reverse(),backgroundColor:'rgba(196,30,58,.5)'},
+        {type:'line',label:'Bénéfice Net',data:hist.map(r=>r[6]).reverse(),borderColor:'#D4AF37',backgroundColor:'transparent',tension:.3}
+    ]},options:{responsive:true,scales:{y:{ticks:{color:'#9a9ab0'}},x:{ticks:{color:'#9a9ab0',font:{size:9}}}}}});
+</script>
+{% endblock %}

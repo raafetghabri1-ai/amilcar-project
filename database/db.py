@@ -603,6 +603,179 @@ def create_tables():
         )
     ''')
 
+    # ─── Phase 10: World-Class Operations Tables ───
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rfm_segments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL UNIQUE,
+            recency_score INTEGER DEFAULT 0,
+            frequency_score INTEGER DEFAULT 0,
+            monetary_score INTEGER DEFAULT 0,
+            rfm_score INTEGER DEFAULT 0,
+            segment TEXT DEFAULT 'new',
+            last_calculated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS marketing_campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT DEFAULT 'manual',
+            trigger_type TEXT DEFAULT '',
+            trigger_value TEXT DEFAULT '',
+            target_segment TEXT DEFAULT 'all',
+            message_template TEXT DEFAULT '',
+            channel TEXT DEFAULT 'sms',
+            status TEXT DEFAULT 'active',
+            sent_count INTEGER DEFAULT 0,
+            last_run TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS campaign_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'sent',
+            FOREIGN KEY (campaign_id) REFERENCES marketing_campaigns (id),
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS service_bays (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            bay_type TEXT DEFAULT 'general',
+            capacity INTEGER DEFAULT 1,
+            active INTEGER DEFAULT 1
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bay_bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bay_id INTEGER NOT NULL,
+            appointment_id INTEGER NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            date TEXT NOT NULL,
+            FOREIGN KEY (bay_id) REFERENCES service_bays (id),
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS monthly_pnl (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            month TEXT NOT NULL,
+            total_revenue REAL DEFAULT 0,
+            total_expenses REAL DEFAULT 0,
+            material_costs REAL DEFAULT 0,
+            labor_costs REAL DEFAULT 0,
+            other_costs REAL DEFAULT 0,
+            net_profit REAL DEFAULT 0,
+            calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(month)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employee_targets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            month TEXT NOT NULL,
+            target_revenue REAL DEFAULT 0,
+            actual_revenue REAL DEFAULT 0,
+            target_jobs INTEGER DEFAULT 0,
+            actual_jobs INTEGER DEFAULT 0,
+            commission_rate REAL DEFAULT 0,
+            commission_earned REAL DEFAULT 0,
+            bonus REAL DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, month)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS digital_inspections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            appointment_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            inspector TEXT DEFAULT '',
+            items TEXT DEFAULT '[]',
+            overall_status TEXT DEFAULT 'pending',
+            customer_notified INTEGER DEFAULT 0,
+            token TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (appointment_id) REFERENCES appointments (id),
+            FOREIGN KEY (car_id) REFERENCES cars (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS auto_purchase_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inventory_id INTEGER NOT NULL,
+            supplier_id INTEGER,
+            item_name TEXT NOT NULL,
+            current_qty INTEGER DEFAULT 0,
+            min_qty INTEGER DEFAULT 0,
+            order_qty INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'suggested',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (inventory_id) REFERENCES inventory (id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS seasonal_campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            season TEXT DEFAULT 'summer',
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            discount_percent REAL DEFAULT 0,
+            target_services TEXT DEFAULT '',
+            message TEXT DEFAULT '',
+            status TEXT DEFAULT 'draft',
+            sent_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            api_key TEXT NOT NULL UNIQUE,
+            permissions TEXT DEFAULT 'read',
+            active INTEGER DEFAULT 1,
+            last_used TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS webhooks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            events TEXT DEFAULT '',
+            secret TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            last_triggered TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # إضافة أعمدة جديدة إذا لم تكن موجودة
     migrations = [
         ("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''", None),
@@ -644,6 +817,12 @@ def create_tables():
         ("ALTER TABLE customers ADD COLUMN company_id INTEGER DEFAULT 0", None),
         ("ALTER TABLE customers ADD COLUMN last_visit TEXT DEFAULT ''", None),
         ("ALTER TABLE customers ADD COLUMN total_visits INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN rfm_segment TEXT DEFAULT ''", None),
+        ("ALTER TABLE customers ADD COLUMN birthday TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN bay_id INTEGER DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN monthly_target REAL DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN commission_rate REAL DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN created_at TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
@@ -686,6 +865,14 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_fleet_vehicles_company ON fleet_vehicles(company_id)",
         "CREATE INDEX IF NOT EXISTS idx_staff_notes_entity ON staff_notes(entity_type, entity_id)",
         "CREATE INDEX IF NOT EXISTS idx_dashboard_widgets_user ON dashboard_widgets(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_rfm_segments_customer ON rfm_segments(customer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_rfm_segments_segment ON rfm_segments(segment)",
+        "CREATE INDEX IF NOT EXISTS idx_campaign_log_campaign ON campaign_log(campaign_id)",
+        "CREATE INDEX IF NOT EXISTS idx_bay_bookings_date ON bay_bookings(date)",
+        "CREATE INDEX IF NOT EXISTS idx_bay_bookings_bay ON bay_bookings(bay_id)",
+        "CREATE INDEX IF NOT EXISTS idx_employee_targets_user ON employee_targets(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_digital_inspections_appt ON digital_inspections(appointment_id)",
+        "CREATE INDEX IF NOT EXISTS idx_api_keys_key ON api_keys(api_key)",
     ]
     for idx in indexes:
         try:

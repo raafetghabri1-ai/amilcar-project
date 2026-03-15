@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %} — Créances AR{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📊 Comptes Clients — Aging Report</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Suivi des créances par ancienneté</p>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    {% set bucket_labels = [('current','0-30j','var(--green-light)'), ('30','31-60j','var(--gold)'), ('60','61-90j','#f59e0b'), ('90','91-120j','#f97316'), ('over90','120j+','var(--red)')] %}
+    {% for key, label, color in bucket_labels %}
+    <div class="col">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;text-align:center;border-top:3px solid {{ color }}">
+            <small style="color:var(--text-muted)">{{ label }}</small>
+            <h3 style="color:{{ color }};margin:4px 0">{{ "%.0f"|format(totals[key]) }} DT</h3>
+            <small style="color:var(--text-muted)">{{ buckets[key]|length }} facture(s)</small>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-5">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px;text-align:center">
+            <h4 style="color:var(--text-muted);margin-bottom:6px">Total créances</h4>
+            <h1 style="color:var(--red);font-size:2.5rem;font-weight:800">{{ "%.0f"|format(grand_total) }} DT</h1>
+            <canvas id="agingChart" height="200" style="margin-top:12px"></canvas>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📋 Actions prioritaires</h5>
+            {% for inv in buckets.over90[:5] %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+                <div>
+                    <span style="font-weight:600">{{ inv.customer }}</span>
+                    <span style="color:var(--text-muted);font-size:.75rem;margin-left:8px">{{ inv.plate }} — {{ inv.service }}</span>
+                </div>
+                <div style="text-align:right">
+                    <div style="color:var(--red);font-weight:700">{{ "%.0f"|format(inv.remaining) }} DT</div>
+                    <div style="color:var(--text-muted);font-size:.65rem">{{ inv.days }}j en retard</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% for inv in buckets['90'][:3] %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-subtle)">
+                <div>
+                    <span style="font-weight:600">{{ inv.customer }}</span>
+                    <span style="color:var(--text-muted);font-size:.75rem;margin-left:8px">{{ inv.service }}</span>
+                </div>
+                <div style="text-align:right">
+                    <div style="color:#f97316;font-weight:700">{{ "%.0f"|format(inv.remaining) }} DT</div>
+                    <div style="color:var(--text-muted);font-size:.65rem">{{ inv.days }}j</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Detail Tables -->
+{% for key, label, color in bucket_labels %}
+{% if buckets[key] %}
+<div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
+    <h5 style="color:{{ color }};margin-bottom:10px">{{ label }} — {{ "%.0f"|format(totals[key]) }} DT ({{ buckets[key]|length }})</h5>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary);font-size:.8rem">
+            <thead><tr><th>#</th><th>Client</th><th>Plaque</th><th>Service</th><th>Date</th><th>Montant</th><th>Payé</th><th>Restant</th><th>Jours</th></tr></thead>
+            <tbody>
+            {% for inv in buckets[key] %}
+            <tr>
+                <td>{{ inv.id }}</td>
+                <td style="font-weight:600">{{ inv.customer }}</td>
+                <td>{{ inv.plate }}</td>
+                <td>{{ inv.service }}</td>
+                <td>{{ inv.date }}</td>
+                <td>{{ "%.0f"|format(inv.amount) }}</td>
+                <td style="color:var(--green-light)">{{ "%.0f"|format(inv.paid) }}</td>
+                <td style="color:var(--red);font-weight:600">{{ "%.0f"|format(inv.remaining) }}</td>
+                <td>{{ inv.days }}j</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+new Chart(document.getElementById('agingChart'),{type:'doughnut',data:{
+    labels:['0-30j','31-60j','61-90j','91-120j','120j+'],
+    datasets:[{data:[{{ totals.current }},{{ totals['30'] }},{{ totals['60'] }},{{ totals['90'] }},{{ totals.over90 }}],
+    backgroundColor:['#34d399','#D4AF37','#f59e0b','#f97316','#ef4444']}]
+},options:{responsive:true,plugins:{legend:{labels:{color:'#9a9ab0'}}}}});
+</script>
+{% endblock %}

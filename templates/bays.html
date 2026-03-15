@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %} — Gestion Bays{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 style="color:var(--gold)">🏗️ Gestion des Bays / Postes</h2>
+    <form method="GET" class="d-flex gap-2">
+        <input type="date" name="date" value="{{ today_date }}" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle);width:160px" onchange="this.form.submit()">
+    </form>
+</div>
+
+<!-- Bay List + Add -->
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="row g-3">
+        {% for b in bays %}
+        <div class="col-md-4 col-sm-6">
+            <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;border-top:3px solid {% if b[4] %}var(--green-light){% else %}var(--red){% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 style="color:var(--gold);margin:0;font-size:.95rem">🔧 {{ b[1] }}</h5>
+                    <a href="/bay/toggle/{{ b[0] }}" style="font-size:.7rem;color:var(--text-muted)">{% if b[4] %}Désactiver{% else %}Activer{% endif %}</a>
+                </div>
+                <div style="font-size:.75rem;color:var(--text-muted)">Type: {{ b[2] }} | {% if b[4] %}<span style="color:var(--green-light)">Actif</span>{% else %}<span style="color:var(--red)">Inactif</span>{% endif %}</div>
+                <!-- Today's bookings for this bay -->
+                {% for bk in bookings %}
+                {% if bk[1] == b[0] %}
+                <div style="margin-top:8px;background:var(--bg-input);padding:6px 10px;border-radius:6px;font-size:.75rem">
+                    <span style="color:var(--gold);font-weight:600">{{ bk[3] }}–{{ bk[4] }}</span>
+                    <span style="color:var(--text-secondary)">{{ bk[8] }} — {{ bk[7] }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">➕ Nouveau Bay</h5>
+            <form method="POST" action="/bay/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="name" placeholder="Nom (ex: Bay 1, Lift A)" class="form-control form-control-sm mb-2" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                <select name="bay_type" class="form-select form-select-sm mb-2" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="general">Général</option>
+                    <option value="wash">Lavage</option>
+                    <option value="detailing">Detailing</option>
+                    <option value="mechanical">Mécanique</option>
+                    <option value="paint">Peinture</option>
+                </select>
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Ajouter</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Book a Bay -->
+{% if appointments %}
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <h5 style="color:var(--gold);margin-bottom:12px">📅 Réserver un Bay</h5>
+    <form method="POST" action="/bay/book">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="date" value="{{ today_date }}">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select name="bay_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">Bay</option>
+                    {% for b in bays %}{% if b[4] %}<option value="{{ b[0] }}">{{ b[1] }}</option>{% endif %}{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="appointment_id" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+                    <option value="">RDV</option>
+                    {% for a in appointments %}<option value="{{ a[0] }}">{{ a[1] }} — {{ a[2] }} ({{ a[3] or '?' }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="time" name="start_time" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <input type="time" name="end_time" class="form-control form-control-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)" required>
+            </div>
+            <div class="col-md-2">
+                <button class="btn w-100" style="background:var(--gold);color:#000;font-weight:600;border-radius:6px" type="submit">Réserver</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

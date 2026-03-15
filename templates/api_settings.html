@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %} — API & Webhooks{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">🔗 REST API & Webhooks</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Gestion des clés API et webhooks pour intégrations externes</p>
+
+<div class="row g-4">
+    <!-- API Keys -->
+    <div class="col-lg-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:16px">🔑 Clés API</h5>
+            <form method="POST" action="{{ url_for('add_api_key') }}" class="mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-5"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-5">
+                        <select name="permissions" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="read">Lecture seule</option>
+                            <option value="read,write">Lecture + Écriture</option>
+                            <option value="full">Accès complet</option>
+                        </select>
+                    </div>
+                    <div class="col-2"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">+</button></div>
+                </div>
+            </form>
+            {% for k in keys %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid var(--border-subtle);opacity:{{ '1' if k.active else '0.5' }}">
+                <div>
+                    <span style="font-weight:600">{{ k.name }}</span>
+                    <span style="font-size:.65rem;color:var(--text-muted);display:block">{{ k.permissions }} — Créé {{ k.created_at[:10] if k.created_at else '—' }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <code style="font-size:.6rem;color:var(--gold);background:var(--bg-hover);padding:2px 8px;border-radius:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ k.api_key }}</code>
+                    <form method="POST" action="{{ url_for('toggle_api_key') }}" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="key_id" value="{{ k.id }}">
+                        <button type="submit" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if k.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if k.active else '⏸' }}</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete_api_key') }}" style="display:inline" onsubmit="return confirm('Supprimer cette clé ?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="key_id" value="{{ k.id }}">
+                        <button type="submit" class="btn btn-sm" style="font-size:.65rem;background:var(--red);color:#fff">🗑</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% if not keys %}
+            <p style="color:var(--text-muted);text-align:center;font-size:.8rem;margin-top:16px">Aucune clé API créée</p>
+            {% endif %}
+
+            <div class="mt-3 p-3" style="background:var(--bg-hover);border-radius:var(--radius);font-size:.75rem;color:var(--text-muted)">
+                <strong style="color:var(--gold)">📖 Endpoints disponibles :</strong><br>
+                <code>GET /api/v1/customers</code> — Liste clients<br>
+                <code>GET /api/v1/appointments</code> — Liste RDV<br>
+                <code>GET /api/v1/invoices</code> — Liste factures<br>
+                <code>GET /api/v1/stats</code> — Statistiques<br><br>
+                <strong>Auth:</strong> Header <code>X-API-Key: votre_clé</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webhooks -->
+    <div class="col-lg-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:16px">🔔 Webhooks</h5>
+            <form method="POST" action="{{ url_for('add_webhook') }}" class="mb-3">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><input type="text" name="name" class="form-control form-control-sm" placeholder="Nom" required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                    <div class="col-8"><input type="url" name="url" class="form-control form-control-sm" placeholder="https://..." required style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)"></div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-8">
+                        <select name="events" class="form-select form-select-sm" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-color)">
+                            <option value="invoice.created">Facture créée</option>
+                            <option value="appointment.created">RDV créé</option>
+                            <option value="customer.created">Client créé</option>
+                            <option value="invoice.paid">Facture payée</option>
+                            <option value="all">Tous les événements</option>
+                        </select>
+                    </div>
+                    <div class="col-4"><button type="submit" class="btn btn-sm w-100" style="background:var(--gold);color:#000;font-weight:600">+ Ajouter</button></div>
+                </div>
+            </form>
+            {% for h in hooks %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid var(--border-subtle);opacity:{{ '1' if h.active else '0.5' }}">
+                <div>
+                    <span style="font-weight:600">{{ h.name }}</span>
+                    <span style="font-size:.65rem;color:var(--text-muted);display:block">{{ h.events }} — {{ h.url[:40] }}{{ '...' if h.url|length > 40 else '' }}</span>
+                    {% if h.last_triggered %}
+                    <span style="font-size:.6rem;color:var(--green-light)">✓ Dernier envoi: {{ h.last_triggered[:16] }}</span>
+                    {% endif %}
+                </div>
+                <form method="POST" action="{{ url_for('toggle_webhook') }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="hook_id" value="{{ h.id }}">
+                    <button type="submit" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if h.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if h.active else '⏸' }}</button>
+                </form>
+            </div>
+            {% endfor %}
+            {% if not hooks %}
+            <p style="color:var(--text-muted);text-align:center;font-size:.8rem;margin-top:16px">Aucun webhook configuré</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

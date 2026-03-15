@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %} — Inspection Digitale{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 style="color:var(--gold)">📱 Inspection Digitale</h2>
+        <p style="color:var(--text-secondary);margin:0">{{ appt[8] }} {{ appt[9] }} — {{ appt[10] }} | {{ appt[11] }} ({{ appt[12] }})</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if inspection %}
+        <a href="/digital_inspection/notify/{{ appt[0] }}" class="btn btn-sm" style="background:var(--blue);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none">📤 Envoyer au client</a>
+        {% if inspection[7] %}
+        <a href="/digital_inspection/view/{{ inspection[7] }}" target="_blank" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);padding:6px 14px;border-radius:6px;text-decoration:none">👁️ Voir public</a>
+        {% endif %}
+        {% endif %}
+        <a href="/appointments" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);padding:6px 14px;border-radius:6px;text-decoration:none">← Retour</a>
+    </div>
+</div>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    {% for cat, checks in categories.items() %}
+    <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+        <h5 style="color:var(--gold);margin-bottom:14px">{{ cat }}</h5>
+        {% for check in checks %}
+        {% set key = "item_" ~ cat ~ "_" ~ check %}
+        {% set key_safe = key|replace(' ', '_') %}
+        {% set existing = items_data.get(key_safe, {}) %}
+        <div class="d-flex align-items-center gap-3 py-2" style="border-bottom:1px solid var(--border-subtle)">
+            <div style="flex:1;font-size:.85rem;color:var(--text-primary)">{{ check }}</div>
+            <div class="d-flex gap-1">
+                <label style="cursor:pointer">
+                    <input type="radio" name="{{ key_safe }}" value="ok" {{ 'checked' if existing.get('status','ok')=='ok' else '' }} style="display:none">
+                    <span class="insp-btn" style="padding:4px 12px;border-radius:4px;font-size:.75rem;border:1px solid var(--green-light);color:var(--green-light)" onclick="this.parentElement.querySelector('input').checked=true;highlightBtn(this,'ok')">✅ OK</span>
+                </label>
+                <label style="cursor:pointer">
+                    <input type="radio" name="{{ key_safe }}" value="attention" {{ 'checked' if existing.get('status')=='attention' else '' }} style="display:none">
+                    <span class="insp-btn" style="padding:4px 12px;border-radius:4px;font-size:.75rem;border:1px solid var(--gold);color:var(--gold)" onclick="this.parentElement.querySelector('input').checked=true;highlightBtn(this,'attention')">⚠️</span>
+                </label>
+                <label style="cursor:pointer">
+                    <input type="radio" name="{{ key_safe }}" value="urgent" {{ 'checked' if existing.get('status')=='urgent' else '' }} style="display:none">
+                    <span class="insp-btn" style="padding:4px 12px;border-radius:4px;font-size:.75rem;border:1px solid var(--red);color:var(--red)" onclick="this.parentElement.querySelector('input').checked=true;highlightBtn(this,'urgent')">❌</span>
+                </label>
+            </div>
+            <input type="text" name="note_{{ key_safe }}" value="{{ existing.get('note','') }}" placeholder="Note..." style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);padding:4px 8px;border-radius:4px;font-size:.75rem;width:150px">
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div class="card mb-3" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label style="color:var(--text-secondary);font-size:.75rem">Résultat global</label>
+                <select name="overall_status" class="form-select" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">
+                    <option value="pass" {{ 'selected' if inspection and inspection[5]=='pass' else '' }}>✅ Véhicule OK</option>
+                    <option value="needs_attention" {{ 'selected' if inspection and inspection[5]=='needs_attention' else '' }}>⚠️ Attention requise</option>
+                    <option value="urgent" {{ 'selected' if inspection and inspection[5]=='urgent' else '' }}>❌ Réparation urgente</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label style="color:var(--text-secondary);font-size:.75rem">Notes</label>
+                <textarea name="notes" class="form-control" rows="2" style="background:var(--bg-input);color:var(--text-primary);border-color:var(--border-subtle)">{{ inspection[8] if inspection else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn" style="background:var(--gold);color:#000;font-weight:700;padding:12px 40px;border-radius:var(--radius);font-size:1rem" type="submit">💾 Sauvegarder l'inspection</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+function highlightBtn(el, status) {
+    el.closest('.d-flex').querySelectorAll('.insp-btn').forEach(function(b){b.style.background='transparent'});
+    if(status=='ok') el.style.background='rgba(52,211,153,.2)';
+    else if(status=='attention') el.style.background='rgba(212,175,55,.2)';
+    else el.style.background='rgba(196,30,58,.2)';
+}
+// Highlight on load
+document.querySelectorAll('input[type=radio]:checked').forEach(function(r){
+    var span=r.nextElementSibling; if(span) highlightBtn(span, r.value);
+});
+</script>
+{% endblock %}

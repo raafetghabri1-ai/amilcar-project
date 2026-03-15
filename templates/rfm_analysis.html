@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %} — Analyse RFM{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>{% endblock %}
+{% block content %}
+<h2 style="color:var(--gold);margin-bottom:6px">📊 Analyse RFM — Segmentation Clients</h2>
+<p style="color:var(--text-muted);margin-bottom:24px;font-size:.8rem">Recency × Frequency × Monetary — Classement automatique de {{ data|length }} clients</p>
+
+<!-- Segment Cards -->
+<div class="row g-3 mb-4">
+{% for seg_key, count in segments.items() %}
+{% set info = labels.get(seg_key, ('?','#666')) %}
+<div class="col-md-3 col-sm-4 col-6">
+    <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;text-align:center;border-top:3px solid {{ info[1] }}">
+        <div style="font-size:.8rem;color:{{ info[1] }};font-weight:700">{{ info[0] }}</div>
+        <div style="font-size:1.8rem;font-weight:800;color:var(--text-primary)">{{ count }}</div>
+        <div style="font-size:.65rem;color:var(--text-muted)">{{ "%.0f"|format(count/data|length*100 if data|length > 0 else 0) }}%</div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <canvas id="segmentChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+            <h5 style="color:var(--gold);margin-bottom:12px">📋 Actions recommandées</h5>
+            <div style="font-size:.8rem;color:var(--text-secondary)">
+                <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">🏆 <strong>Champions</strong> — Programme VIP, accès prioritaire, cadeaux</div>
+                <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">💎 <strong>Fidèles</strong> — Upsell services premium, demander avis Google</div>
+                <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">⚠️ <strong>Attention</strong> — Offre spéciale -20%, appel de suivi</div>
+                <div style="padding:8px 0;border-bottom:1px solid var(--border-subtle)">🔴 <strong>À risque</strong> — Coupon urgent, WhatsApp personnalisé</div>
+                <div style="padding:8px 0">💀 <strong>Perdus</strong> — Campagne win-back, offre irrésistible</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Table -->
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:20px">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="color:var(--gold);margin:0">👥 Détail par client</h5>
+        <input type="text" id="filterInput" placeholder="🔍 Filtrer..." style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border-subtle);padding:6px 12px;border-radius:6px;font-size:.8rem;width:200px" onkeyup="filterTable()">
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm" style="color:var(--text-primary)" id="rfmTable">
+            <thead><tr><th>Client</th><th>Segment</th><th>R</th><th>F</th><th>M</th><th>Dernière visite</th><th>Visites</th><th>CA Total</th></tr></thead>
+            <tbody>
+            {% for c in data|sort(attribute='monetary', reverse=true) %}
+            {% set info = labels.get(c.segment, ('?','#666')) %}
+            <tr>
+                <td><a href="/customer/{{ c.id }}" style="color:var(--gold);text-decoration:none">{{ c.name }}</a></td>
+                <td><span style="color:{{ info[1] }};font-size:.7rem;font-weight:700">{{ info[0] }}</span></td>
+                <td style="text-align:center"><span style="background:{% if c.r >= 4 %}var(--green){% elif c.r >= 3 %}var(--gold){% else %}var(--red){% endif %};color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem">{{ c.r }}</span></td>
+                <td style="text-align:center"><span style="background:{% if c.f >= 4 %}var(--green){% elif c.f >= 3 %}var(--gold){% else %}var(--red){% endif %};color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem">{{ c.f }}</span></td>
+                <td style="text-align:center"><span style="background:{% if c.m >= 4 %}var(--green){% elif c.m >= 3 %}var(--gold){% else %}var(--red){% endif %};color:#fff;padding:2px 6px;border-radius:4px;font-size:.65rem">{{ c.m }}</span></td>
+                <td style="font-size:.8rem">{% if c.recency < 999 %}{{ c.recency }}j{% else %}—{% endif %}</td>
+                <td>{{ c.frequency }}</td>
+                <td style="font-weight:600">{{ "%.0f"|format(c.monetary) }} DT</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var segLabels = {{ segments.keys()|list|tojson }};
+var segValues = {{ segments.values()|list|tojson }};
+var segColors = [{% for s in segments.keys() %}'{{ labels.get(s,("","#666"))[1] }}',{% endfor %}];
+new Chart(document.getElementById('segmentChart'),{type:'doughnut',data:{labels:segLabels,datasets:[{data:segValues,backgroundColor:segColors}]},options:{responsive:true,plugins:{title:{display:true,text:'Répartition des segments',color:'#e8e8e8'},legend:{labels:{color:'#9a9ab0'}}}}});
+function filterTable(){var v=document.getElementById('filterInput').value.toLowerCase();document.querySelectorAll('#rfmTable tbody tr').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(v)>-1?'':'none'})}
+</script>
+{% endblock %}
