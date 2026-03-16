@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ shop_name }} — QR Code Réservation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root{--gold:#D4AF37;--gd:#B8860B;--navy:#1A1A2E;--nv2:#0F3460}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,var(--navy) 0%,var(--nv2) 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+    .page{background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.35);max-width:480px;width:100%;overflow:hidden;text-align:center}
+
+    /* Gold header */
+    .ph{background:linear-gradient(135deg,var(--gold),var(--gd));padding:28px 30px 22px}
+    .brand{font-family:'Playfair Display',serif;color:var(--navy);font-size:2.4rem;letter-spacing:4px}
+    .tagline{font-size:.65rem;letter-spacing:4px;color:rgba(26,26,46,.6);text-transform:uppercase;margin-top:4px}
+    .ph h2{color:var(--navy);font-size:1.05rem;font-weight:700;margin-top:14px;opacity:.85}
+
+    /* QR area */
+    .qr-wrap{padding:32px 30px 24px;display:flex;flex-direction:column;align-items:center;gap:18px}
+    .qr-img{border:6px solid var(--gold);border-radius:16px;padding:10px;background:#fff;box-shadow:0 8px 32px rgba(212,175,55,.25)}
+    .qr-img img{display:block;width:220px;height:220px;border-radius:6px}
+
+    .scan-badge{background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:2px solid #4caf50;border-radius:50px;padding:8px 20px;font-size:.8rem;font-weight:700;color:#2e7d32;display:flex;align-items:center;gap:6px}
+
+    .url-box{background:#f5f5f0;border-radius:10px;padding:10px 16px;width:100%;word-break:break-all}
+    .url-label{font-size:.7rem;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+    .url-val{font-size:.85rem;font-weight:600;color:var(--nv2)}
+
+    .info-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:2px solid #f0ebe0}
+    .info-item{padding:14px 8px;text-align:center;font-size:.72rem;color:#666;border-right:1px solid #f0ebe0}
+    .info-item:last-child{border:none}
+    .info-icon{font-size:1.3rem;margin-bottom:4px}
+    .info-item strong{display:block;font-size:.78rem;color:var(--navy);font-weight:700;margin-top:2px}
+
+    /* Actions */
+    .actions{padding:0 24px 28px;display:flex;flex-direction:column;gap:10px}
+    .btn{border-radius:12px;padding:13px 20px;font-size:.92rem;font-weight:700;font-family:inherit;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s;text-decoration:none}
+    .btn-print{background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy)}
+    .btn-print:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(212,175,55,.4)}
+    .btn-dl{background:#1A1A2E;color:#fff}
+    .btn-dl:hover{background:#0F3460;transform:translateY(-1px)}
+    .btn-copy{background:#f5f5f5;color:#555}
+    .btn-copy:hover{background:#eee}
+
+    /* Print styles */
+    @media print {
+      body{background:#fff !important;padding:0}
+      .page{box-shadow:none;border-radius:0;max-width:100%}
+      .actions, .no-print{display:none !important}
+      .ph{background:var(--gold) !important;-webkit-print-color-adjust:exact}
+      @page{margin:10mm}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="ph">
+      <div class="brand">{{ shop_name }}</div>
+      <div class="tagline">Where Cars Become Art</div>
+      <h2>📱 Scannez pour Réserver en Ligne</h2>
+    </div>
+
+    <div class="qr-wrap">
+      <div class="qr-img">
+        <img src="{{ qr_url }}" alt="QR Code Réservation {{ shop_name }}">
+      </div>
+
+      <div class="scan-badge">
+        <span>📸</span> Pointer la caméra sur le code
+      </div>
+
+      <div class="url-box">
+        <div class="url-label">Lien direct</div>
+        <div class="url-val" id="book-url">{{ book_url }}</div>
+      </div>
+    </div>
+
+    <div class="info-strip">
+      <div class="info-item">
+        <div class="info-icon">⚡</div>
+        Rapide
+        <strong>30 sec</strong>
+      </div>
+      <div class="info-item">
+        <div class="info-icon">📅</div>
+        En ligne
+        <strong>24h/24</strong>
+      </div>
+      <div class="info-item">
+        <div class="info-icon">✅</div>
+        Gratuit
+        <strong>0 DT</strong>
+      </div>
+    </div>
+
+    <div class="actions no-print">
+      <button class="btn btn-print" onclick="window.print()">
+        🖨️ Imprimer cette page (A4)
+      </button>
+      <a class="btn btn-dl" href="{{ qr_url }}" download="amilcar_booking_qr.png">
+        ⬇️ Télécharger l'image QR
+      </a>
+      <button class="btn btn-copy" onclick="copyUrl()">
+        📋 Copier le lien de réservation
+      </button>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;text-align:center;color:rgba(255,255,255,.4);font-size:.72rem" class="no-print">
+    Affichez ce QR Code à la caisse, en vitrine, ou partagez le lien sur les réseaux sociaux.
+  </div>
+
+<script>
+function copyUrl() {
+  const url = document.getElementById('book-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('✅ Lien copié : ' + url);
+  }).catch(() => {
+    prompt('Copiez ce lien :', url);
+  });
+}
+</script>
+</body>
+</html>

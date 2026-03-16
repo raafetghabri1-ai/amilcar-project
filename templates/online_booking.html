@@ -1,95 +1,285 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AMILCAR — Réserver en Ligne</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <style>
-        body{font-family:'Inter',sans-serif;background:#f8f9fa;color:#333;padding:30px 15px}
-        .container{max-width:600px;margin:0 auto}
-        .brand{font-family:'Playfair Display',serif;color:#B8860B;font-size:2rem;text-align:center;margin-bottom:5px}
-        .tagline{text-align:center;color:var(--text-secondary);font-size:0.8rem;letter-spacing:3px;margin-bottom:30px}
-        .booking-card{background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.08);padding:35px}
-        .booking-card h5{color:#B8860B;font-weight:700;margin-bottom:20px}
-        .form-control,.form-select{border:2px solid #eee;border-radius:10px;padding:10px 14px}
-        .form-control:focus,.form-select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,0.15)}
-        .form-label{font-weight:500;color:var(--text-muted);font-size:0.85rem}
-        .btn-gold{background:linear-gradient(135deg,#D4AF37,#B8860B);border:none;color:#fff;font-weight:600;padding:12px;border-radius:10px;width:100%;font-size:1rem}
-        .btn-gold:hover{color:#fff;transform:translateY(-2px)}
-        .required::after{content:" *";color:#dc3545}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ shop_name }} — Réserver en Ligne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root { --gold:#D4AF37; --gd:#B8860B; --navy:#1A1A2E; --nv2:#0F3460; --bg:#f5f5f0; --r:14px; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh}
+
+    /* Hero */
+    .hero{background:linear-gradient(135deg,var(--navy) 0%,var(--nv2) 100%);padding:44px 20px 64px;text-align:center}
+    .brand{font-family:'Playfair Display',serif;color:var(--gold);font-size:2.6rem;letter-spacing:4px}
+    .tagline{color:rgba(255,255,255,.4);font-size:.68rem;letter-spacing:4px;text-transform:uppercase;margin-top:3px}
+    .hero h2{color:#fff;font-size:1.3rem;font-weight:500;margin-top:18px;opacity:.9}
+
+    /* Container / card */
+    .wrap{max-width:700px;margin:-30px auto 40px;padding:0 14px}
+    .card{background:#fff;border-radius:var(--r);box-shadow:0 8px 40px rgba(0,0,0,.09);overflow:hidden}
+    .card-head{background:linear-gradient(135deg,var(--gold),var(--gd));padding:16px 26px;color:var(--navy);display:flex;align-items:center;gap:10px}
+    .card-head h3{font-size:1.05rem;font-weight:700}
+    .card-body{padding:26px}
+
+    /* Steps */
+    .steps{display:flex;margin-bottom:20px}
+    .step{flex:1;text-align:center;padding:8px 2px;border-bottom:3px solid #eee;color:#999;font-size:.75rem;font-weight:600;transition:.3s}
+    .step.active{border-bottom-color:var(--gold);color:var(--gold)}
+    .sn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:.72rem;font-weight:700;background:#eee;color:#999;margin-bottom:3px}
+    .step.active .sn{background:var(--gold);color:var(--navy)}
+
+    /* Progress */
+    .prog{height:4px;background:#eee;border-radius:2px;margin-bottom:22px}
+    .prog-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gd));border-radius:2px;transition:width .4s}
+
+    /* Sections */
+    .sec{display:none}.sec.active{display:block}
+    .sec-title{font-size:.8rem;font-weight:700;color:var(--nv2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px;padding-bottom:7px;border-bottom:2px solid #f0ebe0}
+
+    /* Form grid */
+    .fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .fg.one{grid-template-columns:1fr}
+    .fg.three{grid-template-columns:1fr 1fr 1fr}
+    @media(max-width:520px){.fg,.fg.three{grid-template-columns:1fr}}
+    .fm{display:flex;flex-direction:column;gap:4px}
+    label{font-size:.8rem;font-weight:600;color:#666}
+    label .r{color:#e53935;margin-left:2px}
+    input,select,textarea{padding:10px 13px;border:2px solid #eee;border-radius:10px;font-size:.9rem;font-family:inherit;outline:none;transition:.2s;background:#fafafa}
+    input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,.12);background:#fff}
+
+    /* Service cards */
+    .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-bottom:4px}
+    .svc-card{border:2px solid #eee;border-radius:10px;padding:11px;cursor:pointer;transition:.2s;text-align:center;background:#fafafa}
+    .svc-card:hover{border-color:var(--gold);background:#fffdf0}
+    .svc-card.sel{border-color:var(--gold);background:linear-gradient(135deg,#fffde7,#fff9c4)}
+    .sc-nm{font-size:.8rem;font-weight:700;color:var(--navy)}
+    .sc-pr{font-size:.95rem;font-weight:700;color:var(--gd);margin-top:3px}
+    .sc-tm{font-size:.7rem;color:#888}
+
+    /* Time slots */
+    .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:7px}
+    .sl{padding:7px 3px;border:2px solid #eee;border-radius:8px;text-align:center;font-size:.8rem;font-weight:600;cursor:pointer;transition:.2s;background:#fafafa}
+    .sl:hover{border-color:var(--gold);background:#fffdf0}
+    .sl.sel{border-color:var(--gold);background:var(--gold);color:var(--navy)}
+    .sl.taken{background:#f5f5f5;color:#ccc;border-color:#eee;cursor:not-allowed}
+
+    /* Nav */
+    .nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:10px}
+    .btn{padding:11px 22px;border-radius:10px;font-size:.9rem;font-weight:600;border:none;cursor:pointer;transition:.2s}
+    .btn-back{background:#f0f0f0;color:#666}.btn-back:hover{background:#e0e0e0}
+    .btn-next{background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy);flex:1}
+    .btn-next:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(212,175,55,.35)}
+    .btn-sub{background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff;flex:1;font-size:.95rem}
+    .btn-sub:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(46,125,50,.3)}
+
+    /* Summary */
+    .sum{background:linear-gradient(135deg,#fffde7,#fff9c4);border:2px solid var(--gold);border-radius:12px;padding:16px;margin-bottom:18px}
+    .sr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(212,175,55,.2)}
+    .sr:last-child{border:none;font-weight:700}
+    .sl2{font-size:.8rem;color:#666}.sv{font-size:.88rem;font-weight:600;color:var(--navy)}
+
+    /* Alert */
+    .alrt{padding:11px 14px;border-radius:10px;margin-bottom:14px;font-size:.86rem;background:#ffebee;color:#c62828;border:1px solid #ef9a9a}
+
+    /* Footer */
+    .bfoot{text-align:center;padding:18px;color:#999;font-size:.75rem}
+    .bfoot a{color:var(--gd);text-decoration:none}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="brand">AMILCAR</div>
-        <div class="tagline">WHERE CARS BECOME ART</div>
 
-        <div class="booking-card">
-            <h5>📅 Réserver un Rendez-vous</h5>
+<div class="hero">
+  <div class="brand">{{ shop_name }}</div>
+  <div class="tagline">Where Cars Become Art</div>
+  <h2>📅 Réserver votre Rendez-vous</h2>
+</div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}{% for cat, msg in messages %}
-            <div class="alert alert-{{ cat }}" style="font-size:0.85rem">{{ msg }}</div>
-            {% endfor %}{% endif %}
-            {% endwith %}
+<div class="wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alrt">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
 
-            <form method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label required">Nom complet</label>
-                        <input type="text" name="name" class="form-control" required placeholder="Votre nom">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label required">Téléphone</label>
-                        <input type="tel" name="phone" class="form-control" required placeholder="0612345678">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" placeholder="email@exemple.com">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Marque</label>
-                        <input type="text" name="car_brand" class="form-control" placeholder="BMW, Audi...">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Modèle</label>
-                        <input type="text" name="car_model" class="form-control" placeholder="Série 3...">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Immatriculation</label>
-                        <input type="text" name="car_plate" class="form-control" placeholder="123 TU 4567">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label required">Service souhaité</label>
-                        <select name="service" class="form-select" required>
-                            <option value="">-- Choisir un service --</option>
-                            {% for s in services %}
-                            <option value="{{ s[0] }}">{{ s[0] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label required">Date souhaitée</label>
-                        <input type="date" name="preferred_date" class="form-control" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Heure préférée</label>
-                        <input type="time" name="preferred_time" class="form-control" value="09:00">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Notes / Remarques</label>
-                        <textarea name="notes" class="form-control" rows="2" placeholder="Informations supplémentaires..."></textarea>
-                    </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn-gold">📅 Réserver Maintenant</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <p style="text-align:center;color:#aaa;font-size:0.7rem;margin-top:20px">AMILCAR Auto Care — Mahres, Sfax, Tunisia</p>
+  <div class="card">
+    <div class="card-head">
+      <span style="font-size:1.3rem">🚗</span>
+      <h3>Formulaire de Réservation</h3>
     </div>
+    <div class="card-body">
+
+      <div class="steps">
+        <div class="step active" id="si1"><div class="sn">1</div><br>Identité</div>
+        <div class="step" id="si2"><div class="sn">2</div><br>Service</div>
+        <div class="step" id="si3"><div class="sn">3</div><br>Date & Heure</div>
+        <div class="step" id="si4"><div class="sn">4</div><br>Confirmer</div>
+      </div>
+      <div class="prog"><div class="prog-bar" id="pbar" style="width:25%"></div></div>
+
+      <form method="POST" action="/book" id="bform">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Step 1 -->
+        <div class="sec active" id="s1">
+          <div class="sec-title">👤 Vos Informations</div>
+          <div class="fg">
+            <div class="fm"><label>Nom complet <span class="r">*</span></label>
+              <input type="text" name="name" placeholder="Ahmed Ben Ali" required></div>
+            <div class="fm"><label>Téléphone <span class="r">*</span></label>
+              <input type="tel" name="phone" placeholder="20 123 456" required></div>
+          </div>
+          <div class="fg one">
+            <div class="fm"><label>Email (optionnel)</label>
+              <input type="email" name="email" placeholder="votre@email.com"></div>
+          </div>
+          <div class="sec-title" style="margin-top:18px">🚗 Votre Véhicule</div>
+          <div class="fg three">
+            <div class="fm"><label>Marque</label><input type="text" name="car_brand" placeholder="Peugeot"></div>
+            <div class="fm"><label>Modèle</label><input type="text" name="car_model" placeholder="208"></div>
+            <div class="fm"><label>Immatriculation</label><input type="text" name="car_plate" placeholder="198 TU 7321"></div>
+          </div>
+          <div class="nav"><div></div>
+            <button type="button" class="btn btn-next" onclick="go(2)">Suivant →</button></div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="sec" id="s2">
+          <div class="sec-title">🔧 Choisissez un Service</div>
+          <input type="hidden" name="service" id="svc-in">
+          <div class="svc-grid">
+            {% for svc in services %}
+            <div class="svc-card" onclick="pickSvc('{{ svc['name'] }}', this)">
+              <div class="sc-nm">{{ svc['name'] }}</div>
+              {% if svc['price'] %}<div class="sc-pr">{{ svc['price']|int }} DT</div>{% endif %}
+              {% if svc['estimated_minutes'] %}<div class="sc-tm">⏱ {{ svc['estimated_minutes'] }} min</div>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          <div class="fg one" style="margin-top:14px">
+            <div class="fm"><label>Notes / Détails</label>
+              <textarea name="notes" rows="2" placeholder="Détails supplémentaires..."></textarea></div>
+          </div>
+          <div class="nav">
+            <button type="button" class="btn btn-back" onclick="go(1)">← Retour</button>
+            <button type="button" class="btn btn-next" onclick="go(3)">Suivant →</button>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="sec" id="s3">
+          <div class="sec-title">📅 Date & Heure</div>
+          <div class="fg one">
+            <div class="fm"><label>Date souhaitée <span class="r">*</span></label>
+              <input type="date" name="preferred_date" id="dt-in"
+                     min="{{ min_date }}" max="{{ max_date }}"
+                     onchange="refreshSlots(this.value)" required></div>
+          </div>
+          <div class="fm" style="margin-top:14px">
+            <label>Heure souhaitée</label>
+            <input type="hidden" name="preferred_time" id="tm-in">
+            <div class="slots" id="slot-grid">
+              {% for t in time_slots %}
+              <div class="sl" data-t="{{ t }}" onclick="pickSlot('{{ t }}', this)">{{ t }}</div>
+              {% endfor %}
+            </div>
+            <p style="font-size:.74rem;color:#999;margin-top:6px">ℹ️ Laissez vide pour heure flexible</p>
+          </div>
+          <div class="nav">
+            <button type="button" class="btn btn-back" onclick="go(2)">← Retour</button>
+            <button type="button" class="btn btn-next" onclick="go(4)">Suivant →</button>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="sec" id="s4">
+          <div class="sec-title">✅ Récapitulatif</div>
+          <div class="sum">
+            <div class="sr"><span class="sl2">Nom</span><span class="sv" id="sn"></span></div>
+            <div class="sr"><span class="sl2">Téléphone</span><span class="sv" id="sp"></span></div>
+            <div class="sr"><span class="sl2">Véhicule</span><span class="sv" id="sc"></span></div>
+            <div class="sr"><span class="sl2">🔧 Service</span><span class="sv" id="ss"></span></div>
+            <div class="sr"><span class="sl2">📅 Date</span><span class="sv" id="sd"></span></div>
+            <div class="sr"><span class="sl2">⏰ Heure</span><span class="sv" id="sh"></span></div>
+          </div>
+          <p style="font-size:.8rem;color:#888;text-align:center;margin-bottom:14px">Notre équipe vous contactera pour confirmer.</p>
+          <div class="nav">
+            <button type="button" class="btn btn-back" onclick="go(3)">← Retour</button>
+            <button type="submit" class="btn btn-sub">🎯 Envoyer ma Réservation</button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <div class="bfoot">
+    <a href="/book/qr_page">📲 QR Code à afficher en boutique</a>
+    &nbsp;|&nbsp; {{ shop_name }}
+  </div>
+</div>
+
+<script>
+const BOOKED = {{ booked_slots | tojson }};
+let cur = 1;
+
+function go(n) {
+  const f = document.getElementById('bform');
+  if (n > 1 && cur === 1) {
+    if (!f.name.value.trim() || !f.phone.value.trim()) { alert('Nom et téléphone obligatoires.'); return; }
+  }
+  if (n > 2 && cur === 2 && !document.getElementById('svc-in').value) {
+    alert('Veuillez sélectionner un service.'); return;
+  }
+  if (n > 3 && cur === 3 && !document.getElementById('dt-in').value) {
+    alert('Veuillez choisir une date.'); return;
+  }
+  document.getElementById('s'+cur).classList.remove('active');
+  document.getElementById('si'+cur).classList.remove('active');
+  cur = n;
+  document.getElementById('s'+n).classList.add('active');
+  document.getElementById('si'+n).classList.add('active');
+  document.getElementById('pbar').style.width = (n*25)+'%';
+  if (n === 4) fillSum();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function pickSvc(name, el) {
+  document.querySelectorAll('.svc-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('svc-in').value = name;
+}
+
+function pickSlot(t, el) {
+  if (el.classList.contains('taken')) return;
+  document.querySelectorAll('.sl').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('tm-in').value = t;
+}
+
+function refreshSlots(date) {
+  const taken = BOOKED[date] || [];
+  document.querySelectorAll('.sl').forEach(btn => {
+    const t = btn.dataset.t;
+    btn.classList.remove('taken','sel');
+    // count occurrences
+    const cnt = taken.filter(x=>x===t).length;
+    if (cnt >= 3) { btn.classList.add('taken'); btn.title='Créneau complet'; }
+  });
+  document.getElementById('tm-in').value = '';
+}
+
+function fillSum() {
+  const f = document.getElementById('bform');
+  const b = f.car_brand.value, m = f.car_model.value, p = f.car_plate.value;
+  document.getElementById('sn').textContent = f.name.value || '—';
+  document.getElementById('sp').textContent = f.phone.value || '—';
+  document.getElementById('sc').textContent = [b,m,p].filter(Boolean).join(' ') || '—';
+  document.getElementById('ss').textContent = f.service.value || '—';
+  document.getElementById('sd').textContent = f.preferred_date.value || '—';
+  document.getElementById('sh').textContent = f.preferred_time.value || 'Flexible';
+}
+</script>
 </body>
 </html>

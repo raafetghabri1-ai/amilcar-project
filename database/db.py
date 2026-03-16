@@ -1,13 +1,20 @@
 import sqlite3
+import os
 from contextlib import contextmanager
 
+# In production (Fly.io), DB lives on persistent /data volume
+# In development, it stays in database/amilcar.db
+_DATA_DIR = os.environ.get('DATA_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__))))
+DB_PATH = os.path.join(_DATA_DIR, 'amilcar.db')
+os.makedirs(_DATA_DIR, exist_ok=True)
+
 def connect():
-    connection = sqlite3.connect("database/amilcar.db")
+    connection = sqlite3.connect(DB_PATH)
     return connection
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect("database/amilcar.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")

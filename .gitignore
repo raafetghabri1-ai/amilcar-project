@@ -11,3 +11,7 @@ backup.py
 .venv/
 logs/
 *.pid
+gunicorn.ctl
+*.log
+.env
+.env.*

@@ -831,30 +831,128 @@ def add_payment(invoice_id):
 # ─── Phase 7 Feature 9: Online Booking ───
 @main_bp.route("/book", methods=["GET", "POST"])
 def online_booking():
+    from datetime import date as dt_date, timedelta
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+
     if request.method == "POST":
-        name = request.form.get('name', '').strip()
-        phone = request.form.get('phone', '').strip()
-        email = request.form.get('email', '')
-        car_brand = request.form.get('car_brand', '')
-        car_model = request.form.get('car_model', '')
-        car_plate = request.form.get('car_plate', '')
-        service = request.form.get('service', '')
-        preferred_date = request.form.get('preferred_date', '')
-        preferred_time = request.form.get('preferred_time', '')
-        notes = request.form.get('notes', '')
-        if not name or not phone or not service or not preferred_date:
-            flash("Veuillez remplir tous les champs obligatoires", "danger")
-            return redirect("/book")
+        name     = request.form.get('name', '').strip()
+        phone    = request.form.get('phone', '').strip()
+        email    = request.form.get('email', '').strip()
+        car_brand  = request.form.get('car_brand', '').strip()
+        car_model  = request.form.get('car_model', '').strip()
+        car_plate  = request.form.get('car_plate', '').strip()
+        service    = request.form.get('service', '')
+        pref_date  = request.form.get('preferred_date', '')
+        pref_time  = request.form.get('preferred_time', '')
+        notes      = request.form.get('notes', '')
+
+        if not name or not phone or not service or not pref_date:
+            flash("Veuillez remplir tous les champs obligatoires (*)", "danger")
+            with get_db() as conn:
+                services = conn.execute("SELECT name, price, estimated_minutes FROM services ORDER BY name").fetchall()
+            return render_template("online_booking.html", services=services,
+                                   settings=settings, shop_name=shop_name)
+
         with get_db() as conn:
-            conn.execute("""INSERT INTO online_bookings
-                (name, phone, email, car_brand, car_model, car_plate, service, preferred_date, preferred_time, notes)
+            row = conn.execute("""INSERT INTO online_bookings
+                (name, phone, email, car_brand, car_model, car_plate,
+                 service, preferred_date, preferred_time, notes)
                 VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (name, phone, email, car_brand, car_model, car_plate, service, preferred_date, preferred_time, notes))
+                (name, phone, email, car_brand, car_model, car_plate,
+                 service, pref_date, pref_time, notes))
+            booking_id = row.lastrowid
+            # Auto-notify: add to notifications_center for admin (user_id=1)
+            conn.execute("""INSERT INTO notifications_center
+                (user_id, title, message, notif_type, link, is_read)
+                VALUES (1, ?, ?, 'booking', '/bookings', 0)""",
+                (f"📅 Nouvelle réservation — {name}",
+                 f"{name} ({phone}) souhaite {service} le {pref_date} à {pref_time or 'heure flexible'}"))
             conn.commit()
-        return render_template("booking_success.html", name=name, date=preferred_date, time=preferred_time)
+
+        # WhatsApp confirmation link for customer
+        import urllib.parse
+        wa_msg = (f"✅ Bonjour {name},\n\n"
+                  f"Votre demande de RDV chez {shop_name} a bien été reçue !\n"
+                  f"📅 Date souhaitée : {pref_date}\n"
+                  f"🔧 Service : {service}\n\n"
+                  f"Nous vous confirmerons très bientôt. Merci ! 🚗✨")
+        wa_phone = phone.strip().replace(' ', '').replace('-', '')
+        if wa_phone.startswith('0'):
+            wa_phone = '216' + wa_phone[1:]
+        elif not wa_phone.startswith('216') and not wa_phone.startswith('+'):
+            wa_phone = '216' + wa_phone
+        wa_phone = wa_phone.replace('+', '')
+        wa_url = f"https://wa.me/{wa_phone}?text={urllib.parse.quote(wa_msg)}"
+
+        return render_template("booking_success.html",
+                               name=name, service=service,
+                               date=pref_date, time=pref_time,
+                               booking_id=booking_id, wa_url=wa_url,
+                               shop_name=shop_name)
+
+    # GET — build available slots (exclude already-booked)
+    today = dt_date.today()
+    # Next 30 days available dates (exclude past)
+    min_date = (today + timedelta(days=1)).isoformat()
+    max_date = (today + timedelta(days=30)).isoformat()
+
     with get_db() as conn:
-        services = conn.execute("SELECT name FROM services WHERE active=1 ORDER BY name").fetchall()
-    return render_template("online_booking.html", services=services)
+        services = conn.execute(
+            "SELECT name, price, estimated_minutes FROM services ORDER BY name").fetchall()
+        # Booked slots per date
+        booked = conn.execute(
+            "SELECT preferred_date, preferred_time, COUNT(*) as cnt "
+            "FROM online_bookings WHERE status != 'rejected' "
+            "GROUP BY preferred_date, preferred_time").fetchall()
+
+    booked_slots = {}
+    for b in booked:
+        key = b['preferred_date']
+        if key not in booked_slots:
+            booked_slots[key] = []
+        booked_slots[key].append(b['preferred_time'])
+
+    time_slots = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
+                  "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"]
+
+    return render_template("online_booking.html",
+                           services=services, settings=settings,
+                           shop_name=shop_name, min_date=min_date,
+                           max_date=max_date, time_slots=time_slots,
+                           booked_slots=booked_slots)
+
+
+@main_bp.route("/book/qr")
+def booking_qr():
+    """Génère un QR code PNG pointant vers la page de réservation"""
+    import qrcode, io
+    settings = get_all_settings()
+    # Use request.host_url so it works on any network
+    book_url = request.host_url.rstrip('/') + '/book'
+    qr = qrcode.QRCode(version=2, box_size=10, border=3,
+                       error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(book_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#1A1A2E", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    from flask import send_file as sf
+    return sf(buf, mimetype='image/png',
+               as_attachment=False,
+               download_name='amilcar_booking_qr.png')
+
+
+@main_bp.route("/book/qr_page")
+def booking_qr_page():
+    """Page avec QR code + lien de partage (pour affichage en boutique)"""
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    book_url = request.host_url.rstrip('/') + '/book'
+    return render_template("booking_qr_page.html",
+                           book_url=book_url, shop_name=shop_name,
+                           qr_url='/book/qr')
 
 
 
