@@ -92,8 +92,8 @@
                 </td>
                 <td style="font-size:0.75rem">{{ p[5] or '-' }}<br><span style="color:var(--text-secondary)">{{ p[6] }} km</span></td>
                 <td style="font-size:0.75rem">
-                    <span style="color:{{ '#dc3545' if p[8] and p[8] <= now_date else '#2d6a4f' }}">{{ p[8] or '-' }}</span>
-                    {% if p[9] > 0 %}<br><span style="color:var(--text-secondary)">{{ p[9] }} km</span>{% endif %}
+                    <span style="color:{{ '#dc3545' if p[7] and p[7] <= now_date else '#2d6a4f' }}">{{ p[7] or '-' }}</span>
+                    {% if p[8] > 0 %}<br><span style="color:var(--text-secondary)">{{ p[8] }} km</span>{% endif %}
                 </td>
                 <td style="color:var(--gold);font-weight:600">{{ p[15] }} km</td>
                 <td>

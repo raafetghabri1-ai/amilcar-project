@@ -20,6 +20,14 @@ _login_attempts = {}
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 300
 
+PERMISSIONS = {
+    'admin': ['all'],
+    'manager': ['customers', 'appointments', 'invoices', 'reports', 'inventory', 'services', 'expenses'],
+    'receptionist': ['customers', 'appointments', 'invoices', 'calendar'],
+    'technician': ['appointments', 'live_board', 'time_tracking', 'gallery'],
+    'employee': ['appointments', 'customers'],
+}
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

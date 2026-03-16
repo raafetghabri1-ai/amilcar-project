@@ -431,7 +431,7 @@ def quotes_advanced():
             WHEN q.status='rejected' THEN 'Refusé'
             WHEN q.status='expired' THEN 'Expiré'
             ELSE 'En attente' END as display_status
-            FROM quotes q ORDER BY q.created_at DESC
+            FROM quotes q ORDER BY q.id DESC
         """).fetchall()
     return render_template("quotes_advanced.html", quotes=quotes)
 
@@ -602,7 +602,9 @@ def pnl_dashboard():
         conn.commit()
 
         # Historical P&L
-        history = conn.execute("SELECT * FROM monthly_pnl ORDER BY month DESC LIMIT 12").fetchall()
+        history_rows = conn.execute("SELECT * FROM monthly_pnl ORDER BY month DESC LIMIT 12").fetchall()
+        history = [dict(r) for r in history_rows]
+        expense_cats = list(expense_cats)
     return render_template("pnl_dashboard.html", month=month, revenue=revenue, expenses=expenses,
                           materials=materials, net_profit=net_profit, expense_cats=expense_cats, history=history)
 

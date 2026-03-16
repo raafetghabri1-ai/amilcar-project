@@ -970,10 +970,10 @@ def monthly_comparison_view():
         prev_month = f"{today.year}-{today.month - 1:02d}"
     with get_db() as conn:
         def month_stats(m):
-            revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE strftime('%%Y-%%m',date)=? AND status='paid'", (m,)).fetchone()[0]
+            revenue = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE strftime('%%Y-%%m',created_at)=? AND status='paid'", (m,)).fetchone()[0]
             appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE strftime('%%Y-%%m',date)=?", (m,)).fetchone()[0]
             completed = conn.execute("SELECT COUNT(*) FROM appointments WHERE strftime('%%Y-%%m',date)=? AND status='completed'", (m,)).fetchone()[0]
-            new_customers = conn.execute("SELECT COUNT(*) FROM customers WHERE strftime('%%Y-%%m',created_at)=?", (m,)).fetchone()[0]
+            new_customers = conn.execute("SELECT COUNT(*) FROM customers WHERE last_visit LIKE ?", (m + '%',)).fetchone()[0]
             expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE strftime('%%Y-%%m',date)=?", (m,)).fetchone()[0]
             avg_ticket = revenue / completed if completed else 0
             profit = revenue - expenses

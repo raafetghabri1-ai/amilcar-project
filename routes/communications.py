@@ -1036,7 +1036,7 @@ def smart_scheduling():
     date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
     with get_db() as conn:
         # Get all bays
-        bays = conn.execute("SELECT * FROM service_bays WHERE is_active=1 ORDER BY name").fetchall()
+        bays = conn.execute("SELECT * FROM service_bays WHERE active=1 ORDER BY name").fetchall()
         # Get appointments for date
         appointments = conn.execute("""
             SELECT a.*, c.name as customer_name, car.brand, car.model
@@ -1048,9 +1048,9 @@ def smart_scheduling():
         # Get employees and their shifts
         employees = conn.execute("""
             SELECT u.id, u.full_name, u.specialties,
-                   es.shift_start, es.shift_end
+                   es.start_time, es.end_time
             FROM users u
-            LEFT JOIN employee_shifts es ON u.id = es.employee_id AND es.date = ?
+            LEFT JOIN employee_shifts es ON u.id = es.user_id AND es.shift_date = ?
             WHERE u.role != 'admin' ORDER BY u.full_name
         """, (date,)).fetchall()
         # Get historical load pattern for this weekday

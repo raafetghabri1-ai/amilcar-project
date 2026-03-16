@@ -139,7 +139,7 @@ def maintenance_plans():
         # Alerts: overdue plans
         from datetime import date
         today_str = date.today().isoformat()
-        alerts = [p for p in plans if p[8] and p[8] <= today_str]
+        alerts = [p for p in plans if p['next_due_date'] and p['next_due_date'] <= today_str]
     return render_template("maintenance_plans.html", plans=plans, cars=cars, alerts=alerts, now_date=today_str)
 
 
@@ -228,13 +228,13 @@ def smart_alerts():
                 conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
                     ('low_stock', f'Stock bas: {item[1]}', f'Quantité: {item[2]}/{item[3]}', 'warning', item[0]))
         # Unpaid invoices > 7 days
-        old_unpaid = conn.execute("SELECT id, amount, date FROM invoices WHERE status IN ('unpaid','Non payée') AND date <= ?",
+        old_unpaid = conn.execute("SELECT id, amount, created_at FROM invoices WHERE status IN ('unpaid','Non payée') AND DATE(created_at) <= ?",
             ((today - timedelta(days=7)).isoformat(),)).fetchall()
         for inv in old_unpaid:
             existing = conn.execute("SELECT id FROM smart_alerts WHERE alert_type='overdue_invoice' AND related_id=? AND is_read=0", (inv[0],)).fetchone()
             if not existing:
                 conn.execute("INSERT INTO smart_alerts (alert_type, title, message, severity, related_id) VALUES (?,?,?,?,?)",
-                    ('overdue_invoice', f'Facture #{inv[0]} impayée', f'{inv[1]:.0f} DH depuis {inv[2]}', 'danger', inv[0]))
+                    ('overdue_invoice', f'Facture #{inv[0]} impayée', f"{inv[1]:.0f} DH depuis {str(inv[2])[:10]}", 'danger', inv[0]))
         # VIP customers not returning (60+ days)
         vip_gone = conn.execute("""
             SELECT c.id, c.name, MAX(a.date) as last_visit FROM customers c
@@ -873,16 +873,20 @@ def product_trends():
             qty = conn.execute("SELECT COALESCE(SUM(quantity_used),0) FROM product_usage WHERE strftime('%%Y-%%m',created_at)=?", (ms,)).fetchone()[0]
             months.append({'month': ms, 'cost': total, 'quantity': qty})
         # Top products all time
-        top = conn.execute("""SELECT product_name, unit, SUM(quantity_used) as total_qty, SUM(total_cost) as total_cost,
+        top_rows = conn.execute("""SELECT product_name, unit, SUM(quantity_used) as total_qty, SUM(total_cost) as total_cost,
             COUNT(*) as usage_count, AVG(unit_cost) as avg_cost
             FROM product_usage GROUP BY product_name ORDER BY total_cost DESC LIMIT 15""").fetchall()
+        top = [{'product_name': r[0], 'unit': r[1], 'total_qty': r[2], 'total_cost': r[3],
+                'usage_count': r[4], 'avg_cost': r[5], 'increase_pct': 0} for r in top_rows]
         # Low stock warning (products used a lot but maybe running low)
-        high_usage = conn.execute("""SELECT product_name, SUM(quantity_used) as monthly_usage
+        high_usage_rows = conn.execute("""SELECT product_name, SUM(quantity_used) as monthly_usage
             FROM product_usage WHERE created_at >= date('now','-30 days')
             GROUP BY product_name ORDER BY monthly_usage DESC LIMIT 10""").fetchall()
-        # By vehicle type
-        by_type = conn.execute("""SELECT vehicle_type, SUM(total_cost) as cost, COUNT(*) as cnt
+        high_usage = [{'product_name': r[0], 'monthly_usage': r[1],
+                       'current_qty': r[1], 'prev_qty': 0, 'increase_pct': 0} for r in high_usage_rows]
+        by_type_rows = conn.execute("""SELECT vehicle_type, SUM(total_cost) as cost, COUNT(*) as cnt
             FROM product_usage GROUP BY vehicle_type ORDER BY cost DESC""").fetchall()
+        by_type = [{'vehicle_type': r[0], 'cost': r[1], 'cnt': r[2], 'total_cost': r[1]} for r in by_type_rows]
     return render_template("product_trends.html", months=months, top=top, high_usage=high_usage, by_type=by_type)
 
 

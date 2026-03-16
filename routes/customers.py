@@ -17,6 +17,24 @@ import sqlite3
 customers_bp = Blueprint("customers_bp", __name__)
 
 LOYALTY_THRESHOLD = 5
+TIER_THRESHOLDS = {'BRONZE': 0, 'ARGENT': 500, 'OR': 1000, 'PLATINE': 2000}
+RFM_SEGMENTS = {
+    (5,5): 'champion', (5,4): 'champion', (4,5): 'champion',
+    (5,3): 'loyal', (4,4): 'loyal', (3,5): 'loyal',
+    (5,2): 'potential_loyalist', (4,3): 'potential_loyalist', (3,4): 'potential_loyalist',
+    (5,1): 'new_customer', (4,1): 'new_customer', (4,2): 'new_customer',
+    (3,3): 'need_attention', (3,2): 'need_attention', (2,3): 'need_attention',
+    (3,1): 'about_to_sleep', (2,2): 'about_to_sleep',
+    (2,1): 'at_risk', (1,3): 'at_risk', (1,4): 'at_risk', (1,5): 'at_risk',
+    (1,2): 'hibernating', (1,1): 'lost', (2,4): 'at_risk', (2,5): 'at_risk',
+}
+RFM_LABELS = {
+    'champion': ('Champion', '#34d399'), 'loyal': ('Fidèle', '#D4AF37'),
+    'potential_loyalist': ('Potentiel Fidèle', '#1B6B93'), 'new_customer': ('Nouveau', '#60a5fa'),
+    'need_attention': ('Attention requise', '#f59e0b'), 'about_to_sleep': ('En veille', '#f97316'),
+    'at_risk': ('À risque', '#ef4444'), 'hibernating': ('Hibernant', '#6b7280'),
+    'lost': ('Perdu', '#374151'), 'new': ('Non classé', '#9ca3af'),
+}
 
 
 @customers_bp.route('/customers')

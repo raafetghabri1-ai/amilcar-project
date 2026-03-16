@@ -765,7 +765,7 @@ def mobile_dashboard():
         completed_today = conn.execute(
             "SELECT COUNT(*) FROM appointments WHERE date = ? AND status='completed'", (today,)).fetchone()[0]
         today_revenue = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid' AND date_created = ?", (today,)).fetchone()[0]
+            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid' AND DATE(created_at) = ?", (today,)).fetchone()[0]
         unpaid = conn.execute(
             "SELECT COUNT(*) FROM invoices WHERE status IN ('unpaid','partial')").fetchone()[0]
     return render_template("mobile_dashboard.html",

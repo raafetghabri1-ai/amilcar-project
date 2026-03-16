@@ -342,7 +342,7 @@ def stock_forecast():
             usage_30d = conn.execute("""SELECT COALESCE(SUM(quantity_used), 0) FROM product_usage
                 WHERE product_id=? AND DATE(created_at) >= DATE('now', '-30 days')""", (p['id'],)).fetchone()[0]
             daily_avg = usage_30d / 30 if usage_30d else 0
-            stock = p.get('quantity', 0) or 0
+            stock = p['quantity'] or 0
             days_left = int(stock / daily_avg) if daily_avg > 0 else 999
             scheduled = conn.execute("""SELECT COUNT(*) FROM appointments
                 WHERE date >= DATE('now') AND date <= DATE('now', '+7 days') AND status='pending'""").fetchone()[0]
@@ -353,7 +353,7 @@ def stock_forecast():
                 'daily_avg': round(daily_avg, 2), 'days_left': days_left,
                 'recommended': round(recommended, 1), 'status': status,
                 'usage_30d': usage_30d, 'scheduled_appt': scheduled,
-                'unit': p.get('unit', ''),
+                'unit': p['name'],  # inventory has no unit column
             })
         forecasts.sort(key=lambda x: x['days_left'])
     return render_template("stock_forecast.html", forecasts=forecasts)
