@@ -132,99 +132,6 @@ def monthly():
 
 
 
-# ─── CSV Export ───
-@reports_bp.route("/export/monthly")
-@login_required
-def export_monthly_csv():
-    import csv
-    month = request.args.get("month", "")
-    if not month:
-        from datetime import date
-        today = date.today()
-        month = f"{today.year}-{today.month:02d}"
-    year, mon = map(int, month.split("-"))
-    ms = f"{year}-{mon:02d}-01"
-    if mon == 12:
-        me = f"{year+1}-01-01"
-    else:
-        me = f"{year}-{mon+1:02d}-01"
-    with get_db() as conn:
-        appointments = conn.execute(
-            "SELECT a.id, cu.name, ca.brand || ' ' || ca.model, a.date, a.service, a.status "
-            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
-            "JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.date >= ? AND a.date < ? ORDER BY a.date", (ms, me)).fetchall()
-        invoices = conn.execute(
-            "SELECT i.id, cu.name, a.service, i.amount, i.status "
-            "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.date >= ? AND a.date < ?", (ms, me)).fetchall()
-        expenses = conn.execute(
-            "SELECT id, date, category, description, amount FROM expenses "
-            "WHERE date >= ? AND date < ?", (ms, me)).fetchall()
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["=== RENDEZ-VOUS ==="])
-    writer.writerow(["ID", "Client", "Voiture", "Date", "Service", "Statut"])
-    for a in appointments:
-        writer.writerow(a)
-    writer.writerow([])
-    writer.writerow(["=== FACTURES ==="])
-    writer.writerow(["ID", "Client", "Service", "Montant (DT)", "Statut"])
-    for inv in invoices:
-        writer.writerow(inv)
-    writer.writerow([])
-    writer.writerow(["=== DÉPENSES ==="])
-    writer.writerow(["ID", "Date", "Catégorie", "Description", "Montant (DT)"])
-    for e in expenses:
-        writer.writerow(e)
-    response = make_response(output.getvalue())
-    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    response.headers['Content-Disposition'] = f'attachment; filename=monthly_report_{month}.csv'
-    return response
-
-
-
-# ─── Daily CSV Export ───
-@reports_bp.route("/export/daily")
-@login_required
-def export_daily_csv():
-    import csv
-    from datetime import date
-    day = request.args.get("date", str(date.today()))
-    with get_db() as conn:
-        appointments = conn.execute(
-            "SELECT a.id, cu.name, ca.brand || ' ' || ca.model, a.date, a.service, a.status "
-            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
-            "JOIN customers cu ON ca.customer_id = cu.id WHERE a.date = ? ORDER BY a.id", (day,)).fetchall()
-        revenue = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date = ? AND i.status = 'paid'", (day,)).fetchone()[0]
-        expenses = conn.execute(
-            "SELECT id, date, category, description, amount FROM expenses WHERE date = ?", (day,)).fetchall()
-        exp_total = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date = ?", (day,)).fetchone()[0]
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([f"Rapport Journalier — {day}"])
-    writer.writerow([f"Revenus: {revenue} DT", f"Dépenses: {exp_total} DT", f"Bénéfice: {revenue - exp_total} DT"])
-    writer.writerow([])
-    writer.writerow(["=== RENDEZ-VOUS ==="])
-    writer.writerow(["ID", "Client", "Voiture", "Date", "Service", "Statut"])
-    for a in appointments:
-        writer.writerow(a)
-    writer.writerow([])
-    writer.writerow(["=== DÉPENSES ==="])
-    writer.writerow(["ID", "Date", "Catégorie", "Description", "Montant (DT)"])
-    for e in expenses:
-        writer.writerow(e)
-    response = make_response(output.getvalue())
-    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    response.headers['Content-Disposition'] = f'attachment; filename=daily_report_{day}.csv'
-    return response
-
-
-
 # ─── KPI Dashboard ───
 @reports_bp.route("/kpi")
 @login_required
@@ -355,272 +262,6 @@ def reports():
     return render_template("reports.html", months_data=months_data, top_services=top_services,
                            top_customers=top_customers, payment_methods=payment_methods,
                            total_paid=total_paid, total_unpaid=total_unpaid, total_partial=total_partial)
-
-
-
-# ─── Monthly Report PDF Export ───
-@reports_bp.route("/export/monthly_pdf")
-@login_required
-def export_monthly_pdf():
-    from xhtml2pdf import pisa
-    from datetime import date
-    month = request.args.get("month", "")
-    if not month:
-        today = date.today()
-        month = f"{today.year}-{today.month:02d}"
-    year, mon = map(int, month.split("-"))
-    ms = f"{year}-{mon:02d}-01"
-    if mon == 12:
-        me = f"{year+1}-01-01"
-    else:
-        me = f"{year}-{mon+1:02d}-01"
-    month_names_fr = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
-    month_label = f"{month_names_fr[mon-1]} {year}"
-    with get_db() as conn:
-        revenue = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'paid'", (ms, me)).fetchone()[0]
-        expenses_total = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
-        appt_count = conn.execute(
-            "SELECT COUNT(*) FROM appointments WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
-        completed_count = conn.execute(
-            "SELECT COUNT(*) FROM appointments WHERE date >= ? AND date < ? AND status = 'completed'", (ms, me)).fetchone()[0]
-        unpaid_total = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'unpaid'", (ms, me)).fetchone()[0]
-        top_services = conn.execute(
-            "SELECT a.service, COUNT(*) as cnt FROM appointments a WHERE a.date >= ? AND a.date < ? "
-            "GROUP BY a.service ORDER BY cnt DESC LIMIT 5", (ms, me)).fetchall()
-    settings = get_all_settings()
-    shop_name = settings.get('shop_name', 'AMILCAR')
-    profit = revenue - expenses_total
-    services_html = ""
-    for s in top_services:
-        services_html += f"<tr><td>{s[0]}</td><td style='text-align:right'>{s[1]}</td></tr>"
-    profit_color = '#2d6a4f' if profit >= 0 else '#C41E3A'
-    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-    <style>
-    body {{ font-family: Helvetica, Arial, sans-serif; color: #222; padding: 30px; }}
-    h1 {{ color: #C41E3A; text-align: center; font-size: 24px; letter-spacing: 3px; }}
-    h2 {{ color: #D4AF37; font-size: 16px; letter-spacing: 2px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }}
-    .subtitle {{ text-align: center; color: #888; font-size: 12px; letter-spacing: 2px; margin-bottom: 30px; }}
-    table {{ width: 100%; border-collapse: collapse; margin: 10px 0 20px; }}
-    td, th {{ padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 12px; }}
-    th {{ background: #f5f5f5; text-align: left; color: #D4AF37; font-weight: bold; }}
-    .stat-box {{ display: inline-block; width: 30%; text-align: center; padding: 15px; border: 1px solid #eee; border-radius: 8px; margin: 5px 1%; }}
-    .stat-val {{ font-size: 22px; font-weight: bold; color: #D4AF37; }}
-    .stat-lbl {{ font-size: 10px; color: #888; letter-spacing: 1px; margin-top: 5px; }}
-    </style></head><body>
-    <h1>{shop_name}</h1>
-    <p class="subtitle">RAPPORT MENSUEL &mdash; {month_label.upper()}</p>
-    <div style="text-align:center;margin-bottom:25px;">
-        <div class="stat-box"><div class="stat-val">{revenue:.0f} DT</div><div class="stat-lbl">REVENUS</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:#C41E3A">{expenses_total:.0f} DT</div><div class="stat-lbl">D&Eacute;PENSES</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:{profit_color}">{profit:.0f} DT</div><div class="stat-lbl">B&Eacute;N&Eacute;FICE NET</div></div>
-    </div>
-    <table><tr><th>Indicateur</th><th style="text-align:right">Valeur</th></tr>
-    <tr><td>Rendez-vous</td><td style="text-align:right">{appt_count}</td></tr>
-    <tr><td>Termin&eacute;s</td><td style="text-align:right">{completed_count}</td></tr>
-    <tr><td>Factures impay&eacute;es</td><td style="text-align:right">{unpaid_total:.0f} DT</td></tr>
-    </table>
-    <h2>TOP SERVICES</h2>
-    <table><tr><th>Service</th><th style="text-align:right">Nombre</th></tr>{services_html}</table>
-    <p style="text-align:center;color:#888;font-size:10px;margin-top:40px">G&eacute;n&eacute;r&eacute; automatiquement par {shop_name}</p>
-    </body></html>"""
-    try:
-        pdf_buffer = io.BytesIO()
-        pisa.CreatePDF(io.StringIO(html), dest=pdf_buffer)
-        pdf_buffer.seek(0)
-    except Exception as e:
-        flash(f"Erreur de génération PDF : {str(e)}", "error")
-        return redirect("/monthly")
-    response = make_response(pdf_buffer.read())
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=rapport_mensuel_{month}.pdf'
-    log_activity('Export PDF', f'Monthly report {month}')
-    return response
-
-
-
-@reports_bp.route("/export/full_report_excel")
-@login_required
-def export_full_report_excel():
-    """Full business report as CSV (Excel-compatible)"""
-    import csv
-    from datetime import date
-    today = date.today()
-    month = request.args.get("month", f"{today.year}-{today.month:02d}")
-    year, mon = map(int, month.split("-"))
-    ms = f"{year}-{mon:02d}-01"
-    me = f"{year+1}-01-01" if mon == 12 else f"{year}-{mon+1:02d}-01"
-    with get_db() as conn:
-        appointments = conn.execute(
-            "SELECT a.id, cu.name, ca.brand || ' ' || ca.model, ca.plate, a.date, a.service, a.status, COALESCE(a.assigned_to,'') "
-            "FROM appointments a JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.date >= ? AND a.date < ? ORDER BY a.date", (ms, me)).fetchall()
-        invoices = conn.execute(
-            "SELECT i.id, cu.name, a.service, i.amount, i.status, COALESCE(i.payment_method,''), a.date "
-            "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.date >= ? AND a.date < ? ORDER BY a.date", (ms, me)).fetchall()
-        expenses = conn.execute(
-            "SELECT id, date, category, description, amount FROM expenses WHERE date >= ? AND date < ? ORDER BY date", (ms, me)).fetchall()
-        revenue = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'paid'", (ms, me)).fetchone()[0]
-        exp_total = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=';')
-    month_names = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
-    writer.writerow([f"RAPPORT COMPLET — {month_names[mon-1]} {year}"])
-    writer.writerow([f"Revenus: {revenue:.0f} DT", f"Dépenses: {exp_total:.0f} DT", f"Bénéfice: {revenue-exp_total:.0f} DT"])
-    writer.writerow([])
-    writer.writerow(["=== RENDEZ-VOUS ==="])
-    writer.writerow(["ID", "Client", "Voiture", "Plaque", "Date", "Service", "Statut", "Technicien"])
-    for a in appointments:
-        writer.writerow(a)
-    writer.writerow([])
-    writer.writerow(["=== FACTURES ==="])
-    writer.writerow(["ID", "Client", "Service", "Montant (DT)", "Statut", "Paiement", "Date"])
-    for inv in invoices:
-        writer.writerow(inv)
-    writer.writerow([])
-    writer.writerow(["=== DÉPENSES ==="])
-    writer.writerow(["ID", "Date", "Catégorie", "Description", "Montant (DT)"])
-    for e in expenses:
-        writer.writerow(e)
-    response = make_response('\ufeff' + output.getvalue())
-    response.headers['Content-Type'] = 'text/csv; charset=utf-8-sig'
-    response.headers['Content-Disposition'] = f'attachment; filename=rapport_complet_{month}.csv'
-    log_activity('Export', f'Full report {month}')
-    return response
-
-
-
-# ─── Professional PDF Report ───
-@reports_bp.route("/export/professional_pdf")
-@login_required
-def export_professional_pdf():
-    from xhtml2pdf import pisa
-    from datetime import date
-    month = request.args.get("month", "")
-    if not month:
-        today = date.today()
-        month = f"{today.year}-{today.month:02d}"
-    year, mon = map(int, month.split("-"))
-    ms = f"{year}-{mon:02d}-01"
-    me = f"{year+1}-01-01" if mon == 12 else f"{year}-{mon+1:02d}-01"
-    month_names_fr = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
-    month_label = f"{month_names_fr[mon-1]} {year}"
-    settings = get_all_settings()
-    shop_name = settings.get('shop_name', 'AMILCAR')
-    shop_address = settings.get('shop_address', 'Mahres, Sfax')
-    shop_phone = settings.get('shop_phone', '')
-    with get_db() as conn:
-        revenue = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'paid'", (ms, me)).fetchone()[0]
-        expenses_total = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
-        appt_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
-        completed_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE date >= ? AND date < ? AND status = 'completed'", (ms, me)).fetchone()[0]
-        cancelled_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE date >= ? AND date < ? AND status = 'cancelled'", (ms, me)).fetchone()[0]
-        unpaid_total = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'unpaid'", (ms, me)).fetchone()[0]
-        new_customers = conn.execute(
-            "SELECT COUNT(DISTINCT ca.customer_id) FROM appointments a JOIN cars ca ON a.car_id = ca.id "
-            "WHERE a.date >= ? AND a.date < ? AND ca.customer_id NOT IN "
-            "(SELECT DISTINCT ca2.customer_id FROM appointments a2 JOIN cars ca2 ON a2.car_id = ca2.id WHERE a2.date < ?)",
-            (ms, me, ms)).fetchone()[0]
-        top_services = conn.execute(
-            "SELECT a.service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) FROM appointments a "
-            "LEFT JOIN invoices i ON i.appointment_id = a.id AND i.status = 'paid' "
-            "WHERE a.date >= ? AND a.date < ? GROUP BY a.service ORDER BY cnt DESC LIMIT 8", (ms, me)).fetchall()
-        top_customers = conn.execute(
-            "SELECT cu.name, COALESCE(SUM(i.amount),0) as total, COUNT(DISTINCT a.id) "
-            "FROM customers cu JOIN cars ca ON ca.customer_id = cu.id "
-            "JOIN appointments a ON a.car_id = ca.id "
-            "LEFT JOIN invoices i ON i.appointment_id = a.id AND i.status = 'paid' "
-            "WHERE a.date >= ? AND a.date < ? GROUP BY cu.id ORDER BY total DESC LIMIT 5", (ms, me)).fetchall()
-        exp_by_cat = conn.execute(
-            "SELECT category, COALESCE(SUM(amount),0) FROM expenses "
-            "WHERE date >= ? AND date < ? GROUP BY category ORDER BY SUM(amount) DESC", (ms, me)).fetchall()
-        # Daily revenue for mini chart
-        daily_rev = conn.execute(
-            "SELECT a.date, COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date >= ? AND a.date < ? AND i.status = 'paid' GROUP BY a.date ORDER BY a.date", (ms, me)).fetchall()
-    profit = revenue - expenses_total
-    completion_rate = round(completed_count / appt_count * 100) if appt_count > 0 else 0
-    services_rows = "".join(f"<tr><td>{s[0]}</td><td style='text-align:center'>{s[1]}</td><td style='text-align:right'>{s[2]:.0f} DT</td></tr>" for s in top_services)
-    customers_rows = "".join(f"<tr><td>{c[0]}</td><td style='text-align:center'>{c[2]}</td><td style='text-align:right'>{c[1]:.0f} DT</td></tr>" for c in top_customers)
-    expenses_rows = "".join(f"<tr><td>{e[0]}</td><td style='text-align:right'>{e[1]:.0f} DT</td></tr>" for e in exp_by_cat)
-    profit_color = '#2d6a4f' if profit >= 0 else '#C41E3A'
-    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-    <style>
-    @page {{ size: A4; margin: 20mm; }}
-    body {{ font-family: Helvetica, Arial, sans-serif; color: #222; font-size: 11px; line-height: 1.4; }}
-    .header {{ text-align: center; border-bottom: 3px solid #C41E3A; padding-bottom: 15px; margin-bottom: 20px; }}
-    .header h1 {{ color: #C41E3A; font-size: 28px; letter-spacing: 5px; margin: 0; }}
-    .header p {{ color: #888; font-size: 11px; letter-spacing: 2px; margin: 3px 0; }}
-    .header .month {{ color: #D4AF37; font-size: 16px; font-weight: bold; letter-spacing: 3px; margin-top: 10px; }}
-    .stats-grid {{ width: 100%; margin: 15px 0; }}
-    .stats-grid td {{ width: 33.33%; text-align: center; padding: 12px 8px; border: 1px solid #eee; }}
-    .stat-val {{ font-size: 20px; font-weight: bold; color: #D4AF37; }}
-    .stat-lbl {{ font-size: 9px; color: #888; letter-spacing: 1.5px; margin-top: 3px; }}
-    h2 {{ color: #C41E3A; font-size: 13px; letter-spacing: 2px; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin: 20px 0 8px; }}
-    table.data {{ width: 100%; border-collapse: collapse; margin: 5px 0 15px; }}
-    table.data th {{ background: #f8f6f0; color: #D4AF37; font-size: 10px; font-weight: bold; letter-spacing: 1px; padding: 6px 10px; text-align: left; border-bottom: 2px solid #D4AF37; }}
-    table.data td {{ padding: 5px 10px; border-bottom: 1px solid #f0f0f0; font-size: 10px; }}
-    table.data tr:nth-child(even) {{ background: #fafafa; }}
-    .footer {{ text-align: center; color: #aaa; font-size: 9px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }}
-    .two-col {{ width: 100%; }}
-    .two-col > tbody > tr > td {{ width: 50%; vertical-align: top; padding: 0 8px; }}
-    </style></head><body>
-    <div class="header">
-        <h1>{shop_name}</h1>
-        <p>{shop_address} {('| ' + shop_phone) if shop_phone else ''}</p>
-        <div class="month">RAPPORT MENSUEL &mdash; {month_label.upper()}</div>
-    </div>
-    <table class="stats-grid"><tr>
-        <td><div class="stat-val">{revenue:.0f} DT</div><div class="stat-lbl">REVENUS</div></td>
-        <td><div class="stat-val" style="color:#C41E3A">{expenses_total:.0f} DT</div><div class="stat-lbl">D&Eacute;PENSES</div></td>
-        <td><div class="stat-val" style="color:{profit_color}">{profit:.0f} DT</div><div class="stat-lbl">B&Eacute;N&Eacute;FICE NET</div></td>
-    </tr><tr>
-        <td><div class="stat-val" style="font-size:16px">{appt_count}</div><div class="stat-lbl">RENDEZ-VOUS</div></td>
-        <td><div class="stat-val" style="font-size:16px">{completion_rate}%</div><div class="stat-lbl">TAUX COMPL&Eacute;TION</div></td>
-        <td><div class="stat-val" style="font-size:16px">{new_customers}</div><div class="stat-lbl">NOUVEAUX CLIENTS</div></td>
-    </tr></table>
-    <table class="two-col"><tbody><tr><td>
-        <h2>TOP SERVICES</h2>
-        <table class="data"><tr><th>Service</th><th style="text-align:center">Nb</th><th style="text-align:right">Revenus</th></tr>{services_rows}</table>
-    </td><td>
-        <h2>TOP CLIENTS</h2>
-        <table class="data"><tr><th>Client</th><th style="text-align:center">Visites</th><th style="text-align:right">Total</th></tr>{customers_rows}</table>
-    </td></tr></tbody></table>
-    <h2>D&Eacute;PENSES PAR CAT&Eacute;GORIE</h2>
-    <table class="data"><tr><th>Cat&eacute;gorie</th><th style="text-align:right">Montant</th></tr>{expenses_rows}</table>
-    <table class="stats-grid" style="margin-top:10px"><tr>
-        <td><div class="stat-val" style="font-size:14px;color:#C41E3A">{unpaid_total:.0f} DT</div><div class="stat-lbl">IMPAY&Eacute;S</div></td>
-        <td><div class="stat-val" style="font-size:14px">{completed_count}</div><div class="stat-lbl">TERMIN&Eacute;S</div></td>
-        <td><div class="stat-val" style="font-size:14px;color:#888">{cancelled_count}</div><div class="stat-lbl">ANNUL&Eacute;S</div></td>
-    </tr></table>
-    <div class="footer">G&eacute;n&eacute;r&eacute; automatiquement par {shop_name} le {date.today().isoformat()} &mdash; Rapport confidentiel</div>
-    </body></html>"""
-    try:
-        pdf_buffer = io.BytesIO()
-        pisa.CreatePDF(io.StringIO(html), dest=pdf_buffer)
-        pdf_buffer.seek(0)
-    except Exception as e:
-        flash(f"Erreur de génération PDF : {str(e)}", "error")
-        return redirect("/reports")
-    response = make_response(pdf_buffer.read())
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=rapport_professionnel_{month}.pdf'
-    log_activity('Export PDF', f'Professional report {month}')
-    return response
 
 
 
@@ -1395,4 +1036,885 @@ def tech_daily_summary():
     return render_template("tech_summary.html", summaries=summaries, day=day)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXPORT: Excel & PDF
+# ═══════════════════════════════════════════════════════════════════════════════
 
+@reports_bp.route('/export/customers_excel')
+@login_required
+def export_customers_excel():
+    """Exporte la liste des clients en Excel (.xlsx)"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io
+
+    with get_db() as conn:
+        customers = conn.execute("""
+            SELECT c.id, c.name, c.phone, c.email,
+                   COALESCE(c.total_visits, 0) as visits,
+                   COALESCE(c.last_visit, '') as last_visit,
+                   COALESCE(rp.points, 0) as points,
+                   COALESCE(rp.tier, 'Bronze') as tier,
+                   COALESCE(SUM(i.amount), 0) as total_spent
+            FROM customers c
+            LEFT JOIN reward_points rp ON rp.customer_id = c.id
+            LEFT JOIN cars ca ON ca.customer_id = c.id
+            LEFT JOIN appointments a ON a.car_id = ca.id
+            LEFT JOIN invoices i ON i.appointment_id = a.id AND i.status = 'paid'
+            GROUP BY c.id ORDER BY total_spent DESC
+        """).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Clients"
+
+    # Header style
+    header_fill = PatternFill(start_color="1A1A2E", end_color="1A1A2E", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD'),
+    )
+
+    headers = ["#", "Nom", "Téléphone", "Email", "Visites", "Dernière visite", "Points", "Tier", "CA Total (DT)"]
+    col_widths = [5, 25, 15, 30, 8, 15, 8, 10, 15]
+
+    # Title row
+    ws.merge_cells("A1:I1")
+    title_cell = ws["A1"]
+    title_cell.value = "AMILCAR Auto Care — Liste des Clients"
+    title_cell.font = Font(bold=True, size=14, color="1A1A2E")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 30
+
+    # Header row
+    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+    ws.row_dimensions[2].height = 22
+
+    # Data rows
+    tier_colors = {"Platinum": "E8C547", "Gold": "FFD700", "Silver": "C0C0C0", "Bronze": "CD7F32"}
+    for row_idx, c in enumerate(customers, 3):
+        row_fill = PatternFill(start_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               end_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               fill_type="solid")
+        values = [c['id'], c['name'], c['phone'], c['email'] or '',
+                  c['visits'], c['last_visit'], c['points'], c['tier'],
+                  round(c['total_spent'], 2)]
+        for col, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col, value=val)
+            cell.fill = row_fill
+            cell.border = border
+            cell.alignment = Alignment(vertical="center",
+                                       horizontal="right" if col in (1, 5, 7, 9) else "left")
+        # Color tier cell
+        tier = c['tier']
+        if tier in tier_colors:
+            ws.cell(row=row_idx, column=8).fill = PatternFill(
+                start_color=tier_colors[tier], end_color=tier_colors[tier], fill_type="solid")
+
+    # Summary row
+    last_row = len(customers) + 3
+    ws.cell(row=last_row, column=1, value="TOTAL").font = Font(bold=True)
+    ws.cell(row=last_row, column=5, value=f"=SUM(E3:E{last_row-1})").font = Font(bold=True)
+    ws.cell(row=last_row, column=9, value=f"=SUM(I3:I{last_row-1})").font = Font(bold=True)
+
+    # Freeze header
+    ws.freeze_panes = "A3"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', 'Clients → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"clients_amilcar_{__import__('datetime').date.today()}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@reports_bp.route('/export/invoices_excel')
+@login_required
+def export_invoices_excel():
+    """Exporte les factures en Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io
+
+    date_from = request.args.get('from', '')
+    date_to = request.args.get('to', '')
+
+    with get_db() as conn:
+        q = """SELECT i.id, cu.name, a.date, a.service,
+                      i.amount, i.paid_amount, i.status, i.payment_method,
+                      ca.brand || ' ' || ca.model as car, ca.plate
+               FROM invoices i
+               JOIN appointments a ON i.appointment_id = a.id
+               JOIN cars ca ON a.car_id = ca.id
+               JOIN customers cu ON ca.customer_id = cu.id
+               WHERE 1=1"""
+        params = []
+        if date_from:
+            q += " AND a.date >= ?"
+            params.append(date_from)
+        if date_to:
+            q += " AND a.date <= ?"
+            params.append(date_to)
+        q += " ORDER BY i.id DESC"
+        invoices = conn.execute(q, params).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Factures"
+
+    header_fill = PatternFill(start_color="1A1A2E", end_color="1A1A2E", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD'),
+    )
+
+    headers = ["N°", "Client", "Date", "Service", "Voiture", "Plaque", "Montant DT", "Payé DT", "Reste DT", "Statut", "Paiement"]
+    col_widths = [6, 22, 12, 28, 20, 12, 12, 12, 12, 10, 12]
+
+    ws.merge_cells("A1:K1")
+    ws["A1"].value = f"AMILCAR — Factures{'  ' + date_from + ' → ' + date_to if date_from else ''}"
+    ws["A1"].font = Font(bold=True, size=13, color="1A1A2E")
+    ws["A1"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[1].height = 28
+
+    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+
+    status_colors = {"paid": "C8E6C9", "unpaid": "FFCDD2", "partial": "FFF9C4", "cancelled": "EEEEEE"}
+
+    total_amount = total_paid = 0
+    for row_idx, inv in enumerate(invoices, 3):
+        amount = inv['amount'] or 0
+        paid = inv['paid_amount'] or 0
+        reste = round(amount - paid, 2)
+        total_amount += amount
+        total_paid += paid
+        row_fill = PatternFill(start_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               end_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               fill_type="solid")
+        values = [inv['id'], inv['name'], inv['date'], inv['service'],
+                  inv['car'], inv['plate'], round(amount, 2), round(paid, 2), reste,
+                  inv['status'], inv['payment_method'] or '']
+        for col, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col, value=val)
+            cell.fill = row_fill
+            cell.border = border
+            cell.alignment = Alignment(vertical="center",
+                                       horizontal="right" if col in (7, 8, 9) else "left")
+        # Color status
+        st = inv['status']
+        if st in status_colors:
+            ws.cell(row=row_idx, column=10).fill = PatternFill(
+                start_color=status_colors[st], end_color=status_colors[st], fill_type="solid")
+
+    # Totals
+    last = len(invoices) + 3
+    for col, val in [(1, "TOTAL"), (7, round(total_amount, 2)),
+                     (8, round(total_paid, 2)), (9, round(total_amount - total_paid, 2))]:
+        cell = ws.cell(row=last, column=col, value=val)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
+
+    ws.freeze_panes = "A3"
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', 'Factures → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"factures_amilcar_{__import__('datetime').date.today()}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@reports_bp.route('/export/appointments_excel')
+@login_required
+def export_appointments_excel():
+    """Exporte les rendez-vous en Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io
+
+    date_from = request.args.get('from', '')
+    date_to = request.args.get('to', '')
+
+    with get_db() as conn:
+        q = """SELECT a.id, cu.name, cu.phone, ca.brand || ' ' || ca.model as car,
+                      ca.plate, a.date, a.time, a.service, a.status
+               FROM appointments a
+               JOIN cars ca ON a.car_id = ca.id
+               JOIN customers cu ON ca.customer_id = cu.id
+               WHERE 1=1"""
+        params = []
+        if date_from:
+            q += " AND a.date >= ?"
+            params.append(date_from)
+        if date_to:
+            q += " AND a.date <= ?"
+            params.append(date_to)
+        q += " ORDER BY a.date DESC, a.time"
+        appts = conn.execute(q, params).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Rendez-vous"
+
+    header_fill = PatternFill(start_color="0F3460", end_color="0F3460", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='DDDDDD'),
+        right=Side(style='thin', color='DDDDDD'),
+        bottom=Side(style='thin', color='DDDDDD'),
+    )
+
+    headers = ["#", "Client", "Téléphone", "Véhicule", "Plaque", "Date", "Heure", "Service", "Statut"]
+    col_widths = [5, 22, 14, 20, 12, 12, 8, 28, 12]
+
+    ws.merge_cells("A1:I1")
+    ws["A1"].value = "AMILCAR Auto Care — Rendez-vous"
+    ws["A1"].font = Font(bold=True, size=13, color="0F3460")
+    ws["A1"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[1].height = 28
+
+    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+
+    status_colors = {
+        "completed": "C8E6C9", "pending": "FFF9C4",
+        "cancelled": "FFCDD2", "in_progress": "BBDEFB"
+    }
+    for row_idx, a in enumerate(appts, 3):
+        row_fill = PatternFill(start_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               end_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               fill_type="solid")
+        values = [a['id'], a['name'], a['phone'], a['car'], a['plate'],
+                  a['date'], a['time'] or '', a['service'], a['status']]
+        for col, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col, value=val)
+            cell.fill = row_fill
+            cell.border = border
+            cell.alignment = Alignment(vertical="center")
+        st = a['status']
+        if st in status_colors:
+            ws.cell(row=row_idx, column=9).fill = PatternFill(
+                start_color=status_colors[st], end_color=status_colors[st], fill_type="solid")
+
+    ws.freeze_panes = "A3"
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', 'RDV → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rdv_amilcar_{__import__('datetime').date.today()}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@reports_bp.route('/export/full_report_excel')
+@reports_bp.route('/export/monthly')
+@login_required
+def export_monthly_report_excel():
+    """Rapport mensuel complet en Excel avec plusieurs feuilles"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.chart import BarChart, Reference
+    from openpyxl.utils import get_column_letter
+    import io
+    from datetime import date
+
+    month = request.args.get('month', date.today().strftime('%Y-%m'))
+
+    with get_db() as conn:
+        invoices = conn.execute("""
+            SELECT i.id, cu.name, a.date, a.service, i.amount, i.status, i.payment_method
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id
+            WHERE strftime('%Y-%m', a.date) = ? ORDER BY a.date
+        """, (month,)).fetchall()
+
+        expenses = conn.execute("""
+            SELECT id, description, amount, category, date
+            FROM expenses WHERE strftime('%Y-%m', date) = ? ORDER BY date
+        """, (month,)).fetchall()
+
+        top_services = conn.execute("""
+            SELECT a.service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) as revenue
+            FROM appointments a LEFT JOIN invoices i ON a.id=i.appointment_id
+            WHERE strftime('%Y-%m', a.date) = ? AND a.status='completed'
+            GROUP BY a.service ORDER BY revenue DESC LIMIT 10
+        """, (month,)).fetchall()
+
+        new_customers = conn.execute(
+            "SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', last_visit) = ?",
+            (month,)).fetchone()[0]
+
+    wb = openpyxl.Workbook()
+    header_fill = PatternFill(start_color="1A1A2E", end_color="1A1A2E", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC'),
+    )
+
+    def style_header(ws, row, cols, headers, widths):
+        for col, (h, w) in enumerate(zip(headers, widths), 1):
+            cell = ws.cell(row=row, column=col, value=h)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = border
+            ws.column_dimensions[get_column_letter(col)].width = w
+
+    # ── Feuille 1: Résumé ──────────────────────────────────────────────────
+    ws_sum = wb.active
+    ws_sum.title = "Résumé"
+    total_revenue = sum(r['amount'] for r in invoices if r['status'] == 'paid')
+    total_invoices = len(invoices)
+    total_expenses = sum(e['amount'] for e in expenses)
+    profit = total_revenue - total_expenses
+
+    summary_data = [
+        ("Mois", month),
+        ("Chiffre d'affaires (DT)", round(total_revenue, 2)),
+        ("Nombre de factures", total_invoices),
+        ("Dépenses totales (DT)", round(total_expenses, 2)),
+        ("Bénéfice net (DT)", round(profit, 2)),
+        ("Nouveaux clients", new_customers),
+        ("Taux de marge (%)", round((profit / total_revenue * 100) if total_revenue else 0, 1)),
+    ]
+    ws_sum.merge_cells("A1:B1")
+    ws_sum["A1"].value = f"AMILCAR — Rapport Mensuel {month}"
+    ws_sum["A1"].font = Font(bold=True, size=14, color="1A1A2E")
+    ws_sum["A1"].alignment = Alignment(horizontal="center")
+    ws_sum.row_dimensions[1].height = 30
+    ws_sum.column_dimensions["A"].width = 30
+    ws_sum.column_dimensions["B"].width = 20
+
+    for r, (label, val) in enumerate(summary_data, 2):
+        ws_sum.cell(row=r, column=1, value=label).font = Font(bold=True)
+        cell = ws_sum.cell(row=r, column=2, value=val)
+        if "Bénéfice" in label:
+            cell.font = Font(bold=True, color="2E7D32" if profit >= 0 else "C62828")
+        ws_sum.row_dimensions[r].height = 20
+
+    # ── Feuille 2: Factures ────────────────────────────────────────────────
+    ws_inv = wb.create_sheet("Factures")
+    ws_inv.merge_cells("A1:G1")
+    ws_inv["A1"].value = f"Factures — {month}"
+    ws_inv["A1"].font = Font(bold=True, size=12, color="1A1A2E")
+    ws_inv["A1"].alignment = Alignment(horizontal="center")
+    style_header(ws_inv, 2,
+                 ["#", "Client", "Date", "Service", "Montant DT", "Statut", "Paiement"],
+                 ["#", "Client", "Date", "Service", "Montant DT", "Statut", "Paiement"],
+                 [5, 22, 12, 28, 12, 10, 12])
+    for ri, inv in enumerate(invoices, 3):
+        row_fill = PatternFill(start_color="F8F9FA" if ri % 2 == 0 else "FFFFFF",
+                               end_color="F8F9FA" if ri % 2 == 0 else "FFFFFF", fill_type="solid")
+        for ci, val in enumerate([inv['id'], inv['name'], inv['date'], inv['service'],
+                                   round(inv['amount'], 2), inv['status'], inv['payment_method'] or ''], 1):
+            c = ws_inv.cell(row=ri, column=ci, value=val)
+            c.fill = row_fill
+            c.border = border
+
+    # ── Feuille 3: Top Services ────────────────────────────────────────────
+    ws_svc = wb.create_sheet("Top Services")
+    ws_svc.merge_cells("A1:C1")
+    ws_svc["A1"].value = f"Top Services — {month}"
+    ws_svc["A1"].font = Font(bold=True, size=12, color="1A1A2E")
+    ws_svc["A1"].alignment = Alignment(horizontal="center")
+    style_header(ws_svc, 2,
+                 ["Service", "Nombre", "CA (DT)"],
+                 ["Service", "Nombre", "CA (DT)"],
+                 [30, 10, 14])
+    for ri, svc in enumerate(top_services, 3):
+        for ci, val in enumerate([svc['service'], svc['cnt'], round(svc['revenue'], 2)], 1):
+            c = ws_svc.cell(row=ri, column=ci, value=val)
+            c.border = border
+
+    # ── Feuille 4: Dépenses ────────────────────────────────────────────────
+    ws_exp = wb.create_sheet("Dépenses")
+    ws_exp.merge_cells("A1:E1")
+    ws_exp["A1"].value = f"Dépenses — {month}"
+    ws_exp["A1"].font = Font(bold=True, size=12, color="1A1A2E")
+    ws_exp["A1"].alignment = Alignment(horizontal="center")
+    style_header(ws_exp, 2,
+                 ["#", "Description", "Montant DT", "Catégorie", "Date"],
+                 ["#", "Description", "Montant DT", "Catégorie", "Date"],
+                 [5, 30, 14, 16, 12])
+    for ri, exp in enumerate(expenses, 3):
+        for ci, val in enumerate([exp['id'], exp['description'],
+                                   round(exp['amount'], 2), exp['category'], exp['date']], 1):
+            c = ws_exp.cell(row=ri, column=ci, value=val)
+            c.border = border
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', f'Rapport mensuel {month} → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rapport_{month}_amilcar.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@reports_bp.route('/export/inventory_excel')
+@login_required
+def export_inventory_excel():
+    """Exporte l'inventaire en Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io
+
+    with get_db() as conn:
+        items = conn.execute(
+            "SELECT id, name, category, quantity, min_quantity, unit_price FROM inventory ORDER BY category, name"
+        ).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Inventaire"
+
+    header_fill = PatternFill(start_color="0F3460", end_color="0F3460", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC'),
+    )
+
+    ws.merge_cells("A1:F1")
+    ws["A1"].value = f"AMILCAR — Inventaire au {__import__('datetime').date.today()}"
+    ws["A1"].font = Font(bold=True, size=13, color="0F3460")
+    ws["A1"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[1].height = 28
+
+    headers = ["#", "Article", "Catégorie", "Quantité", "Qté Min", "Prix Unitaire DT"]
+    col_widths = [5, 30, 16, 10, 10, 18]
+    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+
+    low_stock_fill = PatternFill(start_color="FFCDD2", end_color="FFCDD2", fill_type="solid")
+    ok_stock_fill  = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+
+    for row_idx, item in enumerate(items, 3):
+        is_low = (item['quantity'] or 0) <= (item['min_quantity'] or 0)
+        row_fill = low_stock_fill if is_low else (
+            PatternFill(start_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                        end_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                        fill_type="solid"))
+        values = [item['id'], item['name'], item['category'],
+                  item['quantity'], item['min_quantity'],
+                  round(item['unit_price'] or 0, 2)]
+        for col, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col, value=val)
+            cell.fill = row_fill
+            cell.border = border
+            cell.alignment = Alignment(vertical="center",
+                                       horizontal="right" if col in (4, 5, 6) else "left")
+
+    # Legend
+    last = len(items) + 4
+    ws.cell(row=last, column=1, value="🔴 Rouge = stock bas").font = Font(italic=True, color="C62828")
+    ws.cell(row=last+1, column=1, value="🟢 Vert = stock OK").font = Font(italic=True, color="2E7D32")
+
+    ws.freeze_panes = "A3"
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', 'Inventaire → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"inventaire_amilcar_{__import__('datetime').date.today()}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ── PDF Exports ──────────────────────────────────────────────────────────────
+
+def _render_pdf(html_content):
+    """Helper: convert HTML to PDF bytes"""
+    from xhtml2pdf import pisa
+    import io
+    buf = io.BytesIO()
+    pisa.CreatePDF(io.StringIO(html_content), dest=buf)
+    buf.seek(0)
+    return buf
+
+
+@reports_bp.route('/export/monthly_pdf')
+@login_required
+def export_monthly_pdf():
+    """Rapport mensuel en PDF"""
+    from datetime import date as dt_date
+    month = request.args.get('month', dt_date.today().strftime('%Y-%m'))
+
+    with get_db() as conn:
+        invoices = conn.execute("""
+            SELECT i.id, cu.name, a.date, a.service, i.amount, i.status, i.payment_method
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id
+            WHERE strftime('%Y-%m', a.date) = ? ORDER BY a.date
+        """, (month,)).fetchall()
+
+        expenses = conn.execute(
+            "SELECT description, amount, category FROM expenses WHERE strftime('%Y-%m', date) = ? ORDER BY date",
+            (month,)).fetchall()
+
+        top_services = conn.execute("""
+            SELECT a.service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) as revenue
+            FROM appointments a LEFT JOIN invoices i ON a.id=i.appointment_id
+            WHERE strftime('%Y-%m', a.date) = ? AND a.status='completed'
+            GROUP BY a.service ORDER BY revenue DESC LIMIT 8
+        """, (month,)).fetchall()
+
+        settings = get_all_settings()
+
+    total_revenue = sum(r['amount'] for r in invoices if r['status'] == 'paid')
+    total_expenses_sum = sum(e['amount'] for e in expenses)
+    profit = total_revenue - total_expenses_sum
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+
+    profit_color = '#2e7d32' if profit >= 0 else '#c62828'
+    rows_invoices = ''.join(
+        f"<tr><td>{r['id']}</td><td>{r['name']}</td><td>{r['date']}</td>"
+        f"<td>{r['service']}</td><td>{round(r['amount'],2)} DT</td>"
+        f"<td class='{r['status']}'>{r['status']}</td></tr>"
+        for r in invoices[:50]
+    )
+    rows_services = ''.join(
+        f"<tr><td>{s['service']}</td><td>{s['cnt']}</td><td>{round(s['revenue'],2)}</td></tr>"
+        for s in top_services
+    )
+    rows_expenses = ''.join(
+        f"<tr><td>{e['description']}</td><td>{round(e['amount'],2)} DT</td><td>{e['category']}</td></tr>"
+        for e in expenses
+    )
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; margin: 20px; }}
+  h1 {{ color: #1a1a2e; font-size: 20px; text-align: center; border-bottom: 2px solid #e8c547; padding-bottom: 8px; }}
+  h2 {{ color: #0f3460; font-size: 14px; margin-top: 20px; border-left: 4px solid #e8c547; padding-left: 8px; }}
+  .kpi-grid {{ display: table; width: 100%; margin: 16px 0; }}
+  .kpi {{ display: table-cell; text-align: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; }}
+  .kpi-val {{ font-size: 20px; font-weight: bold; color: #0f3460; }}
+  .kpi-label {{ font-size: 10px; color: #666; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
+  th {{ background: #1a1a2e; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }}
+  td {{ padding: 5px 8px; border-bottom: 1px solid #eee; font-size: 10px; }}
+  tr:nth-child(even) td {{ background: #f8f9fa; }}
+  .paid {{ color: #2e7d32; font-weight: bold; }}
+  .unpaid {{ color: #c62828; font-weight: bold; }}
+  .partial {{ color: #e65100; font-weight: bold; }}
+  .footer {{ text-align: center; color: #999; font-size: 9px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 8px; }}
+</style>
+</head><body>
+<h1>AMILCAR — Rapport Mensuel {month}</h1>
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-val">{round(total_revenue, 0):.0f} DT</div><div class="kpi-label">Chiffre d&apos;affaires</div></div>
+  <div class="kpi"><div class="kpi-val">{len(invoices)}</div><div class="kpi-label">Factures</div></div>
+  <div class="kpi"><div class="kpi-val">{round(total_expenses_sum, 0):.0f} DT</div><div class="kpi-label">Depenses</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:{profit_color}">{round(profit, 0):.0f} DT</div><div class="kpi-label">Benefice net</div></div>
+</div>
+<h2>Top Services</h2>
+<table><tr><th>Service</th><th>Nombre</th><th>Revenu (DT)</th></tr>{rows_services}</table>
+<h2>Factures ({len(invoices)})</h2>
+<table><tr><th>#</th><th>Client</th><th>Date</th><th>Service</th><th>Montant</th><th>Statut</th></tr>{rows_invoices}</table>
+<h2>Depenses ({len(expenses)})</h2>
+<table><tr><th>Description</th><th>Montant</th><th>Categorie</th></tr>{rows_expenses}</table>
+<div class="footer">Genere le {dt_date.today()} — {shop_name}</div>
+</body></html>"""
+
+    buf = _render_pdf(html)
+    log_activity('Export', f'Rapport {month} → PDF')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rapport_{month}_amilcar.pdf",
+                     mimetype="application/pdf")
+
+
+@reports_bp.route('/export/professional_pdf')
+@login_required
+def export_professional_pdf():
+    """Rapport general professionnel PDF"""
+    from datetime import date as dt_date
+
+    today = dt_date.today()
+    month_start = today.strftime('%Y-%m-01')
+
+    with get_db() as conn:
+        settings = get_all_settings()
+        total_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        total_cars = conn.execute("SELECT COUNT(*) FROM cars").fetchone()[0]
+        revenue_month = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid' AND created_at >= ?",
+            (month_start,)).fetchone()[0]
+        revenue_total = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid'").fetchone()[0]
+        appts_total = conn.execute("SELECT COUNT(*) FROM appointments").fetchone()[0]
+        appts_completed = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE status='completed'").fetchone()[0]
+        top_services = conn.execute("""
+            SELECT a.service, COUNT(*) as cnt, COALESCE(SUM(i.amount),0) as rev
+            FROM appointments a LEFT JOIN invoices i ON a.id=i.appointment_id
+            WHERE a.status='completed' GROUP BY a.service ORDER BY rev DESC LIMIT 8
+        """).fetchall()
+        recent_invoices = conn.execute("""
+            SELECT i.id, cu.name, a.date, a.service, i.amount, i.status
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id
+            ORDER BY i.id DESC LIMIT 15
+        """).fetchall()
+        low_stock = conn.execute(
+            "SELECT name, quantity, min_quantity FROM inventory WHERE quantity <= min_quantity AND min_quantity > 0"
+        ).fetchall()
+
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    completion_rate = round(appts_completed / appts_total * 100, 1) if appts_total else 0
+
+    rows_services = ''.join(
+        f"<tr><td>{s['service']}</td><td>{s['cnt']}</td><td>{round(s['rev'],2)}</td></tr>"
+        for s in top_services
+    )
+    rows_invoices = ''.join(
+        f"<tr><td>{r['id']}</td><td>{r['name']}</td><td>{r['date']}</td>"
+        f"<td>{r['service']}</td><td>{round(r['amount'],2)}</td>"
+        f"<td class='badge-{r['status']}'>{r['status']}</td></tr>"
+        for r in recent_invoices
+    )
+    stock_alerts = ''.join(
+        f"<p>- {i['name']} : {i['quantity']} unites (min: {i['min_quantity']})</p>"
+        for i in low_stock
+    )
+    stock_section = (
+        f'<h2>Alertes Stock</h2><div class="alert-box">{stock_alerts}</div>'
+        if low_stock else ''
+    )
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; margin: 24px; }}
+  .header {{ background: #1a1a2e; color: white; padding: 16px; text-align: center; }}
+  .header h1 {{ color: #e8c547; margin: 0; font-size: 20px; }}
+  .header p {{ color: #aaa; margin: 4px 0 0; }}
+  h2 {{ color: #0f3460; font-size: 13px; margin-top: 22px; border-bottom: 2px solid #e8c547; padding-bottom: 4px; }}
+  .kpi-row {{ display: table; width: 100%; margin: 12px 0; }}
+  .kpi {{ display: table-cell; padding: 10px; background: #f0f4ff; border: 1px solid #c5cef0; text-align: center; }}
+  .kpi-val {{ font-size: 20px; font-weight: bold; color: #0f3460; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }}
+  th {{ background: #0f3460; color: white; padding: 6px 8px; text-align: left; }}
+  td {{ padding: 5px 8px; border-bottom: 1px solid #eee; }}
+  tr:nth-child(even) td {{ background: #f8f9fa; }}
+  .badge-paid {{ color: #2e7d32; font-weight: bold; }}
+  .badge-unpaid {{ color: #c62828; }}
+  .badge-partial {{ color: #e65100; }}
+  .alert-box {{ background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 10px 0; }}
+  .footer {{ text-align: center; color: #aaa; font-size: 9px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; }}
+</style>
+</head><body>
+<div class="header">
+  <h1>{shop_name}</h1>
+  <p>Rapport Professionnel — {today.strftime('%d/%m/%Y')}</p>
+</div>
+<h2>Indicateurs Cles</h2>
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-val">{total_customers}</div><div>Clients</div></div>
+  <div class="kpi"><div class="kpi-val">{total_cars}</div><div>Vehicules</div></div>
+  <div class="kpi"><div class="kpi-val">{appts_total}</div><div>RDV total</div></div>
+  <div class="kpi"><div class="kpi-val">{completion_rate}%</div><div>Taux completion</div></div>
+</div>
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-val">{round(revenue_month):,} DT</div><div>CA ce mois</div></div>
+  <div class="kpi"><div class="kpi-val">{round(revenue_total):,} DT</div><div>CA total</div></div>
+</div>
+<h2>Top Services</h2>
+<table><tr><th>Service</th><th>Prestations</th><th>Revenu (DT)</th></tr>{rows_services}</table>
+<h2>Dernieres Factures</h2>
+<table><tr><th>#</th><th>Client</th><th>Date</th><th>Service</th><th>Montant DT</th><th>Statut</th></tr>{rows_invoices}</table>
+{stock_section}
+<div class="footer">{shop_name} — Rapport confidentiel — {today}</div>
+</body></html>"""
+
+    buf = _render_pdf(html)
+    log_activity('Export', 'Rapport professionnel → PDF')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rapport_professionnel_{today}.pdf",
+                     mimetype="application/pdf")
+
+
+@reports_bp.route('/export/daily')
+@login_required
+def export_daily_pdf():
+    """Rapport journalier PDF"""
+    from datetime import date as dt_date
+
+    day = request.args.get('date', dt_date.today().isoformat())
+
+    with get_db() as conn:
+        settings = get_all_settings()
+        appts = conn.execute("""
+            SELECT a.id, cu.name, cu.phone, ca.brand || ' ' || ca.model as car,
+                   ca.plate, a.time, a.service, a.status,
+                   COALESCE(i.amount, 0) as amount
+            FROM appointments a
+            JOIN cars ca ON a.car_id = ca.id
+            JOIN customers cu ON ca.customer_id = cu.id
+            LEFT JOIN invoices i ON i.appointment_id = a.id
+            WHERE a.date = ? ORDER BY a.time
+        """, (day,)).fetchall()
+
+        revenue = conn.execute(
+            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i "
+            "JOIN appointments a ON i.appointment_id=a.id WHERE a.date=? AND i.status='paid'",
+            (day,)).fetchone()[0]
+
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    completed = sum(1 for a in appts if a['status'] == 'completed')
+
+    rows = ''.join(
+        f"<tr><td>{a['time'] or '-'}</td><td>{a['name']}</td><td>{a['car']}</td>"
+        f"<td>{a['plate']}</td><td>{a['service']}</td>"
+        f"<td class='{a['status']}'>{a['status']}</td>"
+        f"<td>{round(a['amount'],2) if a['amount'] else '-'} DT</td></tr>"
+        for a in appts
+    )
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; margin: 24px; }}
+  .header {{ background: #1a1a2e; color: white; padding: 14px; text-align: center; }}
+  .header h1 {{ color: #e8c547; margin: 0; font-size: 18px; }}
+  .stats {{ display: table; width: 100%; margin: 14px 0; }}
+  .stat {{ display: table-cell; text-align: center; padding: 10px; background: #f0f4ff; border: 1px solid #ddd; }}
+  .stat-val {{ font-size: 20px; font-weight: bold; color: #0f3460; }}
+  table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
+  th {{ background: #0f3460; color: white; padding: 7px; font-size: 10px; }}
+  td {{ padding: 6px 7px; border-bottom: 1px solid #eee; font-size: 10px; }}
+  tr:nth-child(even) td {{ background: #f8f9fa; }}
+  .completed {{ color: #2e7d32; font-weight: bold; }}
+  .pending {{ color: #e65100; }}
+  .cancelled {{ color: #c62828; }}
+</style>
+</head><body>
+<div class="header">
+  <h1>{shop_name} — Rapport Journalier</h1>
+  <p style="color:#aaa;margin:4px 0 0">{day}</p>
+</div>
+<div class="stats">
+  <div class="stat"><div class="stat-val">{len(appts)}</div><div>RDV total</div></div>
+  <div class="stat"><div class="stat-val">{completed}</div><div>Completes</div></div>
+  <div class="stat"><div class="stat-val">{round(revenue,0):.0f} DT</div><div>Revenu</div></div>
+</div>
+<table>
+  <tr><th>Heure</th><th>Client</th><th>Vehicule</th><th>Plaque</th><th>Service</th><th>Statut</th><th>Montant</th></tr>
+  {rows}
+</table>
+</body></html>"""
+
+    buf = _render_pdf(html)
+    log_activity('Export', f'Rapport journalier {day} → PDF')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rapport_journalier_{day}.pdf",
+                     mimetype="application/pdf")
+
+
+@reports_bp.route('/export/expenses')
+@login_required
+def export_expenses_excel():
+    """Exporte les depenses en Excel"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io
+    from datetime import date as dt_date
+
+    month = request.args.get('month', dt_date.today().strftime('%Y-%m'))
+
+    with get_db() as conn:
+        expenses = conn.execute(
+            "SELECT id, description, amount, category, date FROM expenses "
+            "WHERE strftime('%Y-%m', date) = ? ORDER BY date",
+            (month,)).fetchall()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Depenses"
+
+    header_fill = PatternFill(start_color="C62828", end_color="C62828", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    border = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC'),
+    )
+
+    ws.merge_cells("A1:E1")
+    ws["A1"].value = f"AMILCAR — Depenses {month}"
+    ws["A1"].font = Font(bold=True, size=13, color="C62828")
+    ws["A1"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[1].height = 28
+
+    headers = ["#", "Description", "Montant DT", "Categorie", "Date"]
+    col_widths = [5, 35, 14, 18, 12]
+    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col)].width = w
+
+    total = 0
+    for row_idx, exp in enumerate(expenses, 3):
+        total += exp['amount'] or 0
+        row_fill = PatternFill(start_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               end_color="F8F9FA" if row_idx % 2 == 0 else "FFFFFF",
+                               fill_type="solid")
+        for col, val in enumerate([exp['id'], exp['description'],
+                                    round(exp['amount'], 2), exp['category'], exp['date']], 1):
+            cell = ws.cell(row=row_idx, column=col, value=val)
+            cell.fill = row_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal="right" if col == 3 else "left")
+
+    last_row = len(expenses) + 3
+    ws.cell(row=last_row, column=2, value="TOTAL").font = Font(bold=True)
+    total_cell = ws.cell(row=last_row, column=3, value=round(total, 2))
+    total_cell.font = Font(bold=True, color="C62828")
+    total_cell.fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
+
+    ws.freeze_panes = "A3"
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', f'Depenses {month} → Excel')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"depenses_{month}_amilcar.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
