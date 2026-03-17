@@ -1,6 +1,7 @@
 __pycache__/
 *.db
 .secret_key
+.admin_init_pw
 *.backup
 *.backup2
 *.bak

@@ -136,6 +136,7 @@
                 <div class="card p-4">
                     <h5 style="color:var(--gold);margin-bottom:16px">➕ Demander un rendez-vous</h5>
                     <form method="POST" action="/client_portal/{{ token }}/book">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="mb-3">
                             <label style="color:var(--muted);font-size:.8rem">Véhicule</label>
                             <select name="car_id" class="form-select" required style="background:var(--bg-card);color:var(--text);border-color:var(--border)">

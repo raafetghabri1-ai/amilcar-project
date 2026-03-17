@@ -50,6 +50,7 @@
     <div class="card-header bg-dark text-white"><h5 class="mb-0">Enregistrer Présence</h5></div>
     <div class="card-body">
         <form method="post" action="/attendance/record" class="row g-3 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="col-md-2">
                 <label class="form-label">Employé</label>
                 <select name="employee_id" class="form-select" required>

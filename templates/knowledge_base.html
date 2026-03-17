@@ -84,6 +84,7 @@
 <div class="modal fade" id="addArticleModal">
     <div class="modal-dialog modal-lg">
         <form method="post" action="/knowledge_base/add" class="modal-content">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="modal-header"><h5 class="modal-title">Nouvel Article</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">

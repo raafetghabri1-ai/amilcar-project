@@ -1192,11 +1192,15 @@ def create_tables():
         ("ALTER TABLE services ADD COLUMN popular INTEGER DEFAULT 0", None),
         ("ALTER TABLE services ADD COLUMN image_url TEXT DEFAULT ''", None),
     ]
+    import logging
+    _mig_log = logging.getLogger('amilcar.migrations')
     for sql, _ in migrations:
         try:
             cursor.execute(sql)
-        except:
-            pass
+        except Exception as e:
+            msg = str(e)
+            if 'duplicate column' not in msg and 'already exists' not in msg:
+                _mig_log.warning('Migration failed: %s — %s', sql[:60], msg)
 
     # ─── Phase 13: Premium Car Care Intelligence Tables ───
 

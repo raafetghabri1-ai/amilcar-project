@@ -35,6 +35,7 @@
         <p class="info-line">Véhicule: <span class="info-highlight">{{ appt[4] }} {{ appt[5] }}</span></p>
 
         <form method="POST" action="/rate/{{ token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="star-rating" style="direction:rtl">
                 {% for i in range(5, 0, -1) %}
                 <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" {% if i == 5 %}required{% endif %}>

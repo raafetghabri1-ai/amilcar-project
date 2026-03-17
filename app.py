@@ -92,14 +92,21 @@ def api_rate_limiter():
 
 # ─── Initialize Admin User ───
 def init_admin():
+    import secrets
     from werkzeug.security import generate_password_hash
     with get_db() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'employee', full_name TEXT)")
         admin = conn.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
         if not admin:
+            init_pw = secrets.token_urlsafe(12)
             conn.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
-                ('admin', generate_password_hash('admin123'), 'admin'))
+                ('admin', generate_password_hash(init_pw), 'admin'))
             conn.commit()
+            pw_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.admin_init_pw')
+            with open(pw_file, 'w') as f:
+                f.write(f'Admin initial password: {init_pw}\nChange it immediately after first login.\n')
+            os.chmod(pw_file, 0o600)
+            print(f'\n⚠️  Admin initial password saved to .admin_init_pw — change it immediately!\n')
         else:
             conn.execute("UPDATE users SET role = 'admin' WHERE username = 'admin' AND (role IS NULL OR role = 'employee')")
             conn.commit()

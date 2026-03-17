@@ -5,7 +5,7 @@ Routes: 16
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, check_booking_rate_limit, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -56,6 +56,9 @@ def customer_request_appointment():
     client_id = session.get('client_id')
     if not client_id:
         return redirect("/client")
+    if check_booking_rate_limit():
+        flash("Trop de demandes. Réessayez dans quelques minutes.", "error")
+        return redirect("/client/dashboard")
     car_id = request.form.get("car_id")
     date_val = request.form.get("date", "")
     service = request.form.get("service", "")
