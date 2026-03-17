@@ -175,6 +175,32 @@ def notify_update(event_type, data=None):
 # Make notify_update available to blueprints
 app.config['notify_update'] = notify_update
 
+# ─── Auto Backup Scheduler ───
+def _run_daily_backup():
+    """Background thread: runs daily backup + Telegram send if enabled."""
+    import threading
+    while True:
+        time_module.sleep(86400)  # 24 hours
+        try:
+            with app.app_context():
+                db = get_db()
+                auto = db.execute("SELECT value FROM settings WHERE key='auto_backup'").fetchone()
+                if auto and auto[0] == '1':
+                    from routes.settings_admin import _perform_backup, _send_telegram_backup
+                    fname = _perform_backup()
+                    if fname:
+                        tg_auto = db.execute("SELECT value FROM settings WHERE key='telegram_auto_backup'").fetchone()
+                        if tg_auto and tg_auto[0] == '1':
+                            backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
+                            _send_telegram_backup(os.path.join(backup_dir, fname), fname)
+                db.close()
+        except Exception:
+            pass
+
+import threading
+_backup_thread = threading.Thread(target=_run_daily_backup, daemon=True)
+_backup_thread.start()
+
 if __name__ == '__main__':
     # Development only — production uses gunicorn (see Procfile)
     import os

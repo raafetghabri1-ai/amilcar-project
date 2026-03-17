@@ -115,6 +115,45 @@
                 <a href="/backup" class="btn w-100" style="border:1px solid var(--gold);color:var(--gold)">⤓ TÉLÉCHARGER LA BASE</a>
                 <div id="backupList" class="mt-3"></div>
             </div>
+
+            <!-- Telegram Cloud Backup -->
+            <div class="card p-4 mt-3">
+                <h5 style="color:#0088cc;letter-spacing:2px;font-size:0.85rem;margin-bottom:15px">📲 TELEGRAM CLOUD BACKUP</h5>
+                <form method="POST" action="/settings">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:12px">
+                        Envoyez automatiquement vos sauvegardes sur Telegram.<br>
+                        1. Créez un bot via <b>@BotFather</b> sur Telegram<br>
+                        2. Envoyez <b>/start</b> à votre bot<br>
+                        3. Obtenez votre Chat ID via <b>@userinfobot</b>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">TOKEN DU BOT</label>
+                        <input type="password" name="telegram_bot_token" class="form-control" value="{{ settings.get('telegram_bot_token', '') }}" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CHAT ID</label>
+                        <input type="text" name="telegram_chat_id" class="form-control" value="{{ settings.get('telegram_chat_id', '') }}" placeholder="123456789" maxlength="20">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="hidden" name="telegram_auto_backup" value="0">
+                        <input type="checkbox" name="telegram_auto_backup" class="form-check-input" id="tgAutoBackup" value="1" {% if settings.get('telegram_auto_backup', '0') == '1' %}checked{% endif %} style="accent-color:#0088cc">
+                        <label class="form-check-label" for="tgAutoBackup">Envoi automatique quotidien sur Telegram</label>
+                    </div>
+                    <button type="submit" class="btn-gold w-100 mb-2">ENREGISTRER</button>
+                </form>
+                <hr style="border-color:var(--border-color)">
+                <div class="d-flex gap-2">
+                    <form method="POST" action="/telegram_test" class="flex-fill">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn w-100" style="border:1px solid #0088cc;color:#0088cc;font-size:0.8rem">🔔 TEST</button>
+                    </form>
+                    <form method="POST" action="/telegram_backup" class="flex-fill">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn w-100" style="border:1px solid #0088cc;color:#0088cc;font-size:0.8rem">📤 ENVOYER MAINTENANT</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 {% block scripts %}

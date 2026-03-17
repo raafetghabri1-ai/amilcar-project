@@ -16,6 +16,78 @@ import sqlite3
 
 admin_bp = Blueprint("admin_bp", __name__)
 
+# ─── Backup Helpers ───
+def _perform_backup():
+    """Create a timestamped backup of the database. Returns filename or None."""
+    import shutil
+    backup_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'amilcar.db')
+    if not os.path.exists(db_path):
+        return None
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'amilcar_backup_{timestamp}.db'
+    dest = os.path.join(backup_dir, filename)
+    shutil.copy2(db_path, dest)
+    # Clean old backups
+    try:
+        with get_db() as conn:
+            keep = int(conn.execute("SELECT value FROM settings WHERE key='backup_keep_days'").fetchone()[0])
+    except Exception:
+        keep = 7
+    cutoff = (datetime.now() - timedelta(days=keep)).strftime('%Y%m%d')
+    for f in os.listdir(backup_dir):
+        if f.startswith('amilcar_backup_') and f < f'amilcar_backup_{cutoff}':
+            try:
+                os.remove(os.path.join(backup_dir, f))
+            except OSError:
+                pass
+    return filename
+
+
+def _send_telegram_backup(filepath, filename):
+    """Send a backup file to Telegram. Returns (success, message)."""
+    import urllib.request, urllib.error
+    try:
+        with get_db() as conn:
+            bot_token = conn.execute("SELECT value FROM settings WHERE key='telegram_bot_token'").fetchone()
+            chat_id = conn.execute("SELECT value FROM settings WHERE key='telegram_chat_id'").fetchone()
+        if not bot_token or not bot_token[0].strip() or not chat_id or not chat_id[0].strip():
+            return False, "Telegram non configuré"
+        token = bot_token[0].strip()
+        cid = chat_id[0].strip()
+    except Exception:
+        return False, "Erreur lecture paramètres"
+
+    url = f'https://api.telegram.org/bot{token}/sendDocument'
+    boundary = '----AmilcarBackup'
+    caption = f"🗄 Sauvegarde AMILCAR\n📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}\n📦 {filename}"
+
+    with open(filepath, 'rb') as f:
+        file_data = f.read()
+
+    body = (
+        f'--{boundary}\r\n'
+        f'Content-Disposition: form-data; name="chat_id"\r\n\r\n{cid}\r\n'
+        f'--{boundary}\r\n'
+        f'Content-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'
+        f'--{boundary}\r\n'
+        f'Content-Disposition: form-data; name="document"; filename="{filename}"\r\n'
+        f'Content-Type: application/octet-stream\r\n\r\n'
+    ).encode() + file_data + f'\r\n--{boundary}--\r\n'.encode()
+
+    req = urllib.request.Request(url, data=body, method='POST')
+    req.add_header('Content-Type', f'multipart/form-data; boundary={boundary}')
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        if resp.status == 200:
+            return True, "Sauvegarde envoyée sur Telegram ✅"
+        return False, f"Telegram erreur: {resp.status}"
+    except urllib.error.HTTPError as e:
+        return False, f"Telegram erreur: {e.code} {e.reason}"
+    except Exception as e:
+        return False, f"Erreur réseau: {str(e)}"
+
 
 # ─── Global Search ───
 @admin_bp.route("/search")
@@ -120,7 +192,8 @@ def settings_page():
             keys = ['shop_name', 'shop_tagline', 'shop_address', 'shop_phone', 'tax_rate',
                     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
                     'sms_api_url', 'sms_api_key', 'sms_sender',
-                    'wa_callmebot_phone', 'wa_callmebot_apikey', 'wa_notify_booking']
+                    'wa_callmebot_phone', 'wa_callmebot_apikey', 'wa_notify_booking',
+                    'telegram_bot_token', 'telegram_chat_id', 'telegram_auto_backup']
             for key in keys:
                 val = request.form.get(key, "").strip()
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
@@ -201,6 +274,60 @@ def download_backup(filename):
     response.headers['Content-Type'] = 'application/octet-stream'
     response.headers['Content-Disposition'] = f'attachment; filename={safe_name}'
     return response
+
+
+# ─── Telegram Backup ───
+@admin_bp.route("/telegram_backup", methods=["POST"])
+@admin_required
+def telegram_backup():
+    """Manual trigger: backup DB and send to Telegram."""
+    backup_name = _perform_backup()
+    if not backup_name:
+        flash("Erreur lors de la création de la sauvegarde", "error")
+        return redirect("/settings")
+    backup_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
+    filepath = os.path.join(backup_dir, backup_name)
+    ok, msg = _send_telegram_backup(filepath, backup_name)
+    if ok:
+        log_activity('Telegram Backup', f'Sent {backup_name}')
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+    return redirect("/settings")
+
+
+@admin_bp.route("/telegram_test", methods=["POST"])
+@admin_required
+def telegram_test():
+    """Send a test message to verify Telegram config."""
+    import urllib.request, urllib.error
+    try:
+        with get_db() as conn:
+            bot_token = conn.execute("SELECT value FROM settings WHERE key='telegram_bot_token'").fetchone()
+            chat_id = conn.execute("SELECT value FROM settings WHERE key='telegram_chat_id'").fetchone()
+        if not bot_token or not bot_token[0].strip() or not chat_id or not chat_id[0].strip():
+            flash("Veuillez d'abord configurer le token et le chat ID", "error")
+            return redirect("/settings")
+        token = bot_token[0].strip()
+        cid = chat_id[0].strip()
+    except Exception:
+        flash("Erreur lecture paramètres", "error")
+        return redirect("/settings")
+
+    import urllib.parse
+    text = "✅ AMILCAR Auto Care — Test de connexion Telegram réussi!"
+    url = f'https://api.telegram.org/bot{token}/sendMessage?chat_id={urllib.parse.quote(cid)}&text={urllib.parse.quote(text)}'
+    try:
+        resp = urllib.request.urlopen(url, timeout=10)
+        if resp.status == 200:
+            flash("Message de test envoyé sur Telegram ✅", "success")
+        else:
+            flash(f"Erreur Telegram: {resp.status}", "error")
+    except urllib.error.HTTPError as e:
+        flash(f"Erreur Telegram: {e.code} — Vérifiez le token et chat ID", "error")
+    except Exception as e:
+        flash(f"Erreur réseau: {str(e)}", "error")
+    return redirect("/settings")
 
 
 
