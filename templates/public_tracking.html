@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR — Suivi de Rendez-vous</title>
+    <style>
+        :root { --gold: #D4AF37; --navy: #1A1A2E; --bg: #09090b; --card: #111113; --border: rgba(255,255,255,0.06); --text: #e0e0e0; --muted: #666680; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .container { max-width: 520px; margin: 0 auto; padding: 40px 20px; }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo h1 { color: var(--gold); font-size: 2rem; letter-spacing: 8px; font-weight: 800; }
+        .logo p { color: var(--muted); font-size: 0.7rem; letter-spacing: 4px; margin-top: 4px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+        h2 { color: var(--gold); font-size: 0.85rem; letter-spacing: 3px; margin-bottom: 18px; text-transform: uppercase; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.7rem; color: var(--muted); letter-spacing: 2px; margin-bottom: 6px; text-transform: uppercase; }
+        input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; transition: border-color 0.3s; }
+        input:focus { outline: none; border-color: var(--gold); }
+        .btn { display: block; width: 100%; background: linear-gradient(135deg, #B8962E, #D4AF37); color: #1a1a2e; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; letter-spacing: 2px; cursor: pointer; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-1px); }
+        .error { background: rgba(229,62,62,0.1); border: 1px solid rgba(229,62,62,0.3); color: #E53E3E; padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; text-align: center; }
+        .result { margin-top: 8px; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 8px; margin-bottom: 18px; }
+        .status-pending { background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); }
+        .status-in_progress { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); }
+        .status-completed { background: rgba(56,161,105,0.1); border: 1px solid rgba(56,161,105,0.3); }
+        .status-cancelled { background: rgba(102,102,128,0.1); border: 1px solid rgba(102,102,128,0.3); }
+        .status-text { font-weight: 700; font-size: 1rem; letter-spacing: 2px; }
+        .status-pending .status-text { color: var(--gold); }
+        .status-in_progress .status-text { color: #3B82F6; }
+        .status-completed .status-text { color: #38A169; }
+        .status-cancelled .status-text { color: var(--muted); }
+        .status-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 2px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .info-item { padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border); }
+        .info-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+        .info-value { font-size: 0.95rem; font-weight: 600; }
+        .status-steps { display: flex; justify-content: space-between; margin: 20px 0; position: relative; }
+        .status-steps::before { content: ''; position: absolute; top: 14px; left: 10%; right: 10%; height: 2px; background: var(--border); }
+        .step { text-align: center; position: relative; z-index: 1; flex: 1; }
+        .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--card); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; font-size: 0.7rem; }
+        .step.active .step-dot { border-color: var(--gold); background: var(--gold); color: #1a1a2e; }
+        .step.done .step-dot { border-color: #38A169; background: #38A169; color: white; }
+        .step-label { font-size: 0.55rem; color: var(--muted); letter-spacing: 1px; }
+        .step.active .step-label, .step.done .step-label { color: var(--text); }
+        .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .photos img { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
+        .back-link { display: block; text-align: center; color: var(--gold); text-decoration: none; font-size: 0.8rem; letter-spacing: 2px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="logo">
+        <h1>AMILCAR</h1>
+        <p>SUIVI DE RENDEZ-VOUS</p>
+    </div>
+
+    {% if not result %}
+    <div class="card">
+        <h2>🔍 Suivre mon Rendez-vous</h2>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="GET" action="/suivi">
+            <div class="form-group">
+                <label>N° du Rendez-vous</label>
+                <input type="number" name="id" required placeholder="Ex: 42" min="1">
+            </div>
+            <div class="form-group">
+                <label>Numéro de Téléphone</label>
+                <input type="tel" name="phone" required placeholder="Ex: 20123456">
+            </div>
+            <button type="submit" class="btn">RECHERCHER</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="card result">
+        <div class="status-bar status-{{ result.status }}">
+            <span class="status-label">STATUT</span>
+            <span class="status-text">
+                {% if result.status == 'pending' %}EN ATTENTE
+                {% elif result.status == 'in_progress' %}EN COURS
+                {% elif result.status == 'completed' %}TERMINÉ
+                {% elif result.status == 'cancelled' %}ANNULÉ
+                {% else %}{{ result.status|upper }}{% endif %}
+            </span>
+        </div>
+
+        <div class="status-steps">
+            {% set steps = ['pending', 'in_progress', 'completed'] %}
+            {% set step_labels = ['Reçu', 'En cours', 'Terminé'] %}
+            {% set step_icons = ['📋', '🔧', '✅'] %}
+            {% set current = steps.index(result.status) if result.status in steps else -1 %}
+            {% for s in steps %}
+            <div class="step {% if loop.index0 < current %}done{% elif loop.index0 == current %}active{% endif %}">
+                <div class="step-dot">{{ step_icons[loop.index0] }}</div>
+                <div class="step-label">{{ step_labels[loop.index0] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Client</div>
+                <div class="info-value">{{ result.name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">RDV #</div>
+                <div class="info-value">{{ result.id }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Date</div>
+                <div class="info-value">{{ result.date }}{% if result.time %} {{ result.time }}{% endif %}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Service</div>
+                <div class="info-value">{{ result.service }}</div>
+            </div>
+            <div class="info-item" style="grid-column: span 2">
+                <div class="info-label">Véhicule</div>
+                <div class="info-value">{{ result.brand }} {{ result.model }} — {{ result.plate }}</div>
+            </div>
+        </div>
+
+        {% if result.photos %}
+        <h2 style="margin-top:16px">📸 Photos</h2>
+        <div class="photos">
+            {% for p in result.photos %}
+            <img src="/static/uploads/{{ p.photo_url }}" alt="{{ p.photo_type }}" loading="lazy">
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <a href="/suivi" class="back-link">← Nouvelle recherche</a>
+    {% endif %}
+
+    <a href="/nos-services" class="back-link" style="margin-top:30px">Découvrir nos Services</a>
+</div>
+</body>
+</html>

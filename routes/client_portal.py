@@ -362,3 +362,37 @@ def espace_client_suivi(appointment_id):
     return render_template("client_suivi.html", appt=appt, photos=photos, shop=shop)
 
 
+# ─── Public Appointment Tracking (no login required) ───
+@portal_bp.route("/suivi")
+def public_tracking():
+    """Public page: track appointment status by ID + phone."""
+    result = None
+    error = None
+    appt_id = request.args.get('id', '').strip()
+    phone = request.args.get('phone', '').strip()
+    if appt_id and phone:
+        try:
+            aid = int(appt_id)
+        except ValueError:
+            error = "Numéro de rendez-vous invalide"
+            return render_template("public_tracking.html", result=result, error=error)
+        with get_db() as conn:
+            row = conn.execute("""
+                SELECT a.id, a.date, COALESCE(a.time, ''), a.service, a.status,
+                       ca.brand, ca.model, ca.plate, cu.name
+                FROM appointments a JOIN cars ca ON a.car_id=ca.id
+                JOIN customers cu ON ca.customer_id=cu.id
+                WHERE a.id=? AND cu.phone=?
+            """, (aid, phone)).fetchone()
+            if row:
+                # Get photos if any
+                photos = conn.execute(
+                    "SELECT photo_type, photo_url FROM vehicle_gallery WHERE appointment_id=? ORDER BY uploaded_at", (aid,)).fetchall()
+                result = {
+                    'id': row[0], 'date': row[1], 'time': row[2], 'service': row[3],
+                    'status': row[4], 'brand': row[5], 'model': row[6], 'plate': row[7],
+                    'name': row[8], 'photos': photos
+                }
+            else:
+                error = "Aucun rendez-vous trouvé avec ces informations"
+    return render_template("public_tracking.html", result=result, error=error)
