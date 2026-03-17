@@ -11,6 +11,7 @@ primary_region = "cdg"   # Paris — أقرب لتونس
   FLASK_ENV = "production"
   PORT = "8080"
   DATA_DIR = "/data"
+  CORS_ORIGINS = "https://amilcar.fly.dev"
 
 [http_service]
   internal_port = 8080

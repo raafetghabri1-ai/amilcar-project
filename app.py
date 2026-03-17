@@ -48,13 +48,19 @@ def _get_secret_key():
 
 app.secret_key = _get_secret_key()
 csrf.init_app(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# ── SocketIO: restrict CORS in production ──
+_cors_origins = os.environ.get('CORS_ORIGINS', '*')
+if _cors_origins != '*':
+    _cors_origins = [o.strip() for o in _cors_origins.split(',')]
+socketio = SocketIO(app, cors_allowed_origins=_cors_origins)
 create_tables()
 migrate()  # Apply pending database migrations
 
 # ─── Security Configuration ───
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24h
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
@@ -65,6 +71,18 @@ def set_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    # Content Security Policy
+    if not request.path.startswith('/static/'):
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io https://cdn.chart.js; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' wss: ws:; "
+            "frame-ancestors 'self'"
+        )
     # Static file caching (CSS, JS, images: 7 days)
     if request.path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=604800'
@@ -191,6 +209,16 @@ def too_many_requests(e):
 @app.errorhandler(500)
 def internal_error(e):
     return render_template('error.html', code=500, message="Erreur interne du serveur"), 500
+
+# ─── Health Check ───
+@app.route('/health')
+def health_check():
+    try:
+        with get_db() as conn:
+            conn.execute('SELECT 1').fetchone()
+        return jsonify({'status': 'healthy', 'db': 'ok'}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 503
 
 # ─── WebSocket Events ───
 from flask_socketio import emit

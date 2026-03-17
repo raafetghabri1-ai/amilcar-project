@@ -63,7 +63,7 @@
     <div class="gallery-grid">
         {% for p in photos %}
         <div class="gallery-item">
-            <img src="/static/{{ p.photo_path }}" alt="{{ p.brand }} {{ p.model }}">
+            <img src="/static/{{ p.photo_path }}" alt="{{ p.brand }} {{ p.model }}" loading="lazy">
             <span class="badge-type">{{ p.photo_type|upper }}</span>
             {% if p.vehicle_type and p.vehicle_type != 'voiture' %}<span class="badge-moto">🏍️ MOTO</span>{% endif %}
             <div class="overlay">

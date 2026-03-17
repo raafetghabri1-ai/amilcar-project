@@ -126,7 +126,7 @@
         <div class="photo-label">AVANT</div>
         <div class="photos-grid">
             {% for p in before_photos %}
-            <img src="/{{ p.photo_path }}" alt="Avant">
+            <img src="/{{ p.photo_path }}" alt="Avant" loading="lazy">
             {% endfor %}
         </div>
         {% endif %}
@@ -134,7 +134,7 @@
         <div class="photo-label" style="margin-top:16px">APRÈS</div>
         <div class="photos-grid">
             {% for p in after_photos %}
-            <img src="/{{ p.photo_path }}" alt="Après">
+            <img src="/{{ p.photo_path }}" alt="Après" loading="lazy">
             {% endfor %}
         </div>
         {% endif %}

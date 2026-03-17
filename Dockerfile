@@ -29,7 +29,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/book')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
 
 # Start with gunicorn + gevent for SocketIO support
 CMD ["gunicorn", "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", \

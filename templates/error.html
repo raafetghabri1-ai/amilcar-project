@@ -7,22 +7,39 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',sans-serif;background:#0D0D1A;color:#E8E6E3;min-height:100vh;display:flex;align-items:center;justify-content:center}
-    .wrap{text-align:center;padding:40px 20px;max-width:480px}
+    body{font-family:'Inter',sans-serif;background:#09090b;color:#E8E6E3;min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+    body::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 50% 50%,rgba(212,175,55,0.03) 0%,transparent 50%);animation:pulse 8s infinite}
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.05);opacity:1}}
+    .wrap{text-align:center;padding:40px 24px;max-width:500px;position:relative;z-index:1}
     .code{font-family:'Playfair Display',serif;font-size:8rem;font-weight:700;
-          background:linear-gradient(135deg,#D4AF37,#B8860B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
-    .msg{font-size:1.2rem;color:#9A9A9A;margin:16px 0 32px}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;
-         background:linear-gradient(135deg,#D4AF37,#B8860B);color:#1A1A2E;
-         border-radius:12px;font-size:.95rem;font-weight:700;text-decoration:none;transition:.2s}
+          background:linear-gradient(135deg,#D4AF37 0%,#F5E6A3 50%,#B8860B 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;
+          filter:drop-shadow(0 4px 20px rgba(212,175,55,0.15));animation:fadeIn .6s ease-out}
+    .icon{font-size:3rem;margin-bottom:16px;opacity:.5;animation:fadeIn .4s ease-out}
+    .msg{font-size:1.1rem;color:#9A9AB4;margin:12px 0 8px;animation:fadeIn .5s ease-out}
+    .hint{font-size:.82rem;color:#555570;margin-bottom:32px;animation:fadeIn .6s ease-out}
+    .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;animation:fadeIn .7s ease-out}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
+         background:linear-gradient(135deg,#D4AF37,#B8860B);color:#09090b;
+         border-radius:8px;font-size:.85rem;font-weight:700;text-decoration:none;transition:all .25s;border:none;cursor:pointer;letter-spacing:.5px}
     .btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.3)}
+    .btn-ghost{background:transparent;color:#9A9AB4;border:1px solid rgba(255,255,255,0.08);padding:12px 24px;border-radius:8px;font-size:.85rem;font-weight:500;text-decoration:none;transition:all .25s}
+    .btn-ghost:hover{border-color:rgba(212,175,55,0.3);color:#D4AF37}
+    .brand{position:absolute;top:28px;left:50%;transform:translateX(-50%);color:rgba(212,175,55,0.3);font-family:'Playfair Display',serif;font-size:.9rem;letter-spacing:5px;font-weight:700}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:480px){.code{font-size:5.5rem}.msg{font-size:.95rem}.actions{flex-direction:column;gap:8px}}
   </style>
 </head>
 <body>
+  <div class="brand">AMILCAR</div>
   <div class="wrap">
+    <div class="icon">{% if code == 404 %}🔍{% elif code == 403 %}🔒{% elif code == 401 %}🔑{% elif code == 429 %}⏳{% else %}⚠{% endif %}</div>
     <div class="code">{{ code }}</div>
     <p class="msg">{{ message }}</p>
-    <a href="/" class="btn">🏠 Retour à l'accueil</a>
+    <p class="hint">{% if code == 404 %}La page que vous cherchez n'existe pas ou a été déplacée{% elif code == 403 %}Connectez-vous avec un compte autorisé{% elif code == 401 %}Votre session a peut-être expiré{% elif code == 429 %}Veuillez patienter avant de réessayer{% else %}Une erreur inattendue s'est produite{% endif %}</p>
+    <div class="actions">
+      <a href="/" class="btn">⌂ Accueil</a>
+      <a href="javascript:history.back()" class="btn-ghost">← Retour</a>
+    </div>
   </div>
 </body>
 </html>

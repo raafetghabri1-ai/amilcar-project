@@ -49,7 +49,7 @@
     {% for photo in photos %}
     <div class="col-md-3 col-6">
         <div class="card p-2">
-            <img src="/static/uploads/cars/{{ photo[4] }}" alt="" style="width:100%;height:180px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer" onclick="window.open(this.src)">
+            <img src="/static/uploads/cars/{{ photo[4] }}" alt="" loading="lazy" style="width:100%;height:180px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer" onclick="window.open(this.src)">
             <div class="mt-2" style="font-size:0.75rem">
                 <div class="d-flex justify-content-between align-items-center">
                     {% if photo[3] == 'before' %}<span class="badge-progress">Avant</span>

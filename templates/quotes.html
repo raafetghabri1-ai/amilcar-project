@@ -28,7 +28,7 @@
         <div class="mt-3">
             {% for photo in q[4].split(',') %}
             {% if photo %}
-            <img src="/static/uploads/{{ photo }}" class="photo-thumb">
+            <img src="/static/uploads/{{ photo }}" class="photo-thumb" loading="lazy">
             {% endif %}
             {% endfor %}
             {% if q[5] == "pending" %}
