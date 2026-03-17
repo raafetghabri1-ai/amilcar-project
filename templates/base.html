@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ current_lang }}" dir="{{ 'rtl' if current_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,6 +66,19 @@
     .sidebar-search-results a{display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-primary);text-decoration:none;font-size:.74rem;border-bottom:1px solid var(--border-subtle);transition:background .15s var(--ease)}
     .sidebar-search-results a:hover{background:var(--bg-hover)}
     .sidebar-search-results a:last-child{border-bottom:none}
+    /* RTL Support */
+    [dir="rtl"] .sidebar{left:auto;right:0;border-right:none;border-left:1px solid var(--border-color)}
+    [dir="rtl"] .sidebar-links li a{border-left:none;border-right:2px solid transparent;padding:7px 20px 7px 16px}
+    [dir="rtl"] .sidebar-links li a:hover{border-left-color:transparent;border-right-color:rgba(212,175,55,0.3)}
+    [dir="rtl"] .sidebar-links li a.active{border-left-color:transparent;border-right-color:var(--gold)}
+    [dir="rtl"] .layout-main{margin-left:0;margin-right:260px}
+    [dir="rtl"] .sidebar-search input{padding:8px 32px 8px 12px}
+    [dir="rtl"] .sidebar-search::before{left:auto;right:24px}
+    @media(max-width:991px){
+        [dir="rtl"] .sidebar{transform:translateX(100%)}
+        [dir="rtl"] .sidebar.open{transform:translateX(0)}
+        [dir="rtl"] .layout-main{margin-right:0}
+    }
     </style>
 </head>
 <body>
@@ -86,14 +99,14 @@
         </div>
         <div class="sidebar-search">
             <form action="/search" method="GET">
-                <input type="text" name="q" id="searchInput" placeholder="Rechercher..." autocomplete="off">
+                <input type="text" name="q" id="searchInput" placeholder="{{ t.search }}" autocomplete="off">
             </form>
             <div class="sidebar-search-results" id="searchResults"></div>
         </div>
 
         <!-- PRINCIPAL -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PRINCIPAL <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.principal }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/"><span class="icon">⌂</span> Accueil</a></li>
                 {% if session.get('role') == 'admin' %}<li><a href="/custom_dashboard"><span class="icon">◫</span> Mon Dashboard</a></li>{% endif %}
@@ -107,7 +120,7 @@
 
         <!-- CAR & MOTO CARE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">CAR & MOTO CARE <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.car_moto_care }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 {% if session.get('role') == 'admin' %}<li><a href="/care_dashboard"><span class="icon">◫</span> Dashboard Care</a></li>{% endif %}
                 <li><a href="/gallery_global"><span class="icon">◧</span> Galerie Avant/Après</a></li>
@@ -133,7 +146,7 @@
 
         <!-- CLIENTS & CRM -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">CLIENTS & CRM <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.clients_crm }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/customers"><span class="icon">◉</span> Clients</a></li>
                 <li><a href="/crm_followups"><span class="icon">↻</span> Suivi CRM</a></li>
@@ -153,7 +166,7 @@
 
         <!-- PLANNING -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PLANNING <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.planning }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/appointments"><span class="icon">▦</span> Rendez-vous</a></li>
                 <li><a href="/calendar"><span class="icon">◫</span> Calendrier</a></li>
@@ -172,7 +185,7 @@
         {% if session.get('role') == 'admin' %}
         <!-- INTELLIGENCE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">INTELLIGENCE <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.intelligence }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/whatsapp_hub"><span class="icon">◎</span> WhatsApp Hub</a></li>
                 <li><a href="/nps_dashboard"><span class="icon">◫</span> NPS Satisfaction</a></li>
@@ -204,7 +217,7 @@
 
         <!-- FACTURATION -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">FACTURATION <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.billing }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/invoices"><span class="icon">▤</span> Factures</a></li>
                 <li><a href="/quotes"><span class="icon">▦</span> Devis</a></li>
@@ -224,7 +237,7 @@
         {% if session.get('role') == 'admin' %}
         <!-- STOCK -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">STOCK & ACHATS <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.stock }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/inventory"><span class="icon">▦</span> Inventaire</a></li>
                 <li><a href="/inventory_dashboard"><span class="icon">◫</span> Stock+</a></li>
@@ -235,7 +248,7 @@
 
         <!-- RAPPORTS -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">RAPPORTS & KPI <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.reports_kpi }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/reports"><span class="icon">▤</span> Rapports</a></li>
                 <li><a href="/kpi"><span class="icon">◉</span> KPI</a></li>
@@ -261,7 +274,7 @@
 
         <!-- ÉQUIPE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">ÉQUIPE <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.team }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/users"><span class="icon">◉</span> Utilisateurs</a></li>
                 <li><a href="/employee_shifts"><span class="icon">▦</span> Planning équipe</a></li>
@@ -281,7 +294,7 @@
 
         <!-- PARAMÈTRES -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">PARAMÈTRES <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.settings }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/settings"><span class="icon">◉</span> Général</a></li>
                 <li><a href="/services"><span class="icon">◆</span> Services</a></li>
@@ -310,7 +323,7 @@
 
         <!-- ACCÈS RAPIDE -->
         <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">ACCÈS RAPIDE <span class="chevron">▾</span></div>
+            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.quick_access }} <span class="chevron">▾</span></div>
             <ul class="sidebar-links">
                 <li><a href="/mobile"><span class="icon">▣</span> Vue Mobile</a></li>
                 <li><a href="/tv_display" target="_blank"><span class="icon">▶</span> Écran Salle</a></li>

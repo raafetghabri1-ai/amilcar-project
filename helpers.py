@@ -70,26 +70,136 @@ STATUS_MESSAGES = {
 
 TRANSLATIONS = {
     'fr': {
+        # Navigation
         'dashboard': 'Tableau de Bord', 'customers': 'Clients', 'appointments': 'Rendez-vous',
         'invoices': 'Factures', 'calendar': 'Calendrier', 'expenses': 'Dépenses',
         'today': "Aujourd'hui", 'monthly': 'Mensuel', 'reports': 'Rapports',
         'settings': 'Paramètres', 'search': 'Rechercher...', 'logout': 'Déconnexion',
+        # Actions
         'add': 'Ajouter', 'edit': 'Modifier', 'delete': 'Supprimer', 'save': 'Enregistrer',
-        'cancel': 'Annuler', 'name': 'Nom', 'phone': 'Téléphone', 'date': 'Date',
+        'cancel': 'Annuler', 'confirm': 'Confirmer', 'back': 'Retour', 'print': 'Imprimer',
+        'export': 'Exporter', 'import': 'Importer', 'filter': 'Filtrer', 'reset': 'Réinitialiser',
+        # Fields
+        'name': 'Nom', 'phone': 'Téléphone', 'date': 'Date', 'time': 'Heure',
         'status': 'Statut', 'amount': 'Montant', 'service': 'Service', 'actions': 'Actions',
-        'paid': 'Payée', 'unpaid': 'Non payée', 'confirmed': 'Confirmé', 'pending': 'En attente',
+        'email': 'Email', 'address': 'Adresse', 'notes': 'Notes', 'description': 'Description',
+        'price': 'Prix', 'quantity': 'Quantité', 'discount': 'Remise', 'tax': 'TVA',
+        # Statuses
+        'paid': 'Payée', 'unpaid': 'Non payée', 'partial': 'Partielle',
+        'confirmed': 'Confirmé', 'pending': 'En attente', 'completed': 'Terminé',
+        'cancelled': 'Annulé', 'in_progress': 'En cours',
+        # Dashboard
         'total': 'Total', 'welcome': 'Bienvenue', 'language': 'Langue',
+        'overview': "Vue d'ensemble de votre activité",
+        'revenue': 'Revenus', 'profit': 'Bénéfice Net', 'net_profit': 'Bénéfice Net',
+        'pending_quotes': 'Devis en Attente', 'unpaid_invoices': 'Factures Impayées',
+        'tomorrow': 'Demain', 'this_week': 'Cette Semaine',
+        'week_revenue': 'Revenus Semaine', 'today_revenue': "Aujourd'hui",
+        'best_customer': 'Meilleur Client', 'most_visited_car': 'Voiture la Plus Fréquente',
+        'payment_rate': 'Taux de Paiement', 'visits': 'visites',
+        'online_bookings': 'Réservations en Ligne', 'see_bookings': 'Voir les Réservations',
+        'tomorrow_appointments': 'Rendez-vous de Demain',
+        'pending_appointments': 'Rendez-vous en Attente',
+        # Quick actions
+        'new_customer': '+ Nouveau Client', 'new_appointment': '+ Nouveau RDV',
+        'new_invoice': '+ Nouvelle Facture', 'see_quotes': 'Voir les Devis',
+        # Charts
+        'weekly_revenue': 'Revenus cette Semaine', 'monthly_comparison': 'Comparaison 12 Mois',
+        'forecast': 'Prévisions Fin de Mois', 'revenue_vs_expenses': 'Revenus vs Dépenses — 6 Mois',
+        'services_chart': 'Services', 'expenses_by_category': 'Dépenses par Catégorie',
+        'forecast_revenue': 'REVENUS PRÉVUS', 'forecast_expenses': 'DÉPENSES PRÉVUES',
+        'estimated_profit': 'BÉNÉFICE ESTIMÉ', 'daily_avg': 'Moy. journalière',
+        'days_remaining': 'Jours restants',
+        # Sidebar sections
+        'principal': 'PRINCIPAL', 'car_moto_care': 'CAR & MOTO CARE',
+        'clients_crm': 'CLIENTS & CRM', 'planning': 'PLANNING',
+        'intelligence': 'INTELLIGENCE', 'billing': 'FACTURATION',
+        'stock': 'STOCK & ACHATS', 'reports_kpi': 'RAPPORTS & KPI',
+        'team': 'ÉQUIPE', 'quick_access': 'ACCÈS RAPIDE',
+        # Common
+        'client': 'Client', 'car': 'Voiture', 'brand': 'Marque', 'model': 'Modèle',
+        'plate': 'Immatriculation', 'loading': 'Chargement...', 'no_results': 'Aucun résultat',
+        'page': 'Page', 'of': 'de', 'showing': 'Affichage', 'results': 'résultats',
+        'yes': 'Oui', 'no': 'Non', 'all': 'Tous', 'none': 'Aucun',
+        'created': 'Créé le', 'updated': 'Modifié le',
+        'password': 'Mot de passe', 'theme': 'Thème',
+        # Settings
+        'general_settings': 'Paramètres Généraux', 'backup': 'Sauvegarde',
+        'save_settings': 'ENREGISTRER', 'backup_now': 'SAUVEGARDER MAINTENANT',
+        'download_db': 'TÉLÉCHARGER LA BASE',
+        'auto_daily_backup': 'SAUVEGARDE AUTOMATIQUE QUOTIDIENNE',
+        'keep_days': 'CONSERVER (JOURS)',
+        'existing_backups': 'SAUVEGARDES EXISTANTES',
+        # Telegram
+        'telegram_backup': 'TELEGRAM CLOUD BACKUP',
+        'telegram_test': 'TEST', 'telegram_send_now': 'ENVOYER MAINTENANT',
+        'telegram_auto': 'Envoi automatique quotidien sur Telegram',
     },
     'ar': {
+        # Navigation
         'dashboard': 'لوحة التحكم', 'customers': 'العملاء', 'appointments': 'المواعيد',
         'invoices': 'الفواتير', 'calendar': 'التقويم', 'expenses': 'المصاريف',
         'today': 'اليوم', 'monthly': 'الشهري', 'reports': 'التقارير',
         'settings': 'الإعدادات', 'search': 'بحث...', 'logout': 'تسجيل الخروج',
+        # Actions
         'add': 'إضافة', 'edit': 'تعديل', 'delete': 'حذف', 'save': 'حفظ',
-        'cancel': 'إلغاء', 'name': 'الاسم', 'phone': 'الهاتف', 'date': 'التاريخ',
+        'cancel': 'إلغاء', 'confirm': 'تأكيد', 'back': 'رجوع', 'print': 'طباعة',
+        'export': 'تصدير', 'import': 'استيراد', 'filter': 'تصفية', 'reset': 'إعادة تعيين',
+        # Fields
+        'name': 'الاسم', 'phone': 'الهاتف', 'date': 'التاريخ', 'time': 'الوقت',
         'status': 'الحالة', 'amount': 'المبلغ', 'service': 'الخدمة', 'actions': 'الإجراءات',
-        'paid': 'مدفوعة', 'unpaid': 'غير مدفوعة', 'confirmed': 'مؤكد', 'pending': 'في الانتظار',
+        'email': 'البريد', 'address': 'العنوان', 'notes': 'ملاحظات', 'description': 'الوصف',
+        'price': 'السعر', 'quantity': 'الكمية', 'discount': 'الخصم', 'tax': 'الضريبة',
+        # Statuses
+        'paid': 'مدفوعة', 'unpaid': 'غير مدفوعة', 'partial': 'جزئية',
+        'confirmed': 'مؤكد', 'pending': 'في الانتظار', 'completed': 'مكتمل',
+        'cancelled': 'ملغى', 'in_progress': 'قيد التنفيذ',
+        # Dashboard
         'total': 'المجموع', 'welcome': 'مرحبًا', 'language': 'اللغة',
+        'overview': 'نظرة عامة على نشاطك',
+        'revenue': 'الإيرادات', 'profit': 'صافي الربح', 'net_profit': 'صافي الربح',
+        'pending_quotes': 'عروض أسعار معلقة', 'unpaid_invoices': 'فواتير غير مدفوعة',
+        'tomorrow': 'غداً', 'this_week': 'هذا الأسبوع',
+        'week_revenue': 'إيرادات الأسبوع', 'today_revenue': 'اليوم',
+        'best_customer': 'أفضل عميل', 'most_visited_car': 'السيارة الأكثر زيارة',
+        'payment_rate': 'نسبة الدفع', 'visits': 'زيارات',
+        'online_bookings': 'الحجوزات عبر الإنترنت', 'see_bookings': 'عرض الحجوزات',
+        'tomorrow_appointments': 'مواعيد الغد',
+        'pending_appointments': 'مواعيد معلقة',
+        # Quick actions
+        'new_customer': '+ عميل جديد', 'new_appointment': '+ موعد جديد',
+        'new_invoice': '+ فاتورة جديدة', 'see_quotes': 'عرض العروض',
+        # Charts
+        'weekly_revenue': 'إيرادات الأسبوع', 'monthly_comparison': 'مقارنة 12 شهر',
+        'forecast': 'توقعات نهاية الشهر', 'revenue_vs_expenses': 'الإيرادات مقابل المصاريف — 6 أشهر',
+        'services_chart': 'الخدمات', 'expenses_by_category': 'المصاريف حسب الفئة',
+        'forecast_revenue': 'الإيرادات المتوقعة', 'forecast_expenses': 'المصاريف المتوقعة',
+        'estimated_profit': 'الربح المقدر', 'daily_avg': 'المتوسط اليومي',
+        'days_remaining': 'الأيام المتبقية',
+        # Sidebar sections
+        'principal': 'الرئيسية', 'car_moto_care': 'العناية بالسيارات',
+        'clients_crm': 'العملاء و CRM', 'planning': 'التخطيط',
+        'intelligence': 'الذكاء', 'billing': 'الفوترة',
+        'stock': 'المخزون والمشتريات', 'reports_kpi': 'التقارير والمؤشرات',
+        'team': 'الفريق', 'quick_access': 'وصول سريع',
+        # Common
+        'client': 'العميل', 'car': 'السيارة', 'brand': 'الماركة', 'model': 'الموديل',
+        'plate': 'اللوحة', 'loading': 'جاري التحميل...', 'no_results': 'لا توجد نتائج',
+        'page': 'صفحة', 'of': 'من', 'showing': 'عرض', 'results': 'نتائج',
+        'yes': 'نعم', 'no': 'لا', 'all': 'الكل', 'none': 'لا شيء',
+        'created': 'تاريخ الإنشاء', 'updated': 'تاريخ التعديل',
+        'password': 'كلمة المرور', 'theme': 'المظهر',
+        # Settings
+        'general_settings': 'الإعدادات العامة', 'backup': 'نسخ احتياطي',
+        'save_settings': 'حفظ', 'backup_now': 'نسخ احتياطي الآن',
+        'download_db': 'تحميل قاعدة البيانات',
+        'auto_daily_backup': 'نسخ احتياطي يومي تلقائي',
+        'keep_days': 'الاحتفاظ (أيام)',
+        'existing_backups': 'النسخ الاحتياطية الموجودة',
+        # Telegram
+        'telegram_backup': 'نسخ احتياطي عبر تيليجرام',
+        'telegram_test': 'اختبار', 'telegram_send_now': 'إرسال الآن',
+        'telegram_auto': 'إرسال تلقائي يومي عبر تيليجرام',
     }
 }
 

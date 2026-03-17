@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %} - Tableau de Bord{% endblock %}
+{% block title %} - {{ t.dashboard }}{% endblock %}
 {% block hero_extra %}<p class="sub">SOIN AUTOMOBILE &mdash; MAHRES, SFAX</p>{% endblock %}
 {% block content %}
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h3 class="page-title mb-0">Tableau de Bord</h3>
-            <p class="page-subtitle mb-0">Vue d'ensemble de votre activité</p>
+            <h3 class="page-title mb-0">{{ t.dashboard }}</h3>
+            <p class="page-subtitle mb-0">{{ t.overview }}</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="/add_customer" class="btn-outline-gold btn-sm">+ Client</a>
-            <a href="/add_appointment" class="btn-gold btn-sm">+ Rendez-vous</a>
+            <a href="/add_customer" class="btn-outline-gold btn-sm">+ {{ t.client }}</a>
+            <a href="/add_appointment" class="btn-gold btn-sm">+ {{ t.appointments }}</a>
         </div>
     </div>
 
@@ -20,38 +20,38 @@
             <div class="stat-card">
                 <span class="stat-icon">◉</span>
                 <h2>{{ stats.customers }}</h2>
-                <p>Clients</p>
+                <p>{{ t.customers }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <span class="stat-icon">▦</span>
                 <h2>{{ stats.appointments }}</h2>
-                <p>Rendez-vous</p>
+                <p>{{ t.appointments }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2>{{ stats.revenue }}</h2>
-                <p>Revenus (DT)</p>
+                <p>{{ t.revenue }} (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2 style="color:var(--red)">{{ stats.expenses }}</h2>
-                <p>Dépenses (DT)</p>
+                <p>{{ t.expenses }} (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="background:none;-webkit-text-fill-color:unset">{{ stats.profit }}</h2>
-                <p>Bénéfice Net</p>
+                <p>{{ t.net_profit }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <h2>{{ stats.quotes }}</h2>
-                <p>Devis en Attente</p>
+                <p>{{ t.pending_quotes }}</p>
             </div>
         </div>
     </div>
@@ -60,25 +60,25 @@
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6">
             <div class="quick-stat">
-                <p class="quick-stat-label">Aujourd'hui</p>
+                <p class="quick-stat-label">{{ t.today_revenue }}</p>
                 <p class="quick-stat-value">{{ stats.today_appointments }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rdv</span> — {{ stats.today_revenue }} DT</p>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="quick-stat red">
-                <p class="quick-stat-label">Factures Impayées</p>
+                <p class="quick-stat-label">{{ t.unpaid_invoices }}</p>
                 <p class="quick-stat-value">{{ stats.unpaid_total }} DT</p>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="quick-stat green">
-                <p class="quick-stat-label">Demain</p>
+                <p class="quick-stat-label">{{ t.tomorrow }}</p>
                 <p class="quick-stat-value">{{ tomorrow_appointments|length }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rendez-vous</span></p>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="quick-stat" style="border-left:3px solid #3B82F6">
-                <p class="quick-stat-label">Revenus Semaine</p>
+                <p class="quick-stat-label">{{ t.week_revenue }}</p>
                 <p class="quick-stat-value" style="color:#3B82F6">{{ stats.week_revenue }} DT</p>
             </div>
         </div>
@@ -89,10 +89,10 @@
     <div class="card p-3 mb-4" style="border:1px solid rgba(59,130,246,0.3);background:rgba(59,130,246,0.06)">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <span style="font-size:1.1rem;font-weight:700;color:#3B82F6">📱 {{ stats.pending_bookings }} Réservation{{ 's' if stats.pending_bookings > 1 }} en Ligne</span>
-                <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">({{ stats.today_bookings }} aujourd'hui)</span>
+                <span style="font-size:1.1rem;font-weight:700;color:#3B82F6">📱 {{ stats.pending_bookings }} {{ t.online_bookings }}</span>
+                <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">({{ stats.today_bookings }} {{ t.today }})</span>
             </div>
-            <a href="/bookings_admin" class="btn-gold btn-sm">Voir les Réservations</a>
+            <a href="/bookings_admin" class="btn-gold btn-sm">{{ t.see_bookings }}</a>
         </div>
     </div>
     {% endif %}
@@ -101,21 +101,21 @@
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="insight-card">
-                <p class="insight-label">Meilleur Client</p>
+                <p class="insight-label">{{ t.best_customer }}</p>
                 <p class="insight-value" style="color:var(--gold)">{{ stats.top_customer }}</p>
                 <p class="insight-sub">{{ stats.top_customer_amount }} DT</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="insight-card">
-                <p class="insight-label">Voiture la Plus Fréquente</p>
+                <p class="insight-label">{{ t.most_visited_car }}</p>
                 <p class="insight-value" style="color:var(--blue)">{{ stats.most_visited_car }}</p>
-                <p class="insight-sub">{{ stats.most_visited_count }} visites</p>
+                <p class="insight-sub">{{ stats.most_visited_count }} {{ t.visits }}</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="insight-card">
-                <p class="insight-label">Taux de Paiement</p>
+                <p class="insight-label">{{ t.payment_rate }}</p>
                 <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
                     <span class="{% if stats.pay_rate >= 70 %}text-profit{% elif stats.pay_rate >= 40 %}text-gold{% else %}text-loss{% endif %}" style="font-size:1.4rem;font-weight:800">{{ stats.pay_rate }}%</span>
                     <div class="progress-bar-wrap" style="flex:1">
@@ -130,11 +130,11 @@
     {% if tomorrow_appointments %}
     <div class="card p-4 mb-4">
         <div class="chart-title">
-            <span>▦</span> Rendez-vous de Demain ({{ tomorrow_appointments|length }})
+            <span>▦</span> {{ t.tomorrow_appointments }} ({{ tomorrow_appointments|length }})
         </div>
         <div class="table-responsive">
             <table class="table">
-                <thead><tr><th>Client</th><th>Voiture</th><th>Service</th></tr></thead>
+                <thead><tr><th>{{ t.client }}</th><th>{{ t.car }}</th><th>{{ t.service }}</th></tr></thead>
                 <tbody>
                 {% for a in tomorrow_appointments %}
                 <tr>
@@ -152,10 +152,10 @@
     <!-- Pending Appointments -->
     {% if pending_appointments %}
     <div class="pending-alert">
-        <p class="pending-alert-title">⚠ Rendez-vous en Attente ({{ pending_appointments|length }})</p>
+        <p class="pending-alert-title">⚠ {{ t.pending_appointments }} ({{ pending_appointments|length }})</p>
         <div class="table-responsive" style="border:none">
             <table class="table">
-                <thead><tr><th>Client</th><th>Voiture</th><th>Date</th><th>Service</th></tr></thead>
+                <thead><tr><th>{{ t.client }}</th><th>{{ t.car }}</th><th>{{ t.date }}</th><th>{{ t.service }}</th></tr></thead>
                 <tbody>
                 {% for a in pending_appointments %}
                 <tr>
@@ -173,29 +173,29 @@
 
     <!-- Quick Actions -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6"><a href="/add_customer" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouveau Client</a></div>
-        <div class="col-md-3 col-6"><a href="/add_appointment" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouveau RDV</a></div>
-        <div class="col-md-3 col-6"><a href="/add_invoice" class="btn-outline-gold w-100 d-flex justify-content-center">+ Nouvelle Facture</a></div>
-        <div class="col-md-3 col-6"><a href="/quotes" class="btn-ghost w-100 d-flex justify-content-center">Voir les Devis</a></div>
+        <div class="col-md-3 col-6"><a href="/add_customer" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_customer }}</a></div>
+        <div class="col-md-3 col-6"><a href="/add_appointment" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_appointment }}</a></div>
+        <div class="col-md-3 col-6"><a href="/add_invoice" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_invoice }}</a></div>
+        <div class="col-md-3 col-6"><a href="/quotes" class="btn-ghost w-100 d-flex justify-content-center">{{ t.see_quotes }}</a></div>
     </div>
 
     <!-- Charts -->
     <div class="row g-3 mb-4">
         <div class="col-lg-4">
             <div class="chart-card">
-                <div class="chart-title"><span>◫</span> Revenus cette Semaine</div>
+                <div class="chart-title"><span>◫</span> {{ t.weekly_revenue }}</div>
                 <canvas id="weeklyChart" height="180"></canvas>
             </div>
         </div>
         <div class="col-lg-4">
             <div class="chart-card">
-                <div class="chart-title"><span>↗</span> Comparaison 12 Mois</div>
+                <div class="chart-title"><span>↗</span> {{ t.monthly_comparison }}</div>
                 <canvas id="monthlyCompChart" height="180"></canvas>
             </div>
         </div>
         <div class="col-lg-4">
             <div class="chart-card" id="forecastCard">
-                <div class="chart-title"><span>◈</span> Prévisions Fin de Mois</div>
+                <div class="chart-title"><span>◈</span> {{ t.forecast }}</div>
                 <div id="forecastData" style="text-align:center;padding:10px 0">
                     <p style="color:var(--text-muted);font-size:0.8rem">Chargement...</p>
                 </div>
@@ -206,19 +206,19 @@
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="chart-card">
-                <div class="chart-title">Revenus vs Dépenses — 6 Mois</div>
+                <div class="chart-title">{{ t.revenue_vs_expenses }}</div>
                 <canvas id="revenueChart" height="200"></canvas>
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
             <div class="chart-card">
-                <div class="chart-title">Services</div>
+                <div class="chart-title">{{ t.services_chart }}</div>
                 <canvas id="servicesChart" height="200"></canvas>
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
             <div class="chart-card">
-                <div class="chart-title" style="color:var(--red)">Dépenses par Catégorie</div>
+                <div class="chart-title" style="color:var(--red)">{{ t.expenses_by_category }}</div>
                 <canvas id="expensesChart" height="200"></canvas>
             </div>
         </div>
