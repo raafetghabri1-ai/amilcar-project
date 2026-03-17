@@ -1,158 +1,283 @@
 {% extends "base.html" %}
-{% block title %} - Tableau de Bord CEO{% endblock %}
+{% block title %} - CEO Dashboard{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="page-title mb-0">📊 Tableau de Bord CEO</h3>
-    <span style="color:var(--text-secondary);font-size:0.75rem">Mise à jour: {{ now }}</span>
+<style>
+.ceo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px}
+.ceo-header h3{margin:0;font-size:1.3rem;font-weight:800;letter-spacing:1px}
+.ceo-header .badge-live{background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.3);padding:6px 16px;border-radius:20px;font-size:0.7rem;color:var(--gold);letter-spacing:1px;display:flex;align-items:center;gap:6px}
+.ceo-header .badge-live::before{content:'';width:8px;height:8px;border-radius:50%;background:#2d6a4f;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.exec-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
+.exec-card:hover{border-color:rgba(212,175,55,0.3);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.exec-card .label{font-size:0.6rem;letter-spacing:2px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:8px}
+.exec-card .value{font-size:1.8rem;font-weight:800;color:var(--text-primary);line-height:1}
+.exec-card .sub{font-size:0.7rem;color:var(--text-secondary);margin-top:6px}
+.exec-card .trend{font-size:0.7rem;font-weight:700;margin-top:4px}
+.trend-up{color:#2d6a4f}.trend-down{color:#C41E3A}
+.exec-card .icon-bg{position:absolute;top:12px;right:14px;font-size:1.8rem;opacity:0.15}
+.exec-card.gold{border-left:3px solid #D4AF37}
+.exec-card.green{border-left:3px solid #2d6a4f}
+.exec-card.red{border-left:3px solid #C41E3A}
+.exec-card.blue{border-left:3px solid #1B6B93}
+.sec-title{font-size:0.7rem;letter-spacing:3px;color:var(--gold);text-transform:uppercase;font-weight:700;margin:1.5rem 0 1rem;padding-bottom:8px;border-bottom:1px solid var(--border-subtle)}
+.chart-box{background:var(--bg-card);border:1px solid var(--border-color);border-radius:12px;padding:16px;height:100%}
+.chart-box .chart-title{font-size:0.65rem;letter-spacing:2px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:12px}
+.rank-table{width:100%;font-size:0.8rem}
+.rank-table td{padding:8px 6px;border-bottom:1px solid var(--border-subtle)}
+.rank-table .rank{color:var(--gold);font-weight:800;width:24px}
+.rank-table .name{color:var(--text-primary)}
+.rank-table .metric{color:var(--gold);font-weight:700;text-align:right}
+.forecast-box{background:linear-gradient(135deg,rgba(212,175,55,0.05),rgba(26,26,46,0.3));border:1px solid rgba(212,175,55,0.2);border-radius:12px;padding:20px}
+.forecast-box .forecast-label{font-size:0.6rem;letter-spacing:2px;color:var(--text-secondary);text-transform:uppercase}
+.forecast-box .forecast-val{font-size:1.4rem;font-weight:800;color:var(--gold);margin:4px 0}
+.alert-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:0.75rem;font-weight:600}
+.alert-badge.warning{background:rgba(212,175,55,0.1);color:#D4AF37;border:1px solid rgba(212,175,55,0.2)}
+.alert-badge.danger{background:rgba(196,30,58,0.1);color:#C41E3A;border:1px solid rgba(196,30,58,0.2)}
+.alert-badge.success{background:rgba(45,106,79,0.1);color:#2d6a4f;border:1px solid rgba(45,106,79,0.2)}
+.ceo-progress{height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;margin-top:8px}
+.ceo-progress .fill{height:100%;border-radius:3px;transition:width .6s ease}
+</style>
+
+<div class="ceo-header">
+    <h3>👔 CEO DASHBOARD — {{ month_label|upper }}</h3>
+    <div class="badge-live">LIVE DATA</div>
 </div>
 
-<!-- KPI Cards Row 1 -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">REVENU CE MOIS</p>
-            <h3 style="color:var(--green);margin:5px 0">{{ "%.0f"|format(rev_month) }} <small style="font-size:0.5em">DH</small></h3>
-            {% set change = ((rev_month - rev_last) / rev_last * 100) if rev_last > 0 else 0 %}
-            <span style="color:{{ '#2d6a4f' if change >= 0 else '#dc3545' }};font-size:0.7rem">
-                {{ '↑' if change >= 0 else '↓' }} {{ "%.1f"|format(change|abs) }}% vs mois dernier
-            </span>
+<!-- Row 1: Revenue -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="exec-card gold">
+            <div class="icon-bg">💰</div>
+            <div class="label">Revenus aujourd'hui</div>
+            <div class="value">{{ ceo.today_revenue|int }}</div>
+            <div class="sub">DT</div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">DÉPENSES CE MOIS</p>
-            <h3 style="color:#dc3545;margin:5px 0">{{ "%.0f"|format(exp_month) }} <small style="font-size:0.5em">DH</small></h3>
-            {% set exp_change = ((exp_month - exp_last) / exp_last * 100) if exp_last > 0 else 0 %}
-            <span style="color:{{ '#dc3545' if exp_change > 0 else '#2d6a4f' }};font-size:0.7rem">
-                {{ '↑' if exp_change >= 0 else '↓' }} {{ "%.1f"|format(exp_change|abs) }}%
-            </span>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card gold">
+            <div class="icon-bg">📅</div>
+            <div class="label">Revenus cette semaine</div>
+            <div class="value">{{ ceo.week_revenue|int }}</div>
+            <div class="sub">DT</div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">BÉNÉFICE NET</p>
-            <h3 style="color:{{ '#D4AF37' if profit_month >= 0 else '#dc3545' }};margin:5px 0">{{ "%.0f"|format(profit_month) }} <small style="font-size:0.5em">DH</small></h3>
-            <span style="color:var(--text-secondary);font-size:0.7rem">Marge: {{ "%.0f"|format((profit_month/rev_month*100) if rev_month > 0 else 0) }}%</span>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card gold">
+            <div class="icon-bg">📊</div>
+            <div class="label">Revenus ce mois</div>
+            <div class="value">{{ ceo.month_revenue|int }}</div>
+            <div class="sub">DT</div>
+            <div class="trend {% if ceo.revenue_growth >= 0 %}trend-up{% else %}trend-down{% endif %}">
+                {% if ceo.revenue_growth >= 0 %}▲{% else %}▼{% endif %} {{ ceo.revenue_growth }}% vs mois dernier
+            </div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">REVENU ANNUEL</p>
-            <h3 style="color:var(--gold);margin:5px 0">{{ "%.0f"|format(rev_year) }} <small style="font-size:0.5em">DH</small></h3>
-            <span style="color:var(--text-secondary);font-size:0.7rem">{{ appts_month }} RDV ce mois</span>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card gold">
+            <div class="icon-bg">🏆</div>
+            <div class="label">Revenus annuels</div>
+            <div class="value">{{ ceo.year_revenue|int }}</div>
+            <div class="sub">DT</div>
         </div>
     </div>
 </div>
 
-<!-- KPI Cards Row 2 -->
+<!-- Row 2: Profit & Expenses -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="exec-card {% if ceo.month_profit >= 0 %}green{% else %}red{% endif %}">
+            <div class="icon-bg">📈</div>
+            <div class="label">Bénéfice net ce mois</div>
+            <div class="value">{{ ceo.month_profit|int }}</div>
+            <div class="sub">DT — Marge {{ ceo.profit_margin }}%</div>
+            <div class="trend {% if ceo.profit_growth >= 0 %}trend-up{% else %}trend-down{% endif %}">
+                {% if ceo.profit_growth >= 0 %}▲{% else %}▼{% endif %} {{ ceo.profit_growth }}% vs mois dernier
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card red">
+            <div class="icon-bg">💸</div>
+            <div class="label">Dépenses ce mois</div>
+            <div class="value">{{ ceo.month_expenses|int }}</div>
+            <div class="sub">DT</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card blue">
+            <div class="icon-bg">🎫</div>
+            <div class="label">Ticket moyen</div>
+            <div class="value">{{ ceo.avg_ticket }}</div>
+            <div class="sub">DT / facture</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card {% if ceo.unpaid_total > 0 %}red{% else %}green{% endif %}">
+            <div class="icon-bg">⚠️</div>
+            <div class="label">Impayés en attente</div>
+            <div class="value">{{ ceo.unpaid_total|int }}</div>
+            <div class="sub">DT — {{ ceo.unpaid_count }} factures</div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Operations & Customers -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="exec-card blue">
+            <div class="icon-bg">🔧</div>
+            <div class="label">RDV aujourd'hui</div>
+            <div class="value">{{ ceo.today_appts }}</div>
+            <div class="sub">{{ ceo.month_appts }} ce mois</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card {% if ceo.completion_rate >= 70 %}green{% else %}red{% endif %}">
+            <div class="icon-bg">✅</div>
+            <div class="label">Taux d'achèvement</div>
+            <div class="value">{{ ceo.completion_rate }}%</div>
+            <div class="ceo-progress"><div class="fill" style="width:{{ ceo.completion_rate }}%;background:{% if ceo.completion_rate >= 70 %}#2d6a4f{% else %}#C41E3A{% endif %}"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card blue">
+            <div class="icon-bg">👥</div>
+            <div class="label">Clients actifs (30j)</div>
+            <div class="value">{{ ceo.active_customers }}</div>
+            <div class="sub">{{ ceo.total_customers }} total — {{ ceo.new_customers }} nouveaux</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="exec-card gold">
+            <div class="icon-bg">📱</div>
+            <div class="label">Réservations en ligne</div>
+            <div class="value">{{ ceo.month_bookings }}</div>
+            <div class="sub">{{ ceo.pending_bookings }} en attente</div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts -->
+{% if ceo.unpaid_count > 0 or ceo.pending_bookings > 0 or ceo.low_stock > 0 %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    {% if ceo.unpaid_count > 0 %}<span class="alert-badge danger">⚠ {{ ceo.unpaid_count }} factures impayées ({{ ceo.unpaid_total|int }} DT)</span>{% endif %}
+    {% if ceo.pending_bookings > 0 %}<span class="alert-badge warning">📱 {{ ceo.pending_bookings }} réservations en attente</span>{% endif %}
+    {% if ceo.low_stock > 0 %}<span class="alert-badge danger">📦 {{ ceo.low_stock }} articles en stock faible</span>{% endif %}
+    {% if ceo.completion_rate >= 80 %}<span class="alert-badge success">✅ Excellent taux d'achèvement</span>{% endif %}
+</div>
+{% endif %}
+
+<!-- Forecast -->
+<div class="sec-title">🔮 PRÉVISIONS FIN DE MOIS ({{ ceo.days_remaining }}j restants)</div>
 <div class="row g-3 mb-4">
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">CLIENTS TOTAL</p>
-            <h3 style="color:var(--gold);margin:5px 0">{{ total_clients }}</h3>
-            <span style="color:var(--green);font-size:0.7rem">+{{ new_clients }} nouveau{{ 'x' if new_clients > 1 }} ce mois</span>
+    <div class="col-md-4">
+        <div class="forecast-box">
+            <div class="forecast-label">Revenus prévus</div>
+            <div class="forecast-val">{{ ceo.forecast_revenue|int }} DT</div>
+            <div style="font-size:0.7rem;color:var(--text-secondary)">Actuel: {{ ceo.month_revenue|int }} DT + {{ (ceo.forecast_revenue - ceo.month_revenue)|int }} DT estimés</div>
+            <div class="ceo-progress" style="margin-top:10px">
+                {% set rev_pct = (ceo.month_revenue / ceo.forecast_revenue * 100) if ceo.forecast_revenue > 0 else 0 %}
+                <div class="fill" style="width:{{ rev_pct|int }}%;background:linear-gradient(90deg,#D4AF37,#B8962E)"></div>
+            </div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">NOTE MOYENNE</p>
-            <h3 style="color:var(--gold);margin:5px 0">{{ avg_rating }} ⭐</h3>
-            <span style="color:var(--text-secondary);font-size:0.7rem">sur 5.0</span>
+    <div class="col-md-4">
+        <div class="forecast-box">
+            <div class="forecast-label">Bénéfice prévu</div>
+            <div class="forecast-val" style="color:{% if ceo.forecast_profit >= 0 %}#2d6a4f{% else %}#C41E3A{% endif %}">{{ ceo.forecast_profit|int }} DT</div>
+            <div style="font-size:0.7rem;color:var(--text-secondary)">Basé sur moy. {{ ceo.avg_daily_revenue }} DT/jour</div>
         </div>
     </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">IMPAYÉS</p>
-            <h3 style="color:#dc3545;margin:5px 0">{{ "%.0f"|format(unpaid_total) }} <small style="font-size:0.5em">DH</small></h3>
-            <span style="color:var(--text-secondary);font-size:0.7rem">{{ unpaid_count }} facture{{ 's' if unpaid_count > 1 }}</span>
-        </div>
-    </div>
-    <div class="col-md-3 col-6">
-        <div class="card p-3 text-center">
-            <p style="color:var(--text-secondary);font-size:0.6rem;letter-spacing:2px;margin:0">RDV CE MOIS</p>
-            <h3 style="color:var(--gold);margin:5px 0">{{ appts_month }}</h3>
-            <span style="color:var(--text-secondary);font-size:0.7rem">rendez-vous</span>
+    <div class="col-md-4">
+        <div class="forecast-box">
+            <div class="forecast-label">Revenus moyen / jour</div>
+            <div class="forecast-val">{{ ceo.avg_daily_revenue }} DT</div>
+            <div style="font-size:0.7rem;color:var(--text-secondary)">Objectif: {{ (ceo.prev_month_revenue / 30)|int }} DT/jour</div>
         </div>
     </div>
 </div>
 
 <!-- Charts -->
+<div class="sec-title">📊 ANALYSE VISUELLE</div>
 <div class="row g-3 mb-4">
-    <div class="col-md-8">
-        <div class="card p-3">
-            <h6 style="color:var(--gold);margin-bottom:15px">📈 Évolution Mensuelle (12 mois)</h6>
-            <canvas id="revenueChart" height="250"></canvas>
+    <div class="col-lg-8">
+        <div class="chart-box">
+            <div class="chart-title">Tendance des revenus — 14 derniers jours</div>
+            <canvas id="trendChart" height="200"></canvas>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card p-3">
-            <h6 style="color:var(--gold);margin-bottom:15px">🏆 Top Services</h6>
-            <canvas id="servicesChart" height="250"></canvas>
+    <div class="col-lg-4">
+        <div class="chart-box">
+            <div class="chart-title">Revenus par jour de semaine (30j)</div>
+            <canvas id="dowChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="chart-box">
+            <div class="chart-title">Catégories de dépenses</div>
+            <canvas id="expenseChart" height="200"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="chart-box">
+            <div class="chart-title">Méthodes de paiement</div>
+            <canvas id="paymentChart" height="200"></canvas>
         </div>
     </div>
 </div>
 
-<!-- Top Customers -->
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="card p-3">
-            <h6 style="color:var(--gold);margin-bottom:15px">💰 Meilleurs Clients</h6>
-            <table class="table table-dark table-sm">
-                <thead><tr><th>#</th><th>Client</th><th>Total Dépensé</th></tr></thead>
-                <tbody>
-                {% for c in top_customers %}
-                <tr>
-                    <td style="color:var(--gold)">{{ loop.index }}</td>
-                    <td>{{ c[0] }}</td>
-                    <td><strong style="color:var(--green)">{{ "%.0f"|format(c[1]) }} DH</strong></td>
-                </tr>
-                {% endfor %}
-                {% if not top_customers %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Aucune donnée</td></tr>{% endif %}
-                </tbody>
+<!-- Rankings -->
+<div class="sec-title">🏆 CLASSEMENTS DU MOIS</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="chart-box">
+            <div class="chart-title">Top services</div>
+            <table class="rank-table">
+            {% for s in ceo.top_services %}
+                <tr><td class="rank">{{ loop.index }}</td><td class="name">{{ s.name }}</td><td style="color:var(--text-secondary)">{{ s.count }} fois</td><td class="metric">{{ s.revenue|int }} DT</td></tr>
+            {% endfor %}
+            {% if not ceo.top_services %}<tr><td colspan="4" style="color:var(--text-secondary);text-align:center;padding:20px">Aucune donnée</td></tr>{% endif %}
             </table>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card p-3">
-            <h6 style="color:var(--gold);margin-bottom:15px">📊 Résumé Financier</h6>
-            <table class="table table-dark table-sm">
-                <tbody>
-                    <tr><td style="color:var(--text-secondary)">Revenu ce mois</td><td style="text-align:right;color:var(--green);font-weight:700">{{ "%.0f"|format(rev_month) }} DH</td></tr>
-                    <tr><td style="color:var(--text-secondary)">Dépenses ce mois</td><td style="text-align:right;color:#dc3545;font-weight:700">{{ "%.0f"|format(exp_month) }} DH</td></tr>
-                    <tr><td style="color:var(--text-secondary)">Bénéfice net</td><td style="text-align:right;color:var(--gold);font-weight:700">{{ "%.0f"|format(profit_month) }} DH</td></tr>
-                    <tr><td style="color:var(--text-secondary)">Mois précédent</td><td style="text-align:right;font-weight:700">{{ "%.0f"|format(rev_last) }} DH</td></tr>
-                    <tr><td style="color:var(--text-secondary)">Impayés total</td><td style="text-align:right;color:#dc3545;font-weight:700">{{ "%.0f"|format(unpaid_total) }} DH</td></tr>
-                </tbody>
+    <div class="col-lg-6">
+        <div class="chart-box">
+            <div class="chart-title">Top clients</div>
+            <table class="rank-table">
+            {% for c in ceo.top_customers %}
+                <tr><td class="rank">{{ loop.index }}</td><td class="name">{{ c.name }}</td><td style="color:var(--text-secondary)">{{ c.visits }} visites</td><td class="metric">{{ c.revenue|int }} DT</td></tr>
+            {% endfor %}
+            {% if not ceo.top_customers %}<tr><td colspan="4" style="color:var(--text-secondary);text-align:center;padding:20px">Aucune donnée</td></tr>{% endif %}
             </table>
         </div>
     </div>
 </div>
-{% endblock %}
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+
+<!-- Year Summary -->
+<div class="sec-title">📅 RÉSUMÉ ANNUEL</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="exec-card gold"><div class="label">Revenus annuels</div><div class="value" style="font-size:1.4rem">{{ ceo.year_revenue|int }} DT</div></div></div>
+    <div class="col-md-4"><div class="exec-card red"><div class="label">Dépenses annuelles</div><div class="value" style="font-size:1.4rem">{{ ceo.year_expenses|int }} DT</div></div></div>
+    <div class="col-md-4"><div class="exec-card {% if ceo.year_profit >= 0 %}green{% else %}red{% endif %}"><div class="label">Bénéfice annuel net</div><div class="value" style="font-size:1.4rem">{{ ceo.year_profit|int }} DT</div></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const monthlyData = {{ monthly_data|tojson }};
-new Chart(document.getElementById('revenueChart'), {
-    type: 'line',
-    data: {
-        labels: monthlyData.map(d => d.month),
-        datasets: [
-            {label:'Revenu', data:monthlyData.map(d=>d.revenue), borderColor:'#2d6a4f', backgroundColor:'rgba(45,106,79,0.1)', fill:true, tension:0.3},
-            {label:'Dépenses', data:monthlyData.map(d=>d.expenses), borderColor:'#dc3545', backgroundColor:'rgba(220,53,69,0.1)', fill:true, tension:0.3},
-            {label:'Bénéfice', data:monthlyData.map(d=>d.profit), borderColor:'#D4AF37', backgroundColor:'rgba(212,175,55,0.1)', fill:true, tension:0.3}
-        ]
-    },
-    options:{plugins:{legend:{labels:{color:'#ccc'}}},scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888',callback:v=>v+'DH'}}}}
-});
+var gold='#D4AF37',goldLight='rgba(212,175,55,0.15)',gridColor='rgba(255,255,255,0.04)';
+var defaults={responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#666',font:{size:10}},grid:{color:gridColor}}}};
 
-const topServices = {{ top_services|tojson }};
-new Chart(document.getElementById('servicesChart'), {
-    type: 'doughnut',
-    data: {
-        labels: topServices.map(s => s[0]),
-        datasets: [{data: topServices.map(s => s[1]), backgroundColor:['#D4AF37','#2d6a4f','#dc3545','#0d6efd','#6f42c1']}]
-    },
-    options:{plugins:{legend:{position:'bottom',labels:{color:'#ccc',font:{size:10}}}}}
-});
+var trendData={{ ceo.daily_trend|tojson }};
+new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:trendData.map(d=>d.date.substring(5)),datasets:[{data:trendData.map(d=>d.revenue),borderColor:gold,backgroundColor:goldLight,borderWidth:2,fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:gold}]},options:{...defaults}});
+
+var dowData={{ ceo.dow_revenue|tojson }};
+new Chart(document.getElementById('dowChart'),{type:'bar',data:{labels:dowData.map(d=>d.day),datasets:[{data:dowData.map(d=>d.revenue),backgroundColor:goldLight,borderColor:gold,borderWidth:1,borderRadius:4}]},options:{...defaults}});
+
+var expData={{ ceo.expense_cats|tojson }};
+if(expData.length){new Chart(document.getElementById('expenseChart'),{type:'doughnut',data:{labels:expData.map(d=>d.name),datasets:[{data:expData.map(d=>d.amount),backgroundColor:['#C41E3A','#D4AF37','#1B6B93','#2d6a4f','#8B5CF6','#EC4899'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#888',font:{size:10},padding:8}}}}});}
+
+var payData={{ ceo.payment_methods|tojson }};
+if(payData.length){new Chart(document.getElementById('paymentChart'),{type:'doughnut',data:{labels:payData.map(d=>d.method),datasets:[{data:payData.map(d=>d.amount),backgroundColor:['#D4AF37','#1B6B93','#2d6a4f','#8B5CF6','#EC4899'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#888',font:{size:10},padding:8}}}}});}
 </script>
 {% endblock %}

@@ -524,6 +524,76 @@ def advanced_report():
 
 
 
+# ─── Phase 7 Feature 1: CEO Dashboard ───
+@reports_bp.route("/ceo_dashboard")
+@login_required
+def ceo_dashboard():
+    with get_db() as conn:
+        from datetime import date, timedelta
+        today = date.today()
+        month_start = today.replace(day=1).isoformat()
+        last_month_start = (today.replace(day=1) - timedelta(days=1)).replace(day=1).isoformat()
+        last_month_end = (today.replace(day=1) - timedelta(days=1)).isoformat()
+        year_start = today.replace(month=1, day=1).isoformat()
+
+        # Revenue this month
+        rev_month = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE created_at >= ? AND status='Payée'", (month_start,)).fetchone()[0]
+        # Revenue last month
+        rev_last = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE created_at >= ? AND created_at <= ? AND status='Payée'", (last_month_start, last_month_end)).fetchone()[0]
+        # Revenue this year
+        rev_year = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE created_at >= ? AND status='Payée'", (year_start,)).fetchone()[0]
+        # Expenses this month
+        exp_month = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ?", (month_start,)).fetchone()[0]
+        # Expenses last month
+        exp_last = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date <= ?", (last_month_start, last_month_end)).fetchone()[0]
+        # Net profit
+        profit_month = rev_month - exp_month
+        profit_last = rev_last - exp_last
+        # Clients total & new this month
+        total_clients = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        new_clients = conn.execute("SELECT COUNT(*) FROM customers WHERE id IN (SELECT DISTINCT ca.customer_id FROM cars ca JOIN appointments a ON a.car_id=ca.id WHERE a.date >= ?)", (month_start,)).fetchone()[0]
+        # Appointments this month
+        appts_month = conn.execute("SELECT COUNT(*) FROM appointments WHERE date >= ?", (month_start,)).fetchone()[0]
+        # Average rating
+        avg_rating = conn.execute("SELECT COALESCE(AVG(rating),0) FROM ratings").fetchone()[0]
+        # Unpaid invoices
+        unpaid_total = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status IN ('unpaid','Non payée','partial')").fetchone()[0]
+        unpaid_count = conn.execute("SELECT COUNT(*) FROM invoices WHERE status IN ('unpaid','Non payée','partial')").fetchone()[0]
+        # Monthly revenue trend (last 12 months)
+        monthly_data = []
+        for i in range(11, -1, -1):
+            m = today.replace(day=1) - timedelta(days=i*30)
+            ms = m.replace(day=1).isoformat()
+            if m.month == 12:
+                me = m.replace(year=m.year+1, month=1, day=1).isoformat()
+            else:
+                me = m.replace(month=m.month+1, day=1).isoformat()
+            r = conn.execute("SELECT COALESCE(SUM(amount),0) FROM invoices WHERE created_at >= ? AND created_at < ? AND status='Payée'", (ms, me)).fetchone()[0]
+            e = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
+            monthly_data.append({'month': ms[:7], 'revenue': r, 'expenses': e, 'profit': r - e})
+        # Top services
+        top_services = [tuple(r) for r in conn.execute("SELECT service, COUNT(*) as cnt FROM appointments WHERE date >= ? GROUP BY service ORDER BY cnt DESC LIMIT 5", (year_start,)).fetchall()]
+        # Top customers by spending
+        top_customers = [tuple(r) for r in conn.execute("""
+            SELECT c.name, COALESCE(SUM(i.amount),0) as total FROM invoices i
+            JOIN appointments a ON i.appointment_id = a.id
+            JOIN cars cr ON a.car_id = cr.id
+            JOIN customers c ON cr.customer_id = c.id
+            WHERE i.status='Payée' GROUP BY c.id ORDER BY total DESC LIMIT 5
+        """).fetchall()]
+
+    return render_template("ceo_dashboard.html",
+        rev_month=rev_month, rev_last=rev_last, rev_year=rev_year,
+        exp_month=exp_month, exp_last=exp_last,
+        profit_month=profit_month, profit_last=profit_last,
+        total_clients=total_clients, new_clients=new_clients,
+        appts_month=appts_month, avg_rating=round(avg_rating, 1),
+        unpaid_total=unpaid_total, unpaid_count=unpaid_count,
+        monthly_data=monthly_data, top_services=top_services,
+        top_customers=top_customers, now=today.isoformat())
+
+
+
 # ─── Phase 8 Feature 8: Retention Analysis ───
 @reports_bp.route("/retention_analysis")
 @login_required
