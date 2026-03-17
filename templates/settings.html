@@ -87,6 +87,11 @@
                         <input type="checkbox" name="wa_notify_booking" class="form-check-input" id="waNotifyBooking" value="1" {% if settings.get('wa_notify_booking', '1') == '1' %}checked{% endif %} style="accent-color:#25D366">
                         <label class="form-check-label" for="waNotifyBooking">Notifier à chaque nouvelle réservation</label>
                     </div>
+                    <div class="form-check mb-3">
+                        <input type="hidden" name="wa_auto_remind" value="0">
+                        <input type="checkbox" name="wa_auto_remind" class="form-check-input" id="waAutoRemind" value="1" {% if settings.get('wa_auto_remind', '0') == '1' %}checked{% endif %} style="accent-color:#25D366">
+                        <label class="form-check-label" for="waAutoRemind">📋 Rappel automatique des RDV du lendemain (20h chaque soir)</label>
+                    </div>
                     <button type="submit" class="btn-gold w-100">ENREGISTRER</button>
                 </form>
             </div>

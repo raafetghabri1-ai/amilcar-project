@@ -27,6 +27,7 @@ from database.migrations import migrate
 from helpers import check_api_rate_limit, TRANSLATIONS, csrf
 import os
 import time as time_module
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 
@@ -216,6 +217,64 @@ def _run_daily_backup():
 import threading
 _backup_thread = threading.Thread(target=_run_daily_backup, daemon=True)
 _backup_thread.start()
+
+# ─── Auto Appointment Reminders ───
+def _run_appointment_reminders():
+    """Background thread: send WhatsApp reminders for tomorrow's appointments at 8 PM daily."""
+    import urllib.request, urllib.parse, urllib.error
+    while True:
+        # Calculate seconds until 20:00 today (or tomorrow if past 20:00)
+        now = datetime.now()
+        target = now.replace(hour=20, minute=0, second=0, microsecond=0)
+        if now >= target:
+            target += timedelta(days=1)
+        wait_seconds = (target - now).total_seconds()
+        time_module.sleep(wait_seconds)
+
+        try:
+            with app.app_context():
+                db = get_db()
+                # Check if reminders are enabled
+                auto_remind = db.execute("SELECT value FROM settings WHERE key='wa_auto_remind'").fetchone()
+                if not auto_remind or auto_remind[0] != '1':
+                    db.close()
+                    continue
+                wa_phone = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_phone'").fetchone()
+                wa_key = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_apikey'").fetchone()
+                if not wa_phone or not wa_phone[0] or not wa_key or not wa_key[0]:
+                    db.close()
+                    continue
+                phone = wa_phone[0].strip()
+                apikey = wa_key[0].strip()
+                shop = db.execute("SELECT value FROM settings WHERE key='shop_name'").fetchone()
+                shop_name = shop[0] if shop and shop[0] else 'AMILCAR'
+
+                tomorrow = (date.today() + timedelta(days=1)).isoformat()
+                appts = db.execute(
+                    "SELECT a.id, cu.name, a.service, COALESCE(a.time, ''), ca.brand, ca.model "
+                    "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                    "JOIN customers cu ON ca.customer_id=cu.id "
+                    "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
+
+                if appts:
+                    msg = f"📋 *Rappel — {len(appts)} RDV demain*\n"
+                    for a in appts[:10]:
+                        time_str = f" {a[3]}" if a[3] else ""
+                        msg += f"\n• {a[1]} — {a[2]}{time_str} ({a[4]} {a[5]})"
+                    if len(appts) > 10:
+                        msg += f"\n... et {len(appts)-10} autres"
+
+                    url = (f"https://api.callmebot.com/whatsapp.php"
+                           f"?phone={urllib.parse.quote(phone)}"
+                           f"&text={urllib.parse.quote(msg)}"
+                           f"&apikey={urllib.parse.quote(apikey)}")
+                    urllib.request.urlopen(url, timeout=15)
+                db.close()
+        except Exception:
+            pass
+
+_reminder_thread = threading.Thread(target=_run_appointment_reminders, daemon=True)
+_reminder_thread.start()
 
 if __name__ == '__main__':
     # Development only — production uses gunicorn (see Procfile)

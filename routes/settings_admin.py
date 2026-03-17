@@ -192,7 +192,7 @@ def settings_page():
             keys = ['shop_name', 'shop_tagline', 'shop_address', 'shop_phone', 'tax_rate',
                     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
                     'sms_api_url', 'sms_api_key', 'sms_sender',
-                    'wa_callmebot_phone', 'wa_callmebot_apikey', 'wa_notify_booking',
+                    'wa_callmebot_phone', 'wa_callmebot_apikey', 'wa_notify_booking', 'wa_auto_remind',
                     'telegram_bot_token', 'telegram_chat_id', 'telegram_auto_backup']
             for key in keys:
                 val = request.form.get(key, "").strip()

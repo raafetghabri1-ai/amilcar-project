@@ -555,10 +555,11 @@ def inventory_trends():
 @api_bp.route("/sw.js")
 def service_worker():
     sw_content = """
-const CACHE_NAME = 'amilcar-v5';
+const CACHE_NAME = 'amilcar-v6';
 const urlsToCache = ['/', '/static/style.css', '/static/logo.png'];
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache)));
+    self.skipWaiting();
 });
 self.addEventListener('fetch', e => {
     e.respondWith(
@@ -571,6 +572,23 @@ self.addEventListener('activate', e => {
             keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
         ))
     );
+    self.clients.claim();
+});
+self.addEventListener('push', e => {
+    var data = e.data ? e.data.json() : {};
+    var title = data.title || 'AMILCAR';
+    var options = {
+        body: data.body || '',
+        icon: '/static/logo.png',
+        badge: '/static/logo.png',
+        tag: data.tag || 'amilcar-notif',
+        data: {url: data.url || '/'}
+    };
+    e.waitUntil(self.registration.showNotification(title, options));
+});
+self.addEventListener('notificationclick', e => {
+    e.notification.close();
+    e.waitUntil(clients.openWindow(e.notification.data.url || '/'));
 });
 """
     response = make_response(sw_content)
