@@ -522,7 +522,7 @@ def bay_book():
 
 
 
-@appointments_bp.route("/bay/toggle/<int:bid>")
+@appointments_bp.route("/bay/toggle/<int:bid>", methods=["POST"])
 @login_required
 @admin_required
 def bay_toggle(bid):
@@ -614,7 +614,7 @@ def digital_inspection_public(token):
 
 
 
-@appointments_bp.route("/digital_inspection/notify/<int:appt_id>")
+@appointments_bp.route("/digital_inspection/notify/<int:appt_id>", methods=["POST"])
 @login_required
 def digital_inspection_notify(appt_id):
     with get_db() as conn:

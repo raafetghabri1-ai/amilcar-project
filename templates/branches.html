@@ -29,7 +29,7 @@
                     <h4 style="color:var(--gold);margin-bottom:4px">🏢 {{ b.name }}</h4>
                     <small style="color:var(--text-muted)">{{ b.address or '—' }}</small>
                 </div>
-                <a href="{{ url_for('admin_bp.toggle_branch', bid=b.id) }}" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if b.active else 'background:var(--bg-hover);color:var(--text-muted)' }}">{{ '🟢' if b.active else '⏸' }}</a>
+                <form method="POST" action="{{ url_for('admin_bp.toggle_branch', bid=b.id) }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm" style="font-size:.65rem;{{ 'background:var(--green-light);color:#000' if b.active else 'background:var(--bg-hover);color:var(--text-muted)' }};border:none;cursor:pointer">{{ '🟢' if b.active else '⏸' }}</button></form>
             </div>
             <hr style="border-color:var(--border-subtle);margin:12px 0">
             <div class="row text-center g-2">

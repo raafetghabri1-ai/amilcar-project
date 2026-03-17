@@ -153,7 +153,7 @@ def employee_shift_add():
 
 
 
-@team_bp.route("/employee_shifts/delete/<int:sid>")
+@team_bp.route("/employee_shifts/delete/<int:sid>", methods=["POST"])
 @login_required
 @admin_required
 def employee_shift_delete(sid):
@@ -185,7 +185,7 @@ def employee_leave_add():
 
 
 
-@team_bp.route("/employee_leave/approve/<int:lid>/<action>")
+@team_bp.route("/employee_leave/approve/<int:lid>/<action>", methods=["POST"])
 @login_required
 @admin_required
 def employee_leave_action(lid, action):
@@ -243,7 +243,7 @@ def staff_note_add():
 
 
 
-@team_bp.route("/staff_note/delete/<int:nid>")
+@team_bp.route("/staff_note/delete/<int:nid>", methods=["POST"])
 @login_required
 def staff_note_delete(nid):
     with get_db() as conn:

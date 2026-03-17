@@ -47,10 +47,9 @@
             <a href="/report_builder/generate/{{ r.id }}" class="btn btn-sm btn-success flex-fill">
                 <i class="bi bi-download"></i> Générer PDF
             </a>
-            <a href="/report_builder/delete/{{ r.id }}" class="btn btn-sm btn-outline-danger"
-               onclick="return confirm('Supprimer ce rapport?')">
+            <form method="POST" action="/report_builder/delete/{{ r.id }}" style="display:inline" onsubmit="return confirm('Supprimer ce rapport?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-outline-danger" style="border:none;cursor:pointer">
                 <i class="bi bi-trash"></i>
-            </a>
+            </button></form>
         </div>
     </div>
 </div>

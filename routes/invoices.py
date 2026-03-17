@@ -310,7 +310,7 @@ def expenses():
 
 
 
-@invoices_bp.route("/export/expenses")
+@invoices_bp.route("/export/expenses_csv")
 @login_required
 def export_expenses_csv():
     import csv
@@ -928,7 +928,7 @@ def flash_sale_edit(sale_id):
 
 
 
-@invoices_bp.route('/flash_sale/toggle/<int:sale_id>')
+@invoices_bp.route('/flash_sale/toggle/<int:sale_id>', methods=["POST"])
 @login_required
 def flash_sale_toggle(sale_id):
     with get_db() as conn:
@@ -941,7 +941,7 @@ def flash_sale_toggle(sale_id):
 
 
 
-@invoices_bp.route('/flash_sale/delete/<int:sale_id>')
+@invoices_bp.route('/flash_sale/delete/<int:sale_id>', methods=["POST"])
 @login_required
 def flash_sale_delete(sale_id):
     with get_db() as conn:

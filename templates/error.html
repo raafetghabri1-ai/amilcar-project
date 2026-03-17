@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ code }} — AMILCAR Auto Care</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0D0D1A;color:#E8E6E3;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .wrap{text-align:center;padding:40px 20px;max-width:480px}
+    .code{font-family:'Playfair Display',serif;font-size:8rem;font-weight:700;
+          background:linear-gradient(135deg,#D4AF37,#B8860B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+    .msg{font-size:1.2rem;color:#9A9A9A;margin:16px 0 32px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;
+         background:linear-gradient(135deg,#D4AF37,#B8860B);color:#1A1A2E;
+         border-radius:12px;font-size:.95rem;font-weight:700;text-decoration:none;transition:.2s}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.3)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="code">{{ code }}</div>
+    <p class="msg">{{ message }}</p>
+    <a href="/" class="btn">🏠 Retour à l'accueil</a>
+  </div>
+</body>
+</html>

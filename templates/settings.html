@@ -66,6 +66,27 @@
                         <input type="text" name="sms_sender" class="form-control" value="{{ settings.get('sms_sender', 'AMILCAR') }}" placeholder="AMILCAR" maxlength="20">
                         <small style="color:var(--text-secondary);font-size:0.7rem">Compatible avec toute API SMS (Twilio, Vonage, etc.)</small>
                     </div>
+
+                    <hr style="border-color:var(--border-color);margin:20px 0">
+                    <h5 style="color:#25D366;letter-spacing:2px;font-size:0.85rem;margin-bottom:15px">💬 WHATSAPP (CallMeBot)</h5>
+                    <small style="color:var(--text-secondary);font-size:0.7rem;display:block;margin-bottom:12px">
+                        Recevez une notification WhatsApp automatique à chaque nouvelle réservation en ligne.<br>
+                        1. Envoyez <b>"I allow callmebot to send me messages"</b> au <b>+34 644 31 89 72</b> sur WhatsApp<br>
+                        2. Vous recevrez votre clé API — saisissez-la ci-dessous
+                    </small>
+                    <div class="mb-3">
+                        <label class="form-label">NUMÉRO WHATSAPP (ADMIN)</label>
+                        <input type="text" name="wa_callmebot_phone" class="form-control" value="{{ settings.get('wa_callmebot_phone', '') }}" placeholder="+21620123456" maxlength="20">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">CLÉ API CALLMEBOT</label>
+                        <input type="password" name="wa_callmebot_apikey" class="form-control" value="{{ settings.get('wa_callmebot_apikey', '') }}" placeholder="123456">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="hidden" name="wa_notify_booking" value="0">
+                        <input type="checkbox" name="wa_notify_booking" class="form-check-input" id="waNotifyBooking" value="1" {% if settings.get('wa_notify_booking', '1') == '1' %}checked{% endif %} style="accent-color:#25D366">
+                        <label class="form-check-label" for="waNotifyBooking">Notifier à chaque nouvelle réservation</label>
+                    </div>
                     <button type="submit" class="btn-gold w-100">ENREGISTRER</button>
                 </form>
             </div>

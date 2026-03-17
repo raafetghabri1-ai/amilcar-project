@@ -133,8 +133,8 @@ def send_sms_reminders():
 
 
 
-# ─── Notifications ───
-@comms_bp.route("/notifications")
+# ─── Notifications / Reminders ───
+@comms_bp.route("/reminders")
 @login_required
 def notifications():
     from datetime import date, timedelta
@@ -685,7 +685,7 @@ def marketing_campaign_add():
 
 
 
-@comms_bp.route("/marketing_campaign/run/<int:cid>")
+@comms_bp.route("/marketing_campaign/run/<int:cid>", methods=["POST"])
 @login_required
 @admin_required
 def marketing_campaign_run(cid):
@@ -716,7 +716,7 @@ def marketing_campaign_run(cid):
 
 
 
-@comms_bp.route("/marketing_campaign/toggle/<int:cid>")
+@comms_bp.route("/marketing_campaign/toggle/<int:cid>", methods=["POST"])
 @login_required
 @admin_required
 def marketing_campaign_toggle(cid):
@@ -762,7 +762,7 @@ def seasonal_campaign_add():
 
 
 
-@comms_bp.route("/seasonal_campaign/launch/<int:cid>")
+@comms_bp.route("/seasonal_campaign/launch/<int:cid>", methods=["POST"])
 @login_required
 @admin_required
 def seasonal_campaign_launch(cid):
@@ -836,18 +836,18 @@ def notifications_center_view():
 
 
 
-@comms_bp.route("/notifications/read/<int:nid>")
+@comms_bp.route("/notifications/read/<int:nid>", methods=["POST"])
 @login_required
 def mark_notification_read(nid):
     with get_db() as conn:
         conn.execute("UPDATE notifications_center SET is_read=1 WHERE id=?", (nid,))
         conn.commit()
-    link = request.args.get("redirect", "/notifications")
+    link = request.form.get("redirect") or request.args.get("redirect", "/notifications")
     return redirect(link)
 
 
 
-@comms_bp.route("/notifications/read_all")
+@comms_bp.route("/notifications/read_all", methods=["POST"])
 @login_required
 def mark_all_notifications_read():
     user_id = session.get('user_id')

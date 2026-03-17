@@ -1159,9 +1159,9 @@ def create_tables():
         ("ALTER TABLE customers ADD COLUMN nps_score INTEGER DEFAULT 0", None),
         ("ALTER TABLE customers ADD COLUMN loyalty_level TEXT DEFAULT 'bronze'", None),
         ("ALTER TABLE customers ADD COLUMN loyalty_points_total INTEGER DEFAULT 0", None),
-        ("ALTER TABLE employees ADD COLUMN commission_rate REAL DEFAULT 0", None),
-        ("ALTER TABLE employees ADD COLUMN points INTEGER DEFAULT 0", None),
-        ("ALTER TABLE employees ADD COLUMN badges TEXT DEFAULT ''", None),
+        ("ALTER TABLE users ADD COLUMN commission_rate REAL DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN badges TEXT DEFAULT ''", None),
         ("ALTER TABLE services ADD COLUMN estimated_minutes INTEGER DEFAULT 60", None),
         ("ALTER TABLE appointments ADD COLUMN actual_start TEXT DEFAULT ''", None),
         ("ALTER TABLE appointments ADD COLUMN actual_end TEXT DEFAULT ''", None),
@@ -1637,7 +1637,7 @@ def create_tables():
         total_points INTEGER DEFAULT 0,
         rank_position INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (employee_id) REFERENCES employees(id)
+        FOREIGN KEY (employee_id) REFERENCES users(id)
     )''')
 
     # NPS Surveys

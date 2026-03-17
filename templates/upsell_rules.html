@@ -68,10 +68,10 @@
                 <div style="display:flex;justify-content:space-between;align-items:flex-start">
                     <div>
                         <strong style="color:var(--text-primary)">{{ r.name }}</strong>
-                        <a href="/upsell_rule/toggle/{{ r.id }}" style="margin-left:8px;font-size:.6rem;padding:2px 8px;border-radius:10px;text-decoration:none;
+                        <form method="POST" action="/upsell_rule/toggle/{{ r.id }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="margin-left:8px;font-size:.6rem;padding:2px 8px;border-radius:10px;border:none;cursor:pointer;
                             background:{{ 'var(--green-light)' if r.is_active else 'var(--red)' }};color:{{ '#000' if r.is_active else '#fff' }}">
                             {{ 'Actif' if r.is_active else 'Inactif' }}
-                        </a>
+                        </button></form>
                         <br><small style="color:var(--text-muted)">
                             {% if r.trigger_type == 'service_match' %}🔧 Service contient "{{ r.trigger_value }}"
                             {% elif r.trigger_type == 'treatment_expired' %}🛡️ Traitement "{{ r.trigger_value }}" expire

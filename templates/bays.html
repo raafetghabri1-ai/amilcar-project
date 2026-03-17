@@ -17,7 +17,7 @@
             <div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;border-top:3px solid {% if b[4] %}var(--green-light){% else %}var(--red){% endif %}">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h5 style="color:var(--gold);margin:0;font-size:.95rem">🔧 {{ b[1] }}</h5>
-                    <a href="/bay/toggle/{{ b[0] }}" style="font-size:.7rem;color:var(--text-muted)">{% if b[4] %}Désactiver{% else %}Activer{% endif %}</a>
+                    <form method="POST" action="/bay/toggle/{{ b[0] }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="font-size:.7rem;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0">{% if b[4] %}Désactiver{% else %}Activer{% endif %}</button></form>
                 </div>
                 <div style="font-size:.75rem;color:var(--text-muted)">Type: {{ b[2] }} | {% if b[4] %}<span style="color:var(--green-light)">Actif</span>{% else %}<span style="color:var(--red)">Inactif</span>{% endif %}</div>
                 <!-- Today's bookings for this bay -->

@@ -20,7 +20,7 @@ Blueprint Structure:
   routes/client_portal.py — Client Portal (PWA)
   routes/api.py           — API Endpoints
 """
-from flask import Flask, jsonify, session, request
+from flask import Flask, jsonify, session, request, render_template
 from flask_socketio import SocketIO
 from database.db import create_tables, get_db
 from database.migrations import migrate
@@ -146,6 +146,15 @@ app.register_blueprint(team_bp)
 app.register_blueprint(ops_bp)
 app.register_blueprint(portal_bp)
 app.register_blueprint(api_bp)
+
+# ─── Error Handlers ───
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error.html', code=404, message="Page introuvable"), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template('error.html', code=500, message="Erreur interne du serveur"), 500
 
 # ─── WebSocket Events ───
 from flask_socketio import emit

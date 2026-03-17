@@ -119,7 +119,8 @@ def settings_page():
         with get_db() as conn:
             keys = ['shop_name', 'shop_tagline', 'shop_address', 'shop_phone', 'tax_rate',
                     'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from',
-                    'sms_api_url', 'sms_api_key', 'sms_sender']
+                    'sms_api_url', 'sms_api_key', 'sms_sender',
+                    'wa_callmebot_phone', 'wa_callmebot_apikey', 'wa_notify_booking']
             for key in keys:
                 val = request.form.get(key, "").strip()
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
@@ -238,7 +239,7 @@ def api_key_add():
 
 
 
-@admin_bp.route("/api_key/toggle/<int:kid>")
+@admin_bp.route("/api_key/toggle/<int:kid>", methods=["POST"])
 @login_required
 @admin_required
 def api_key_toggle(kid):
@@ -251,7 +252,7 @@ def api_key_toggle(kid):
 
 
 
-@admin_bp.route("/api_key/delete/<int:kid>")
+@admin_bp.route("/api_key/delete/<int:kid>", methods=["POST"])
 @login_required
 @admin_required
 def api_key_delete(kid):
@@ -307,7 +308,7 @@ def add_branch():
 
 
 
-@admin_bp.route("/branch/toggle/<int:bid>")
+@admin_bp.route("/branch/toggle/<int:bid>", methods=["POST"])
 @login_required
 @admin_required
 def toggle_branch(bid):

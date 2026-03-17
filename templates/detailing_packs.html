@@ -69,9 +69,9 @@
                             • {{ p.duration_minutes }} min
                         </small>
                     </div>
-                    <a href="/detailing_pack/toggle/{{ p.id }}" style="font-size:.65rem;color:{{ 'var(--green-light)' if p.is_active else 'var(--red)' }};text-decoration:none;border:1px solid;padding:2px 8px;border-radius:10px">
+                    <form method="POST" action="/detailing_pack/toggle/{{ p.id }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="font-size:.65rem;color:{{ 'var(--green-light)' if p.is_active else 'var(--red)' }};background:none;border:1px solid;padding:2px 8px;border-radius:10px;cursor:pointer">
                         {{ 'Actif ✅' if p.is_active else 'Inactif ❌' }}
-                    </a>
+                    </button></form>
                 </div>
                 {% if p.description %}<p style="color:var(--text-muted);font-size:.72rem;margin-bottom:8px">{{ p.description }}</p>{% endif %}
                 {% if p.included_services %}

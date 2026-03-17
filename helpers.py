@@ -102,6 +102,26 @@ _api_rate = {}
 API_RATE_LIMIT = 60
 API_RATE_WINDOW = 60
 
+_booking_rate = {}
+BOOKING_RATE_LIMIT = 5
+BOOKING_RATE_WINDOW = 300
+
+def check_booking_rate_limit():
+    """Returns True if booking rate limit exceeded (5 per 5 min per IP)."""
+    ip = request.remote_addr
+    now = time_module.time()
+    if ip in _booking_rate:
+        count, window_start = _booking_rate[ip]
+        if now - window_start > BOOKING_RATE_WINDOW:
+            _booking_rate[ip] = (1, now)
+            return False
+        if count >= BOOKING_RATE_LIMIT:
+            return True
+        _booking_rate[ip] = (count + 1, window_start)
+    else:
+        _booking_rate[ip] = (1, now)
+    return False
+
 # ─── Authentication Decorators ───
 
 def login_required(f):

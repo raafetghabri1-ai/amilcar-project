@@ -7,7 +7,7 @@
         <p style="color:var(--text-muted);font-size:.8rem;margin:0">{{ unread }} notification(s) non lue(s)</p>
     </div>
     {% if unread > 0 %}
-    <a href="{{ url_for('comms_bp.mark_all_notifications_read') }}" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600">✓ Tout marquer lu</a>
+    <form method="POST" action="{{ url_for('comms_bp.mark_all_notifications_read') }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm" style="background:var(--gold);color:#000;font-weight:600;border:none;cursor:pointer">✓ Tout marquer lu</button></form>
     {% endif %}
 </div>
 
@@ -52,10 +52,10 @@
         {% if n.message %}<div style="color:var(--text-muted);font-size:.78rem;margin-top:2px">{{ n.message }}</div>{% endif %}
         <div style="margin-top:6px;display:flex;gap:8px">
             {% if n.link %}
-            <a href="{{ url_for('comms_bp.mark_notification_read', nid=n.id, redirect=n.link) }}" class="btn btn-sm" style="background:{{ s.color }};color:#000;font-size:.65rem;font-weight:600;padding:2px 10px">Voir →</a>
+            <form method="POST" action="{{ url_for('comms_bp.mark_notification_read', nid=n.id) }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="redirect" value="{{ n.link }}"><button type="submit" class="btn btn-sm" style="background:{{ s.color }};color:#000;font-size:.65rem;font-weight:600;padding:2px 10px;border:none;cursor:pointer">Voir →</button></form>
             {% endif %}
             {% if not n.is_read %}
-            <a href="{{ url_for('comms_bp.mark_notification_read', nid=n.id) }}" class="btn btn-sm" style="background:var(--bg-hover);color:var(--text-muted);font-size:.65rem;padding:2px 10px">Marquer lu</a>
+            <form method="POST" action="{{ url_for('comms_bp.mark_notification_read', nid=n.id) }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm" style="background:var(--bg-hover);color:var(--text-muted);font-size:.65rem;padding:2px 10px;border:none;cursor:pointer">Marquer lu</button></form>
             {% endif %}
         </div>
     </div>

@@ -440,7 +440,7 @@ def detailing_pack_add():
 
 
 
-@ops_bp.route("/detailing_pack/toggle/<int:pid>")
+@ops_bp.route("/detailing_pack/toggle/<int:pid>", methods=["POST"])
 @login_required
 def detailing_pack_toggle(pid):
     with get_db() as conn:
@@ -726,7 +726,7 @@ def upsell_rule_add():
 
 
 
-@ops_bp.route("/upsell_rule/toggle/<int:rid>")
+@ops_bp.route("/upsell_rule/toggle/<int:rid>", methods=["POST"])
 @login_required
 @admin_required
 def upsell_rule_toggle(rid):
@@ -794,7 +794,7 @@ def smart_reminders_view():
 
 
 
-@ops_bp.route("/smart_reminder/mark/<int:rid>/<action>")
+@ops_bp.route("/smart_reminder/mark/<int:rid>/<action>", methods=["POST"])
 @login_required
 def smart_reminder_mark(rid, action):
     from datetime import datetime

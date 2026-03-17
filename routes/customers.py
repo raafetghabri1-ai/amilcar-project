@@ -254,9 +254,9 @@ def customer_report(customer_id):
 
 
 # ─── Excel Import/Export ───
-@customers_bp.route("/export/customers_excel")
+@customers_bp.route("/export/customers_csv_full")
 @login_required
-def export_customers_excel():
+def export_customers_csv_full():
     import csv
     with get_db() as conn:
         customers = conn.execute(
@@ -590,7 +590,7 @@ def crm_followup_add():
 
 
 
-@customers_bp.route("/crm_followup/complete/<int:fid>")
+@customers_bp.route("/crm_followup/complete/<int:fid>", methods=["POST"])
 @login_required
 def crm_followup_complete(fid):
     from datetime import date
@@ -603,7 +603,7 @@ def crm_followup_complete(fid):
 
 
 
-@customers_bp.route("/crm_followup/auto_generate")
+@customers_bp.route("/crm_followup/auto_generate", methods=["POST"])
 @login_required
 def crm_followup_auto():
     from datetime import date, timedelta
@@ -656,7 +656,7 @@ def referral_add():
 
 
 
-@customers_bp.route("/referral/convert/<int:rid>")
+@customers_bp.route("/referral/convert/<int:rid>", methods=["POST"])
 @login_required
 def referral_convert(rid):
     with get_db() as conn:
@@ -759,7 +759,7 @@ def fleet_vehicle_add(cid):
 
 
 
-@customers_bp.route("/fleet_vehicle/remove/<int:fvid>/<int:cid>")
+@customers_bp.route("/fleet_vehicle/remove/<int:fvid>/<int:cid>", methods=["POST"])
 @login_required
 def fleet_vehicle_remove(fvid, cid):
     with get_db() as conn:

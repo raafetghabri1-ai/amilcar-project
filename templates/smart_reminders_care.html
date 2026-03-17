@@ -58,8 +58,8 @@
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0">
                 {% if r.status == 'pending' %}
-                <a href="/smart_reminder/mark/{{ r.id }}/sent" class="btn btn-sm" style="background:#4ade80;color:#000;font-size:.7rem;padding:4px 10px" title="Marquer comme envoyé">✅ Envoyé</a>
-                <a href="/smart_reminder/mark/{{ r.id }}/dismissed" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-muted);font-size:.7rem;padding:4px 10px" title="Ignorer">✕</a>
+                <form method="POST" action="/smart_reminder/mark/{{ r.id }}/sent" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm" style="background:#4ade80;color:#000;font-size:.7rem;padding:4px 10px;border:none;cursor:pointer" title="Marquer comme envoyé">✅ Envoyé</button></form>
+                <form method="POST" action="/smart_reminder/mark/{{ r.id }}/dismissed" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm" style="background:var(--bg-input);color:var(--text-muted);font-size:.7rem;padding:4px 10px;border:none;cursor:pointer" title="Ignorer">✕</button></form>
                 {% else %}
                 <span style="background:{{ '#4ade80' if r.status=='sent' else 'var(--bg-input)' }};color:{{ '#000' if r.status=='sent' else 'var(--text-muted)' }};padding:4px 10px;border-radius:8px;font-size:.65rem">
                     {{ '✅ Envoyé' if r.status=='sent' else '✕ Ignoré' }}

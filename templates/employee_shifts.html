@@ -153,8 +153,8 @@
             <td>{{ l[5] }}</td>
             <td>{{ l[7] }}</td>
             <td>
-                <a href="/employee_leave/approve/{{ l[0] }}/approved" style="color:var(--green-light);font-size:.8rem;margin-right:8px">✅</a>
-                <a href="/employee_leave/approve/{{ l[0] }}/rejected" style="color:var(--red);font-size:.8rem">❌</a>
+                <form method="POST" action="/employee_leave/approve/{{ l[0] }}/approved" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="color:var(--green-light);font-size:.8rem;margin-right:8px;background:none;border:none;cursor:pointer">✅</button></form>
+                <form method="POST" action="/employee_leave/approve/{{ l[0] }}/rejected" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="color:var(--red);font-size:.8rem;background:none;border:none;cursor:pointer">❌</button></form>
             </td>
         </tr>
         {% endif %}

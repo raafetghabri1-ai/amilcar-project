@@ -861,7 +861,7 @@ def report_builder_generate(report_id):
 
 
 
-@reports_bp.route('/report_builder/delete/<int:report_id>')
+@reports_bp.route('/report_builder/delete/<int:report_id>', methods=["POST"])
 @login_required
 def report_builder_delete(report_id):
     with get_db() as conn:

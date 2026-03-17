@@ -5,7 +5,7 @@ Routes: 51
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit
 from models.report import total_customers, total_appointments, total_revenue
 from database.db import get_db
 from werkzeug.utils import secure_filename
@@ -868,6 +868,9 @@ def online_booking():
     shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
 
     if request.method == "POST":
+        if check_booking_rate_limit():
+            flash("Trop de réservations. Veuillez réessayer dans quelques minutes.", "danger")
+            return redirect("/book")
         name     = request.form.get('name', '').strip()
         phone    = request.form.get('phone', '').strip()
         email    = request.form.get('email', '').strip()
@@ -901,6 +904,29 @@ def online_booking():
                 (f"📅 Nouvelle réservation — {name}",
                  f"{name} ({phone}) souhaite {service} le {pref_date} à {pref_time or 'heure flexible'}"))
             conn.commit()
+
+        # ── CallMeBot WhatsApp notification to admin ──
+        wa_admin_phone = settings.get('wa_callmebot_phone', '')
+        wa_admin_key = settings.get('wa_callmebot_apikey', '')
+        wa_notify = settings.get('wa_notify_booking', '1')
+        if wa_admin_phone and wa_admin_key and wa_notify == '1':
+            try:
+                import requests as _req
+                import urllib.parse as _up
+                notif_msg = (f"📅 *Nouvelle réservation*\n"
+                             f"👤 {name} ({phone})\n"
+                             f"🔧 {service}\n"
+                             f"📅 {pref_date} {pref_time or 'flexible'}\n"
+                             f"🚗 {car_brand} {car_model} {car_plate}".strip())
+                _req.get(
+                    f"https://api.callmebot.com/whatsapp.php"
+                    f"?phone={_up.quote(wa_admin_phone)}"
+                    f"&text={_up.quote(notif_msg)}"
+                    f"&apikey={_up.quote(wa_admin_key)}",
+                    timeout=10
+                )
+            except Exception:
+                pass  # Don't block booking on notification failure
 
         # WhatsApp confirmation link for customer
         import urllib.parse
@@ -1204,7 +1230,7 @@ def webhook_add():
 
 
 
-@main_bp.route("/webhook/toggle/<int:wid>")
+@main_bp.route("/webhook/toggle/<int:wid>", methods=["POST"])
 @login_required
 @admin_required
 def webhook_toggle(wid):

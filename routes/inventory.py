@@ -297,7 +297,7 @@ def auto_purchase_orders():
 
 
 
-@inventory_bp.route("/auto_purchase_order/approve/<int:oid>")
+@inventory_bp.route("/auto_purchase_order/approve/<int:oid>", methods=["POST"])
 @login_required
 @admin_required
 def auto_po_approve(oid):
@@ -318,7 +318,7 @@ def auto_po_approve(oid):
 
 
 
-@inventory_bp.route("/auto_purchase_order/dismiss/<int:oid>")
+@inventory_bp.route("/auto_purchase_order/dismiss/<int:oid>", methods=["POST"])
 @login_required
 @admin_required
 def auto_po_dismiss(oid):

@@ -86,10 +86,9 @@
         <div class="card-footer bg-transparent d-flex gap-2">
             <button class="btn btn-sm btn-outline-primary flex-fill" data-bs-toggle="modal"
                     data-bs-target="#editSale{{ sale.id }}"><i class="bi bi-pencil"></i></button>
-            <a href="/flash_sale/toggle/{{ sale.id }}" class="btn btn-sm btn-outline-{{ 'warning' if sale.is_active else 'success' }} flex-fill">
-                <i class="bi bi-{{ 'pause' if sale.is_active else 'play' }}"></i></a>
-            <a href="/flash_sale/delete/{{ sale.id }}" class="btn btn-sm btn-outline-danger flex-fill"
-               onclick="return confirm('Supprimer cette vente flash ?')"><i class="bi bi-trash"></i></a>
+            <form method="POST" action="/flash_sale/toggle/{{ sale.id }}" style="display:inline" class="flex-fill"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-outline-{{ 'warning' if sale.is_active else 'success' }} w-100">
+                <i class="bi bi-{{ 'pause' if sale.is_active else 'play' }}"></i></button></form>
+            <form method="POST" action="/flash_sale/delete/{{ sale.id }}" style="display:inline" class="flex-fill" onsubmit="return confirm('Supprimer cette vente flash ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash"></i></button></form>
         </div>
     </div>
 </div>
