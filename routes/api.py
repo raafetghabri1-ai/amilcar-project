@@ -555,17 +555,20 @@ def inventory_trends():
 @api_bp.route("/sw.js")
 def service_worker():
     sw_content = """
-const CACHE_NAME = 'amilcar-v6';
-const urlsToCache = ['/', '/static/style.css', '/static/logo.png'];
+const CACHE_NAME = 'amilcar-v7';
+const STATIC_ASSETS = [
+    '/',
+    '/offline',
+    '/static/style.css',
+    '/static/logo.png',
+    '/manifest.json'
+];
+
 self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(urlsToCache)));
+    e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)));
     self.skipWaiting();
 });
-self.addEventListener('fetch', e => {
-    e.respondWith(
-        caches.match(e.request).then(r => r || fetch(e.request))
-    );
-});
+
 self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys().then(keys => Promise.all(
@@ -574,6 +577,45 @@ self.addEventListener('activate', e => {
     );
     self.clients.claim();
 });
+
+self.addEventListener('fetch', e => {
+    var req = e.request;
+    if (req.method !== 'GET') return;
+    /* Navigation requests: network-first with offline fallback */
+    if (req.mode === 'navigate') {
+        e.respondWith(
+            fetch(req).then(r => {
+                var clone = r.clone();
+                caches.open(CACHE_NAME).then(c => c.put(req, clone));
+                return r;
+            }).catch(() => caches.match(req).then(r => r || caches.match('/offline')))
+        );
+        return;
+    }
+    /* Static assets: cache-first */
+    if (req.url.match(/\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$/)) {
+        e.respondWith(
+            caches.match(req).then(r => {
+                if (r) return r;
+                return fetch(req).then(resp => {
+                    var clone = resp.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(req, clone));
+                    return resp;
+                });
+            })
+        );
+        return;
+    }
+    /* API/other: network-first, fallback to cache */
+    e.respondWith(
+        fetch(req).then(r => {
+            var clone = r.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, clone));
+            return r;
+        }).catch(() => caches.match(req))
+    );
+});
+
 self.addEventListener('push', e => {
     var data = e.data ? e.data.json() : {};
     var title = data.title || 'AMILCAR';
@@ -586,6 +628,7 @@ self.addEventListener('push', e => {
     };
     e.waitUntil(self.registration.showNotification(title, options));
 });
+
 self.addEventListener('notificationclick', e => {
     e.notification.close();
     e.waitUntil(clients.openWindow(e.notification.data.url || '/'));

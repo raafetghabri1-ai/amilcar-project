@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMILCAR - Hors ligne</title>
+    <meta name="theme-color" content="#D4AF37">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:#09090b;color:#e0e0e0;display:flex;justify-content:center;align-items:center;min-height:100vh;text-align:center;padding:20px}
+        .container{max-width:420px}
+        .icon{font-size:4rem;margin-bottom:1.5rem;animation:pulse 2s ease-in-out infinite}
+        @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+        h1{font-size:1.6rem;color:#D4AF37;margin-bottom:0.5rem;font-weight:700}
+        p{color:#999;font-size:0.95rem;line-height:1.6;margin-bottom:2rem}
+        .btn{display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#D4AF37,#B8962E);color:#09090b;border:none;border-radius:8px;font-weight:700;font-size:0.9rem;cursor:pointer;text-decoration:none;transition:all .3s}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,0.3)}
+        .status{margin-top:2rem;padding:12px 20px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.15);border-radius:8px;font-size:0.8rem;color:#D4AF37}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>Connexion perdue</h1>
+        <p>Vous êtes actuellement hors ligne. Vérifiez votre connexion internet et réessayez.</p>
+        <a href="/" class="btn" onclick="location.reload();return false;">↻ Réessayer</a>
+        <div class="status">AMILCAR Auto Care — Mode hors ligne</div>
+    </div>
+</body>
+</html>

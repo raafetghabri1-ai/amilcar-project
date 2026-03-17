@@ -447,6 +447,23 @@
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(function(){});
     }
+    /* PWA Install Prompt */
+    var deferredPrompt;
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        var banner = document.getElementById('pwaInstallBanner');
+        if (banner) banner.style.display = 'flex';
+    });
+    function pwaInstall() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function() { deferredPrompt = null; dismissPwaBanner(); });
+    }
+    function dismissPwaBanner() {
+        var b = document.getElementById('pwaInstallBanner');
+        if (b) { b.style.opacity='0'; b.style.transition='opacity .3s'; setTimeout(function(){ b.remove(); }, 300); }
+    }
     /* Toast notifications via SocketIO */
     (function(){
         try {
@@ -485,5 +502,19 @@
     })();
     </script>
     <style>@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}</style>
+    <!-- PWA Install Banner -->
+    <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1A1A2E,#09090b);border-top:1px solid rgba(212,175,55,0.3);padding:14px 20px;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(16px);box-shadow:0 -4px 24px rgba(0,0,0,0.5)">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+            <img src="/static/logo.png" alt="" style="height:36px;border-radius:8px" onerror="this.style.display='none'">
+            <div>
+                <div style="color:#D4AF37;font-weight:700;font-size:0.85rem">Installer AMILCAR</div>
+                <div style="color:#999;font-size:0.75rem">Accès rapide depuis votre écran d'accueil</div>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+            <button onclick="pwaInstall()" style="padding:8px 20px;background:linear-gradient(135deg,#D4AF37,#B8962E);color:#09090b;border:none;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer">Installer</button>
+            <button onclick="dismissPwaBanner()" style="padding:8px 12px;background:transparent;color:#666;border:1px solid #333;border-radius:6px;font-size:0.8rem;cursor:pointer">✕</button>
+        </div>
+    </div>
 </body>
 </html>

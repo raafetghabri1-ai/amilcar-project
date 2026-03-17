@@ -727,6 +727,10 @@ def submit_public_rating(token):
 
 
 # ─── Feature 9: PWA Support ───
+@main_bp.route("/offline")
+def offline_page():
+    return render_template("offline.html")
+
 @main_bp.route("/manifest.json")
 def pwa_manifest():
     settings = get_all_settings()
@@ -734,11 +738,16 @@ def pwa_manifest():
     manifest = {
         "name": f"{shop_name} Auto Care",
         "short_name": shop_name,
+        "description": "Gestion complète de garage automobile — rendez-vous, factures, clients, stock",
         "start_url": "/",
+        "scope": "/",
         "display": "standalone",
-        "background_color": "#0a0a0a",
+        "background_color": "#09090b",
         "theme_color": "#D4AF37",
         "orientation": "portrait-primary",
+        "categories": ["business", "productivity"],
+        "lang": "fr",
+        "dir": "ltr",
         "icons": [
             {"src": "/static/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png"},
             {"src": "/static/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png"},
@@ -748,6 +757,12 @@ def pwa_manifest():
             {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
             {"src": "/static/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png"},
             {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ],
+        "shortcuts": [
+            {"name": "Tableau de bord", "short_name": "Dashboard", "url": "/", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Nouveau RDV", "short_name": "RDV", "url": "/appointments/add", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Nouvelle facture", "short_name": "Facture", "url": "/invoices/add", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Clients", "short_name": "Clients", "url": "/customers", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]}
         ]
     }
     response = make_response(jsonify(manifest))
