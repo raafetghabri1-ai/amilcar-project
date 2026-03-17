@@ -1918,3 +1918,162 @@ def export_expenses_excel():
     return send_file(buf, as_attachment=True,
                      download_name=f"depenses_{month}_amilcar.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ─── Customer Statement PDF ───
+@reports_bp.route('/export/customer_statement/<int:customer_id>')
+@login_required
+def export_customer_statement(customer_id):
+    """Relevé de compte client PDF"""
+    with get_db() as conn:
+        cust = conn.execute("SELECT id, name, phone, email, address FROM customers WHERE id=?", (customer_id,)).fetchone()
+        if not cust:
+            flash("Client introuvable", "error")
+            return redirect("/customers")
+        invoices = conn.execute("""
+            SELECT i.id, a.date, a.service, ca.brand || ' ' || ca.model as car, ca.plate,
+                   i.amount, i.status, COALESCE(i.paid_amount, 0), i.payment_method
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id
+            WHERE ca.customer_id=? ORDER BY a.date DESC
+        """, (customer_id,)).fetchall()
+        cars = conn.execute("SELECT brand, model, plate FROM cars WHERE customer_id=?", (customer_id,)).fetchall()
+
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    today = date.today()
+
+    total_billed = sum(float(inv['amount']) for inv in invoices)
+    total_paid = sum(float(inv['paid_amount']) for inv in invoices)
+    balance = total_billed - total_paid
+
+    rows = ''.join(
+        f"<tr><td>#{inv['id']}</td><td>{inv['date']}</td><td>{inv['service']}</td>"
+        f"<td>{inv['car']}</td><td class='ar'>{round(inv['amount'],2)}</td>"
+        f"<td class='ar'>{round(inv['paid_amount'],2)}</td>"
+        f"<td class='st-{inv['status']}'>{inv['status']}</td></tr>"
+        for inv in invoices
+    )
+    car_list = ', '.join(f"{c['brand']} {c['model']} ({c['plate']})" for c in cars)
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; margin: 24px; }}
+  .header {{ background: #1a1a2e; color: white; padding: 18px; display: flex; justify-content: space-between; }}
+  .header h1 {{ color: #e8c547; margin: 0; font-size: 18px; letter-spacing: 3px; }}
+  .header p {{ color: #aaa; margin: 4px 0 0; font-size: 9px; }}
+  .title {{ text-align: center; color: #B8962E; font-size: 14px; letter-spacing: 4px; margin: 20px 0; font-weight: 700; }}
+  .info {{ display: table; width: 100%; margin: 14px 0; }}
+  .info-col {{ display: table-cell; width: 50%; padding: 10px; vertical-align: top; }}
+  .info-col h3 {{ color: #B8962E; font-size: 10px; letter-spacing: 2px; margin: 0 0 6px; }}
+  .info-col p {{ margin: 2px 0; font-size: 11px; }}
+  .summary {{ display: table; width: 100%; margin: 16px 0; }}
+  .sum-box {{ display: table-cell; text-align: center; padding: 12px; border: 1px solid #e0e0e0; }}
+  .sum-val {{ font-size: 18px; font-weight: 800; }}
+  .sum-green {{ color: #2e7d32; }}
+  .sum-red {{ color: #c62828; }}
+  .sum-gold {{ color: #B8962E; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px; }}
+  th {{ background: #1a1a2e; color: #e8c547; padding: 7px 8px; text-align: left; font-size: 9px; letter-spacing: 1px; }}
+  td {{ padding: 6px 8px; border-bottom: 1px solid #eee; }}
+  tr:nth-child(even) td {{ background: #f8f9fa; }}
+  .ar {{ text-align: right; }}
+  .st-paid {{ color: #2e7d32; font-weight: 700; }}
+  .st-unpaid {{ color: #c62828; font-weight: 700; }}
+  .st-partial {{ color: #e65100; font-weight: 700; }}
+  .footer {{ text-align: center; color: #aaa; font-size: 8px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; }}
+</style></head><body>
+<div class="header"><div><h1>{shop_name}</h1><p>Relevé de Compte Client</p></div><div style="text-align:right"><p>Date: {today.strftime('%d/%m/%Y')}</p></div></div>
+<div class="title">RELEVÉ DE COMPTE</div>
+<div class="info">
+  <div class="info-col"><h3>CLIENT</h3><p><b>{cust['name']}</b></p><p>{cust['phone'] or ''}</p><p>{cust['email'] or ''}</p><p>{cust['address'] or ''}</p></div>
+  <div class="info-col"><h3>VÉHICULES</h3><p>{car_list or '—'}</p><p style="margin-top:8px;color:#888">Total factures: {len(invoices)}</p></div>
+</div>
+<div class="summary">
+  <div class="sum-box"><div class="sum-val sum-gold">{round(total_billed,2)} DT</div><div>Total Facturé</div></div>
+  <div class="sum-box"><div class="sum-val sum-green">{round(total_paid,2)} DT</div><div>Total Payé</div></div>
+  <div class="sum-box"><div class="sum-val sum-red">{round(balance,2)} DT</div><div>Solde Restant</div></div>
+</div>
+<table><tr><th>#</th><th>Date</th><th>Service</th><th>Véhicule</th><th>Montant</th><th>Payé</th><th>Statut</th></tr>{rows}</table>
+<div class="footer">{shop_name} — Document confidentiel — Généré le {today.strftime('%d/%m/%Y à %H:%M')}</div>
+</body></html>"""
+
+    buf = _render_pdf(html)
+    log_activity('Export', f'Relevé client #{customer_id} → PDF')
+    safe_name = re.sub(r'[^a-zA-Z0-9]', '_', cust['name'])
+    return send_file(buf, as_attachment=True,
+                     download_name=f"releve_{safe_name}_{today}.pdf",
+                     mimetype="application/pdf")
+
+
+# ─── Quote PDF ───
+@reports_bp.route('/export/quote_pdf/<int:quote_id>')
+@login_required
+def export_quote_pdf(quote_id):
+    """Export a quote as PDF"""
+    with get_db() as conn:
+        quote = conn.execute("""
+            SELECT q.id, q.description, q.amount, q.status, q.created_at,
+                   cu.name, cu.phone, cu.email
+            FROM quotes q JOIN customers cu ON q.customer_id=cu.id
+            WHERE q.id=?
+        """, (quote_id,)).fetchone()
+    if not quote:
+        flash("Devis introuvable", "error")
+        return redirect("/quotes")
+
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    shop_phone = settings.get('shop_phone', '')
+    shop_address = settings.get('shop_address', '')
+    tax_rate = float(settings.get('tax_rate', '0') or '0')
+    today = date.today()
+
+    amount = float(quote['amount'])
+    tax_amount = round(amount * tax_rate / 100, 2)
+    total_ttc = round(amount + tax_amount, 2)
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body {{ font-family: Arial, sans-serif; font-size: 11px; color: #1a1a2e; margin: 24px; }}
+  .header {{ background: #1a1a2e; color: white; padding: 18px; display: flex; justify-content: space-between; }}
+  .header h1 {{ color: #e8c547; margin: 0; font-size: 18px; letter-spacing: 3px; }}
+  .header p {{ color: #aaa; margin: 4px 0 0; font-size: 9px; }}
+  .title {{ text-align: center; color: #B8962E; font-size: 16px; letter-spacing: 6px; margin: 24px 0; font-weight: 700; }}
+  .info {{ display: table; width: 100%; margin: 14px 0; }}
+  .info-col {{ display: table-cell; width: 50%; padding: 12px; vertical-align: top; border: 1px solid #e8e5dd; background: #fafaf8; }}
+  .info-col h3 {{ color: #B8962E; font-size: 9px; letter-spacing: 2px; margin: 0 0 8px; }}
+  .info-col p {{ margin: 3px 0; font-size: 11px; }}
+  .desc {{ background: #f8f9fa; border: 1px solid #e0e0e0; padding: 16px; margin: 18px 0; border-radius: 4px; font-size: 12px; line-height: 1.6; }}
+  .totals {{ width: 50%; margin-left: auto; margin-top: 18px; }}
+  .totals tr td {{ padding: 8px 12px; font-size: 11px; }}
+  .totals .total-row td {{ background: #1a1a2e; color: #e8c547; font-size: 15px; font-weight: 800; }}
+  .validity {{ text-align: center; color: #888; font-size: 10px; margin: 24px 0; padding: 10px; border: 1px dashed #ddd; }}
+  .footer {{ text-align: center; color: #aaa; font-size: 8px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; }}
+</style></head><body>
+<div class="header">
+  <div><h1>{shop_name}</h1><p>{shop_address}</p><p>{shop_phone}</p></div>
+  <div style="text-align:right"><p>Date: {today.strftime('%d/%m/%Y')}</p><p>Devis N° {quote['id']}</p></div>
+</div>
+<div class="title">DEVIS</div>
+<div class="info">
+  <div class="info-col"><h3>CLIENT</h3><p><b>{quote['name']}</b></p><p>{quote['phone'] or ''}</p><p>{quote['email'] or ''}</p></div>
+  <div class="info-col"><h3>DÉTAILS</h3><p>Devis N°: <b>#{quote['id']}</b></p><p>Date: {quote['created_at'][:10] if quote['created_at'] else today}</p><p>Statut: <b>{quote['status']}</b></p></div>
+</div>
+<div class="desc"><b>Description:</b><br>{quote['description'] or '—'}</div>
+<table class="totals">
+  <tr><td>Montant HT</td><td style="text-align:right">{round(amount,2)} DT</td></tr>
+  <tr><td>TVA ({tax_rate}%)</td><td style="text-align:right">{tax_amount} DT</td></tr>
+  <tr class="total-row"><td>TOTAL TTC</td><td style="text-align:right">{total_ttc} DT</td></tr>
+</table>
+<div class="validity">Ce devis est valable 30 jours à compter de sa date d'émission.</div>
+<div class="footer">{shop_name} — {shop_address} — {shop_phone}<br>Document confidentiel — Généré le {today.strftime('%d/%m/%Y à %H:%M')}</div>
+</body></html>"""
+
+    buf = _render_pdf(html)
+    log_activity('Export', f'Devis #{quote_id} → PDF')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"devis_{quote_id}_{today}.pdf",
+                     mimetype="application/pdf")
