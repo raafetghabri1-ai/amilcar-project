@@ -3,7 +3,7 @@ AMILCAR — Invoices, Payments & Billing
 Blueprint: invoices_bp
 Routes: 42
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
 from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
 from database.db import get_db
@@ -104,6 +104,12 @@ def pay_invoice(invoice_id):
                     (payment_method, new_total_paid, invoice_id))
             conn.commit()
     log_activity('Pay Invoice', f'Invoice #{invoice_id} ({payment_method})')
+    try:
+        notify = current_app.config.get('notify_update')
+        if notify:
+            notify('invoice_paid', {'id': invoice_id})
+    except Exception:
+        pass
     return redirect("/invoices")
 
 

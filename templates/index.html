@@ -58,25 +58,44 @@
 
     <!-- Quick Stats -->
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="quick-stat">
                 <p class="quick-stat-label">Aujourd'hui</p>
                 <p class="quick-stat-value">{{ stats.today_appointments }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rdv</span> — {{ stats.today_revenue }} DT</p>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="quick-stat red">
                 <p class="quick-stat-label">Factures Impayées</p>
                 <p class="quick-stat-value">{{ stats.unpaid_total }} DT</p>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="quick-stat green">
                 <p class="quick-stat-label">Demain</p>
                 <p class="quick-stat-value">{{ tomorrow_appointments|length }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rendez-vous</span></p>
             </div>
         </div>
+        <div class="col-md-3 col-6">
+            <div class="quick-stat" style="border-left:3px solid #3B82F6">
+                <p class="quick-stat-label">Revenus Semaine</p>
+                <p class="quick-stat-value" style="color:#3B82F6">{{ stats.week_revenue }} DT</p>
+            </div>
+        </div>
     </div>
+
+    <!-- Online Bookings Banner -->
+    {% if stats.pending_bookings > 0 %}
+    <div class="card p-3 mb-4" style="border:1px solid rgba(59,130,246,0.3);background:rgba(59,130,246,0.06)">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span style="font-size:1.1rem;font-weight:700;color:#3B82F6">📱 {{ stats.pending_bookings }} Réservation{{ 's' if stats.pending_bookings > 1 }} en Ligne</span>
+                <span style="color:var(--text-muted);font-size:0.8rem;margin-left:8px">({{ stats.today_bookings }} aujourd'hui)</span>
+            </div>
+            <a href="/bookings_admin" class="btn-gold btn-sm">Voir les Réservations</a>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Insights -->
     <div class="row g-3 mb-4">
@@ -207,6 +226,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
 var chartFont = {family:'Inter',size:10};
 var gridColor = 'rgba(255,255,255,0.03)';
@@ -281,5 +301,19 @@ fetch('/api/chart_data').then(r=>r.json()).then(data=>{
         });
     }
 });
+
+// SocketIO Real-time Updates
+(function(){
+    try {
+        var socket = io();
+        socket.on('connect', function(){ socket.emit('join_dashboard'); });
+        socket.on('update', function(msg){
+            // Auto-refresh dashboard on new booking or payment
+            if(['new_booking','invoice_paid','new_appointment'].indexOf(msg.type) !== -1){
+                setTimeout(function(){ location.reload(); }, 1500);
+            }
+        });
+    } catch(e) { console.log('SocketIO not available'); }
+})();
 </script>
 {% endblock %}

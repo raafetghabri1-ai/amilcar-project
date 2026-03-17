@@ -3,7 +3,7 @@ AMILCAR — Main Pages
 Blueprint: main_bp
 Routes: 51
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
 from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit
 from models.report import total_customers, total_appointments, total_revenue
@@ -87,6 +87,16 @@ def index():
         paid_count = conn.execute("SELECT COUNT(*) FROM invoices WHERE status = 'paid'").fetchone()[0]
         total_inv_count = conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0]
         pay_rate = round((paid_count / total_inv_count * 100) if total_inv_count > 0 else 0)
+        # Online bookings stats
+        pending_bookings = conn.execute(
+            "SELECT COUNT(*) FROM online_bookings WHERE status='pending'").fetchone()[0]
+        today_bookings = conn.execute(
+            "SELECT COUNT(*) FROM online_bookings WHERE date(created_at)=?", (today_str,)).fetchone()[0]
+        # This week revenue
+        week_start = str(date.today() - timedelta(days=date.today().weekday()))
+        week_revenue = conn.execute(
+            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+            "WHERE a.date >= ? AND i.status='paid'", (week_start,)).fetchone()[0]
     stats = {
         'customers': total_customers(),
         'appointments': total_appointments(),
@@ -102,6 +112,9 @@ def index():
         'most_visited_car': most_visited_car[0] if most_visited_car else '—',
         'most_visited_count': most_visited_car[1] if most_visited_car else 0,
         'pay_rate': pay_rate,
+        'pending_bookings': pending_bookings,
+        'today_bookings': today_bookings,
+        'week_revenue': week_revenue,
     }
     return render_template('index.html', stats=stats, pending_appointments=pending_appointments,
                            tomorrow_appointments=tomorrow_appointments)
@@ -904,6 +917,14 @@ def online_booking():
                 (f"📅 Nouvelle réservation — {name}",
                  f"{name} ({phone}) souhaite {service} le {pref_date} à {pref_time or 'heure flexible'}"))
             conn.commit()
+
+        # Real-time dashboard notification
+        try:
+            notify = current_app.config.get('notify_update')
+            if notify:
+                notify('new_booking', {'name': name, 'service': service, 'date': pref_date})
+        except Exception:
+            pass
 
         # ── CallMeBot WhatsApp notification to admin ──
         wa_admin_phone = settings.get('wa_callmebot_phone', '')
