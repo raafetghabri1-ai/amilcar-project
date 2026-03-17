@@ -1584,12 +1584,19 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_attendance_date ON employee_attendance(date)",
         "CREATE INDEX IF NOT EXISTS idx_supplier_reviews_supplier ON supplier_reviews(supplier_id)",
         "CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category)",
+        # Critical performance indexes
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
+        "CREATE INDEX IF NOT EXISTS idx_online_bookings_created ON online_bookings(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_ratings_created ON ratings(created_at)",
     ]
     for idx in indexes:
         try:
             cursor.execute(idx)
-        except:
-            pass
+        except Exception as e:
+            _mig_log.warning('Index failed: %s — %s', idx[:60], e)
 
     # ─── Phase 15: Revenue Intelligence & Client Excellence Tables ───
 

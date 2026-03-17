@@ -172,9 +172,21 @@ app.register_blueprint(portal_bp)
 app.register_blueprint(api_bp)
 
 # ─── Error Handlers ───
+@app.errorhandler(401)
+def unauthorized(e):
+    return render_template('error.html', code=401, message="Accès non autorisé — veuillez vous connecter"), 401
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('error.html', code=403, message="Accès interdit — permissions insuffisantes"), 403
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('error.html', code=404, message="Page introuvable"), 404
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template('error.html', code=429, message="Trop de requêtes — réessayez dans quelques minutes"), 429
 
 @app.errorhandler(500)
 def internal_error(e):
@@ -202,7 +214,8 @@ app.config['notify_update'] = notify_update
 # ─── Auto Backup Scheduler ───
 def _run_daily_backup():
     """Background thread: runs daily backup + Telegram send if enabled."""
-    import threading
+    import threading, logging
+    _log = logging.getLogger('amilcar.backup')
     while True:
         time_module.sleep(86400)  # 24 hours
         try:
@@ -213,13 +226,15 @@ def _run_daily_backup():
                     from routes.settings_admin import _perform_backup, _send_telegram_backup
                     fname = _perform_backup()
                     if fname:
+                        _log.info('Auto-backup created: %s', fname)
                         tg_auto = db.execute("SELECT value FROM settings WHERE key='telegram_auto_backup'").fetchone()
                         if tg_auto and tg_auto[0] == '1':
                             backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
                             _send_telegram_backup(os.path.join(backup_dir, fname), fname)
+                            _log.info('Telegram backup sent: %s', fname)
                 db.close()
-        except Exception:
-            pass
+        except Exception as e:
+            _log.error('Auto-backup failed: %s', e)
 
 import threading
 _backup_thread = threading.Thread(target=_run_daily_backup, daemon=True)
@@ -277,8 +292,9 @@ def _run_appointment_reminders():
                            f"&apikey={urllib.parse.quote(apikey)}")
                     urllib.request.urlopen(url, timeout=15)
                 db.close()
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger('amilcar.reminders').error('Reminder failed: %s', e)
 
 _reminder_thread = threading.Thread(target=_run_appointment_reminders, daemon=True)
 _reminder_thread.start()

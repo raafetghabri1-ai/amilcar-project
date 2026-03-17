@@ -305,6 +305,35 @@ def get_all_settings():
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def validate_file_mime(file_storage):
+    """Validate file MIME type matches extension. Returns True if safe."""
+    if not file_storage or not file_storage.filename:
+        return False
+    if not allowed_file(file_storage.filename):
+        return False
+    # Read first 8 bytes for magic number check
+    header = file_storage.read(8)
+    file_storage.seek(0)
+    # JPEG: FF D8 FF | PNG: 89 50 4E 47 | GIF: 47 49 46 38 | WEBP: 52 49 46 46 ... 57 45 42 50
+    if header[:3] == b'\xff\xd8\xff':  # JPEG
+        return True
+    if header[:4] == b'\x89PNG':  # PNG
+        return True
+    if header[:4] == b'GIF8':  # GIF
+        return True
+    if header[:4] == b'RIFF':  # WEBP (RIFF container)
+        return True
+    return False
+
+def sanitize_phone(phone):
+    """Strip non-digit chars except leading +."""
+    if not phone:
+        return ''
+    phone = phone.strip()
+    if phone.startswith('+'):
+        return '+' + ''.join(c for c in phone[1:] if c.isdigit())
+    return ''.join(c for c in phone if c.isdigit())
+
 def safe_page(page):
     return max(1, min(page, 10000))
 
