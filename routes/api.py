@@ -5,7 +5,7 @@ Routes: 28
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, csrf
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, csrf, cache
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -140,6 +140,9 @@ def api_search():
 @api_bp.route("/api/chart_data")
 @login_required
 def chart_data():
+    cached = cache.get('chart_data')
+    if cached:
+        return jsonify(cached)
     from datetime import date
     with get_db() as conn:
         today = date.today()
@@ -182,14 +185,16 @@ def chart_data():
         expense_cats = conn.execute(
             "SELECT category, COALESCE(SUM(amount),0) FROM expenses GROUP BY category ORDER BY SUM(amount) DESC LIMIT 6"
         ).fetchall()
-    return jsonify({
+    result = {
         'months': months,
         'revenue': revenue_data,
         'expenses': expenses_data,
         'appointments': appointments_data,
         'services': {'labels': [s[0][:20] for s in services], 'data': [s[1] for s in services]},
         'expense_categories': {'labels': [e[0] for e in expense_cats], 'data': [float(e[1]) for e in expense_cats]}
-    })
+    }
+    cache.set('chart_data', result, ttl=300)
+    return jsonify(result)
 
 
 
@@ -216,6 +221,9 @@ def api_customer_ratings(customer_id):
 @api_bp.route("/api/weekly_revenue")
 @login_required
 def weekly_revenue():
+    cached = cache.get('weekly_revenue')
+    if cached:
+        return jsonify(cached)
     from datetime import date, timedelta
     today = date.today()
     data = []
@@ -230,6 +238,7 @@ def weekly_revenue():
                 "WHERE a.date = ? AND i.status = 'paid'", (ds,)).fetchone()[0]
             appts = conn.execute("SELECT COUNT(*) FROM appointments WHERE date = ?", (ds,)).fetchone()[0]
             data.append({'day': day_names[i], 'date': ds, 'revenue': float(rev), 'appointments': appts})
+    cache.set('weekly_revenue', data, ttl=120)
     return jsonify(data)
 
 
@@ -237,6 +246,9 @@ def weekly_revenue():
 @api_bp.route("/api/monthly_comparison")
 @login_required
 def monthly_comparison():
+    cached = cache.get('monthly_comparison')
+    if cached:
+        return jsonify(cached)
     from datetime import date
     today = date.today()
     results = []
@@ -259,6 +271,7 @@ def monthly_comparison():
                 'label': f"{month_names[m-1]}", 'month': f"{y}-{m:02d}",
                 'revenue': float(rev), 'expenses': float(exp), 'profit': float(rev - exp)
             })
+    cache.set('monthly_comparison', results, ttl=300)
     return jsonify(results)
 
 
@@ -266,6 +279,9 @@ def monthly_comparison():
 @api_bp.route("/api/profit_forecast")
 @login_required
 def profit_forecast():
+    cached = cache.get('profit_forecast')
+    if cached:
+        return jsonify(cached)
     from datetime import date
     today = date.today()
     with get_db() as conn:
@@ -293,7 +309,7 @@ def profit_forecast():
             "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
     forecast_rev = float(curr_rev) + float(avg_rev) * days_remaining
     forecast_exp = float(curr_exp) + float(avg_exp) * days_remaining
-    return jsonify({
+    result = {
         'current_revenue': float(curr_rev),
         'current_expenses': float(curr_exp),
         'forecast_revenue': round(forecast_rev),
@@ -301,7 +317,9 @@ def profit_forecast():
         'forecast_profit': round(forecast_rev - forecast_exp),
         'avg_daily_revenue': round(float(avg_rev), 1),
         'days_remaining': days_remaining
-    })
+    }
+    cache.set('profit_forecast', result, ttl=120)
+    return jsonify(result)
 
 
 

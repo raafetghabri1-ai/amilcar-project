@@ -57,13 +57,29 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24h
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
-# ─── Security Headers ───
+# ─── Security Headers + Performance ───
 @app.after_request
 def set_security_headers(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    # Static file caching (CSS, JS, images: 7 days)
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=604800'
+    # Gzip compression for text responses
+    if (response.content_type and
+        any(ct in response.content_type for ct in ('text/', 'application/json', 'application/javascript')) and
+        'Content-Encoding' not in response.headers and
+        response.content_length and response.content_length > 500):
+        import gzip
+        data = response.get_data()
+        compressed = gzip.compress(data, compresslevel=6)
+        if len(compressed) < len(data):
+            response.set_data(compressed)
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Content-Length'] = len(compressed)
+            response.headers['Vary'] = 'Accept-Encoding'
     return response
 
 # ─── API Rate Limiting ───

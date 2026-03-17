@@ -5,7 +5,7 @@ Routes: 51
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit, cache
 from models.report import total_customers, total_appointments, total_revenue
 from database.db import get_db
 from werkzeug.utils import secure_filename
@@ -151,6 +151,7 @@ def new_invoice():
                         (appointment_id, amount_val, discount_type if discount_type in ('percent','fixed') else '', disc_val))
                     conn_inv.commit()
                 log_activity('Add Invoice', f'Amount: {amount_val} DT')
+                cache.clear()
                 flash('Facture ajoutée avec succès', 'success')
                 return redirect("/invoices")
             except ValueError:
