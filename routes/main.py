@@ -828,6 +828,38 @@ def add_payment(invoice_id):
 
 
 
+# ─── Phase 25: Public Service Catalog ───
+@main_bp.route("/nos-services")
+def services_catalog():
+    """Page publique du catalogue de services — visible sans login"""
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR Auto Care')
+    with get_db() as conn:
+        services = conn.execute(
+            "SELECT * FROM services WHERE active=1 ORDER BY sort_order, name"
+        ).fetchall()
+    # Group by category
+    categories = {}
+    cat_labels = {
+        'lavage': {'label': 'Lavage & Nettoyage', 'icon': '💧', 'desc': 'Du lavage express au lavage premium'},
+        'interieur': {'label': 'Detailing Intérieur', 'icon': '🪑', 'desc': 'Nettoyage profond de l\'habitacle'},
+        'exterieur': {'label': 'Detailing Extérieur', 'icon': '🔆', 'desc': 'Carrosserie parfaite et brillante'},
+        'polissage': {'label': 'Polissage & Correction', 'icon': '💎', 'desc': 'Suppression rayures et swirl marks'},
+        'protection': {'label': 'Protection & Céramique', 'icon': '🛡️', 'desc': 'Protection longue durée pour votre peinture'},
+        'packs': {'label': 'Packs Complets', 'icon': '📦', 'desc': 'Nos formules tout-en-un les plus populaires'},
+        'special': {'label': 'Services Spéciaux', 'icon': '⚙️', 'desc': 'Traitements ciblés et complémentaires'},
+    }
+    for svc in services:
+        cat = svc['category'] or 'autre'
+        if cat not in categories:
+            info = cat_labels.get(cat, {'label': cat.title(), 'icon': '🔧', 'desc': ''})
+            categories[cat] = {'info': info, 'services': []}
+        categories[cat]['services'].append(svc)
+    return render_template("services_catalog.html",
+                           categories=categories, shop_name=shop_name,
+                           settings=settings)
+
+
 # ─── Phase 7 Feature 9: Online Booking ───
 @main_bp.route("/book", methods=["GET", "POST"])
 def online_booking():
@@ -899,7 +931,8 @@ def online_booking():
 
     with get_db() as conn:
         services = conn.execute(
-            "SELECT name, price, estimated_minutes FROM services ORDER BY name").fetchall()
+            "SELECT name, price, estimated_minutes, category, icon, description, duration_label "
+            "FROM services WHERE active=1 ORDER BY sort_order, name").fetchall()
         # Booked slots per date
         booked = conn.execute(
             "SELECT preferred_date, preferred_time, COUNT(*) as cnt "
@@ -916,11 +949,14 @@ def online_booking():
     time_slots = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
                   "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"]
 
+    preselect = request.args.get('service', '')
+
     return render_template("online_booking.html",
                            services=services, settings=settings,
                            shop_name=shop_name, min_date=min_date,
                            max_date=max_date, time_slots=time_slots,
-                           booked_slots=booked_slots)
+                           booked_slots=booked_slots,
+                           preselect=preselect)
 
 
 @main_bp.route("/book/qr")

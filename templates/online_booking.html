@@ -51,12 +51,21 @@
 
     /* Service cards */
     .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-bottom:4px}
-    .svc-card{border:2px solid #eee;border-radius:10px;padding:11px;cursor:pointer;transition:.2s;text-align:center;background:#fafafa}
+    .svc-card{border:2px solid #eee;border-radius:10px;padding:11px;cursor:pointer;transition:.2s;text-align:center;background:#fafafa;position:relative}
     .svc-card:hover{border-color:var(--gold);background:#fffdf0}
     .svc-card.sel{border-color:var(--gold);background:linear-gradient(135deg,#fffde7,#fff9c4)}
-    .sc-nm{font-size:.8rem;font-weight:700;color:var(--navy)}
-    .sc-pr{font-size:.95rem;font-weight:700;color:var(--gd);margin-top:3px}
-    .sc-tm{font-size:.7rem;color:#888}
+    .sc-icon{font-size:1.4rem;margin-bottom:3px}
+    .sc-nm{font-size:.76rem;font-weight:700;color:var(--navy)}
+    .sc-desc{font-size:.62rem;color:#999;margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .sc-pr{font-size:.9rem;font-weight:700;color:var(--gd);margin-top:4px}
+    .sc-tm{font-size:.65rem;color:#888}
+    .cat-label{font-size:.72rem;font-weight:700;color:var(--nv2);text-transform:uppercase;letter-spacing:1px;
+               margin-top:10px;margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f0ebe0;display:flex;align-items:center;gap:6px}
+    .cat-label:first-child{margin-top:0}
+    /* Filter tabs */
+    .cat-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+    .ct{padding:5px 12px;border:1px solid #eee;border-radius:50px;font-size:.68rem;font-weight:600;cursor:pointer;transition:.2s;background:#fafafa;color:var(--muted)}
+    .ct:hover,.ct.active{border-color:var(--gold);background:linear-gradient(135deg,#fffde7,#fff9c4);color:var(--gd)}
 
     /* Time slots */
     .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:7px}
@@ -147,16 +156,34 @@
         <!-- Step 2 -->
         <div class="sec" id="s2">
           <div class="sec-title">🔧 Choisissez un Service</div>
-          <input type="hidden" name="service" id="svc-in">
-          <div class="svc-grid">
+          <input type="hidden" name="service" id="svc-in" value="{{ preselect }}">
+
+          <div class="cat-tabs">
+            <div class="ct active" onclick="filterCat('all',this)">Tous</div>
+            <div class="ct" onclick="filterCat('lavage',this)">💧 Lavage</div>
+            <div class="ct" onclick="filterCat('interieur',this)">🪑 Intérieur</div>
+            <div class="ct" onclick="filterCat('exterieur',this)">🔆 Extérieur</div>
+            <div class="ct" onclick="filterCat('polissage',this)">💎 Polissage</div>
+            <div class="ct" onclick="filterCat('protection',this)">🛡️ Protection</div>
+            <div class="ct" onclick="filterCat('packs',this)">📦 Packs</div>
+            <div class="ct" onclick="filterCat('special',this)">⚙️ Spécial</div>
+          </div>
+
+          <div class="svc-grid" id="svc-grid">
             {% for svc in services %}
-            <div class="svc-card" onclick="pickSvc('{{ svc['name'] }}', this)">
+            <div class="svc-card{% if preselect == svc['name'] %} sel{% endif %}" 
+                 data-cat="{{ svc['category'] }}" data-name="{{ svc['name'] }}"
+                 onclick="pickSvc('{{ svc['name'] }}', this)">
+              <div class="sc-icon">{{ svc['icon'] or '🔧' }}</div>
               <div class="sc-nm">{{ svc['name'] }}</div>
-              {% if svc['price'] %}<div class="sc-pr">{{ svc['price']|int }} DT</div>{% endif %}
-              {% if svc['estimated_minutes'] %}<div class="sc-tm">⏱ {{ svc['estimated_minutes'] }} min</div>{% endif %}
+              {% if svc['description'] %}<div class="sc-desc">{{ svc['description'][:80] }}</div>{% endif %}
+              {% if svc['price'] and svc['price'] > 0 %}<div class="sc-pr">{{ svc['price']|int }} DT</div>
+              {% else %}<div class="sc-pr" style="color:#888;font-size:.72rem">Sur devis</div>{% endif %}
+              {% if svc['duration_label'] %}<div class="sc-tm">⏱ {{ svc['duration_label'] }}</div>{% endif %}
             </div>
             {% endfor %}
           </div>
+          <a href="/nos-services" target="_blank" style="font-size:.72rem;color:var(--gd);display:block;text-align:center;margin-top:8px">📋 Voir le détail de tous nos services</a>
           <div class="fg one" style="margin-top:14px">
             <div class="fm"><label>Notes / Détails</label>
               <textarea name="notes" rows="2" placeholder="Détails supplémentaires..."></textarea></div>
@@ -250,6 +277,27 @@ function pickSvc(name, el) {
   el.classList.add('sel');
   document.getElementById('svc-in').value = name;
 }
+
+function filterCat(cat, el) {
+  document.querySelectorAll('.ct').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.svc-card').forEach(card => {
+    if (cat === 'all' || card.dataset.cat === cat) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+// Auto-select preselected service from URL
+document.addEventListener('DOMContentLoaded', () => {
+  const pre = document.getElementById('svc-in').value;
+  if (pre) {
+    const card = document.querySelector(`.svc-card[data-name="${pre}"]`);
+    if (card) { card.classList.add('sel'); card.scrollIntoView({block:'nearest'}); }
+  }
+});
 
 function pickSlot(t, el) {
   if (el.classList.contains('taken')) return;

@@ -1182,6 +1182,15 @@ def create_tables():
         ("ALTER TABLE services ADD COLUMN cost_products REAL DEFAULT 0", None),
         ("ALTER TABLE services ADD COLUMN cost_labor_minutes INTEGER DEFAULT 0", None),
         ("ALTER TABLE settings ADD COLUMN category TEXT DEFAULT 'general'", None),
+        # Phase 25: Service Catalog Enhancement
+        ("ALTER TABLE services ADD COLUMN category TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN description TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN icon TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN sort_order INTEGER DEFAULT 0", None),
+        ("ALTER TABLE services ADD COLUMN includes TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN duration_label TEXT DEFAULT ''", None),
+        ("ALTER TABLE services ADD COLUMN popular INTEGER DEFAULT 0", None),
+        ("ALTER TABLE services ADD COLUMN image_url TEXT DEFAULT ''", None),
     ]
     for sql, _ in migrations:
         try:
