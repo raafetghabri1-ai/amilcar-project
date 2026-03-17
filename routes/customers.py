@@ -45,17 +45,17 @@ def customers():
     with get_db() as conn:
         if search:
             total = conn.execute(
-                "SELECT COUNT(*) FROM customers WHERE name LIKE ? OR phone LIKE ?",
+                "SELECT COUNT(*) FROM customers WHERE COALESCE(is_deleted,0)=0 AND (name LIKE ? OR phone LIKE ?)",
                 (f'%{search}%', f'%{search}%')
             ).fetchone()[0]
             all_customers = conn.execute(
-                "SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT ? OFFSET ?",
+                "SELECT * FROM customers WHERE COALESCE(is_deleted,0)=0 AND (name LIKE ? OR phone LIKE ?) LIMIT ? OFFSET ?",
                 (f'%{search}%', f'%{search}%', PER_PAGE, (page - 1) * PER_PAGE)
             ).fetchall()
         else:
-            total = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM customers WHERE COALESCE(is_deleted,0)=0").fetchone()[0]
             all_customers = conn.execute(
-                "SELECT * FROM customers LIMIT ? OFFSET ?",
+                "SELECT * FROM customers WHERE COALESCE(is_deleted,0)=0 LIMIT ? OFFSET ?",
                 (PER_PAGE, (page - 1) * PER_PAGE)
             ).fetchall()
     total_pages = (total + PER_PAGE - 1) // PER_PAGE
@@ -72,8 +72,8 @@ def customer_detail(customer_id):
         if not customer:
             flash('Client introuvable', 'error')
             return redirect("/customers")
-        cars = conn.execute("SELECT * FROM cars WHERE customer_id = ?", (customer_id,)).fetchall()
-        appointments = conn.execute("SELECT a.* FROM appointments a JOIN cars c ON a.car_id = c.id WHERE c.customer_id = ? ORDER BY a.id DESC", (customer_id,)).fetchall()
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id = ? AND COALESCE(is_deleted,0)=0", (customer_id,)).fetchall()
+        appointments = conn.execute("SELECT a.* FROM appointments a JOIN cars c ON a.car_id = c.id WHERE c.customer_id = ? AND COALESCE(a.is_deleted,0)=0 ORDER BY a.id DESC", (customer_id,)).fetchall()
         # CLV calculation
         total_spent = conn.execute(
             "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "

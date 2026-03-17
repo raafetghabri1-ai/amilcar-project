@@ -27,7 +27,7 @@ def appointments():
     with get_db() as conn:
         base_q = ("FROM appointments a JOIN cars ca ON a.car_id = ca.id "
                   "JOIN customers cu ON ca.customer_id = cu.id")
-        conditions = []
+        conditions = ["COALESCE(a.is_deleted,0)=0"]
         params = []
         if status_filter:
             conditions.append("a.status = ?")
@@ -173,10 +173,12 @@ def update_appointment(appointment_id, status):
 @appointments_bp.route("/delete_appointment/<int:appointment_id>", methods=["POST"])
 @login_required
 def delete_appointment(appointment_id):
+    from datetime import datetime
     with get_db() as conn:
-        conn.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
+        conn.execute("UPDATE appointments SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), appointment_id))
         conn.commit()
-    log_activity('Delete Appointment', f'Appointment #{appointment_id}')
+    log_activity('Delete Appointment', f'Appointment #{appointment_id} (soft)')
+    flash('Rendez-vous supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/appointments")
 
 

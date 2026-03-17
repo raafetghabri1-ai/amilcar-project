@@ -1191,6 +1191,19 @@ def create_tables():
         ("ALTER TABLE services ADD COLUMN duration_label TEXT DEFAULT ''", None),
         ("ALTER TABLE services ADD COLUMN popular INTEGER DEFAULT 0", None),
         ("ALTER TABLE services ADD COLUMN image_url TEXT DEFAULT ''", None),
+        # Phase 37: Soft Delete support
+        ("ALTER TABLE customers ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE customers ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE cars ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE cars ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE appointments ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE appointments ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE invoices ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE invoices ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE expenses ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE expenses ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        ("ALTER TABLE quotes ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
+        ("ALTER TABLE quotes ADD COLUMN deleted_at TEXT DEFAULT ''", None),
     ]
     import logging
     _mig_log = logging.getLogger('amilcar.migrations')
@@ -1591,6 +1604,13 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_ratings_created ON ratings(created_at)",
+        # Soft delete indexes
+        "CREATE INDEX IF NOT EXISTS idx_customers_deleted ON customers(is_deleted)",
+        "CREATE INDEX IF NOT EXISTS idx_cars_deleted ON cars(is_deleted)",
+        "CREATE INDEX IF NOT EXISTS idx_appointments_deleted ON appointments(is_deleted)",
+        "CREATE INDEX IF NOT EXISTS idx_invoices_deleted ON invoices(is_deleted)",
+        "CREATE INDEX IF NOT EXISTS idx_expenses_deleted ON expenses(is_deleted)",
+        "CREATE INDEX IF NOT EXISTS idx_quotes_deleted ON quotes(is_deleted)",
     ]
     for idx in indexes:
         try:

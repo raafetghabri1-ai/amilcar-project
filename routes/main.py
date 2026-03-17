@@ -288,17 +288,20 @@ def edit_car(car_id):
 @main_bp.route("/delete_car/<int:car_id>", methods=["POST"])
 @login_required
 def delete_car(car_id):
+    from datetime import datetime
+    now = datetime.now().isoformat()
     with get_db() as conn:
         car = conn.execute("SELECT customer_id FROM cars WHERE id = ?", (car_id,)).fetchone()
         if not car:
             return redirect("/customers")
         customer_id = car[0]
-        # Cascade: delete invoices → appointments → car
-        conn.execute("DELETE FROM invoices WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id = ?)", (car_id,))
-        conn.execute("DELETE FROM appointments WHERE car_id = ?", (car_id,))
-        conn.execute("DELETE FROM cars WHERE id = ?", (car_id,))
+        # Soft delete: mark invoices, appointments, car as deleted
+        conn.execute("UPDATE invoices SET is_deleted=1, deleted_at=? WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id = ?)", (now, car_id))
+        conn.execute("UPDATE appointments SET is_deleted=1, deleted_at=? WHERE car_id = ?", (now, car_id))
+        conn.execute("UPDATE cars SET is_deleted=1, deleted_at=? WHERE id = ?", (now, car_id))
         conn.commit()
-    log_activity('Delete Car', f'Car #{car_id}')
+    log_activity('Delete Car', f'Car #{car_id} (soft)')
+    flash('V\u00e9hicule supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect(f"/customer/{customer_id}")
 
 
@@ -306,16 +309,19 @@ def delete_car(car_id):
 @main_bp.route("/delete_customer/<int:customer_id>", methods=["POST"])
 @login_required
 def delete_customer(customer_id):
+    from datetime import datetime
+    now = datetime.now().isoformat()
     with get_db() as conn:
         car_ids = [r[0] for r in conn.execute("SELECT id FROM cars WHERE customer_id = ?", (customer_id,)).fetchall()]
         if car_ids:
             placeholders = ','.join('?' * len(car_ids))
-            conn.execute(f"DELETE FROM invoices WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id IN ({placeholders}))", car_ids)
-            conn.execute(f"DELETE FROM appointments WHERE car_id IN ({placeholders})", car_ids)
-            conn.execute("DELETE FROM cars WHERE customer_id = ?", (customer_id,))
-        conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+            conn.execute(f"UPDATE invoices SET is_deleted=1, deleted_at=? WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id IN ({placeholders}))", [now] + car_ids)
+            conn.execute(f"UPDATE appointments SET is_deleted=1, deleted_at=? WHERE car_id IN ({placeholders})", [now] + car_ids)
+            conn.execute("UPDATE cars SET is_deleted=1, deleted_at=? WHERE customer_id = ?", (now, customer_id))
+        conn.execute("UPDATE customers SET is_deleted=1, deleted_at=? WHERE id = ?", (now, customer_id))
         conn.commit()
-    log_activity('Delete Customer', f'Customer #{customer_id}')
+    log_activity('Delete Customer', f'Customer #{customer_id} (soft)')
+    flash('Client supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/customers")
 
 
@@ -323,10 +329,12 @@ def delete_customer(customer_id):
 @main_bp.route("/delete_invoice/<int:invoice_id>", methods=["POST"])
 @login_required
 def delete_invoice(invoice_id):
+    from datetime import datetime
     with get_db() as conn:
-        conn.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
+        conn.execute("UPDATE invoices SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), invoice_id))
         conn.commit()
-    log_activity('Delete Invoice', f'Invoice #{invoice_id}')
+    log_activity('Delete Invoice', f'Invoice #{invoice_id} (soft)')
+    flash('Facture supprim\u00e9e — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/invoices")
 
 
@@ -421,10 +429,12 @@ def edit_expense(expense_id):
 @main_bp.route("/delete_quote/<int:quote_id>", methods=["POST"])
 @login_required
 def delete_quote(quote_id):
+    from datetime import datetime
     with get_db() as conn:
-        conn.execute("DELETE FROM quotes WHERE id = ?", (quote_id,))
+        conn.execute("UPDATE quotes SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), quote_id))
         conn.commit()
-    log_activity('Delete Quote', f'Quote #{quote_id}')
+    log_activity('Delete Quote', f'Quote #{quote_id} (soft)')
+    flash('Devis supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/quotes")
 
 
@@ -460,9 +470,11 @@ def add_expense():
 @main_bp.route("/delete_expense/<int:expense_id>", methods=["POST"])
 @login_required
 def delete_expense(expense_id):
+    from datetime import datetime
     with get_db() as conn:
-        conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+        conn.execute("UPDATE expenses SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), expense_id))
         conn.commit()
+    flash('D\u00e9pense supprim\u00e9e — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/expenses")
 
 

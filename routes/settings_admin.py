@@ -696,3 +696,77 @@ def report_builder():
     return render_template('report_builder.html', reports=reports)
 
 
+# ── 10. Recycle Bin (Soft Delete) ──
+RECYCLE_TABLES = {
+    'customers': {'label': 'Clients', 'icon': 'fa-users', 'name_col': 'name'},
+    'cars': {'label': 'Véhicules', 'icon': 'fa-car', 'name_col': 'brand'},
+    'appointments': {'label': 'Rendez-vous', 'icon': 'fa-calendar', 'name_col': 'service'},
+    'invoices': {'label': 'Factures', 'icon': 'fa-file-invoice', 'name_col': 'id'},
+    'quotes': {'label': 'Devis', 'icon': 'fa-file-alt', 'name_col': 'id'},
+    'expenses': {'label': 'Dépenses', 'icon': 'fa-money-bill', 'name_col': 'description'},
+}
+
+@admin_bp.route('/recycle_bin')
+@login_required
+@admin_required
+def recycle_bin():
+    with get_db() as conn:
+        deleted_items = {}
+        for table, info in RECYCLE_TABLES.items():
+            rows = conn.execute(
+                f"SELECT * FROM {table} WHERE is_deleted = 1 ORDER BY deleted_at DESC"
+            ).fetchall()
+            if rows:
+                deleted_items[table] = {
+                    'label': info['label'],
+                    'icon': info['icon'],
+                    'name_col': info['name_col'],
+                    'rows': rows,
+                    'columns': [desc[0] for desc in conn.execute(f"SELECT * FROM {table} LIMIT 0").description]
+                }
+    return render_template('recycle_bin.html', deleted_items=deleted_items)
+
+
+@admin_bp.route('/recycle_bin/restore/<table>/<int:item_id>', methods=['POST'])
+@login_required
+@admin_required
+def restore_item(table, item_id):
+    if table not in RECYCLE_TABLES:
+        flash('Type invalide', 'error')
+        return redirect('/recycle_bin')
+    with get_db() as conn:
+        conn.execute(f"UPDATE {table} SET is_deleted = 0, deleted_at = '' WHERE id = ?", (item_id,))
+        conn.commit()
+    log_activity('Restore', f'Restored {table} #{item_id}')
+    flash(f'Élément restauré avec succès', 'success')
+    return redirect('/recycle_bin')
+
+
+@admin_bp.route('/recycle_bin/permanent_delete/<table>/<int:item_id>', methods=['POST'])
+@login_required
+@admin_required
+def permanent_delete_item(table, item_id):
+    if table not in RECYCLE_TABLES:
+        flash('Type invalide', 'error')
+        return redirect('/recycle_bin')
+    with get_db() as conn:
+        conn.execute(f"DELETE FROM {table} WHERE id = ? AND is_deleted = 1", (item_id,))
+        conn.commit()
+    log_activity('Permanent Delete', f'Permanently deleted {table} #{item_id}')
+    flash('Élément supprimé définitivement', 'success')
+    return redirect('/recycle_bin')
+
+
+@admin_bp.route('/recycle_bin/empty', methods=['POST'])
+@login_required
+@admin_required
+def empty_recycle_bin():
+    with get_db() as conn:
+        for table in RECYCLE_TABLES:
+            conn.execute(f"DELETE FROM {table} WHERE is_deleted = 1")
+        conn.commit()
+    log_activity('Empty Recycle Bin', 'All deleted items permanently removed')
+    flash('Corbeille vidée', 'success')
+    return redirect('/recycle_bin')
+
+

@@ -25,10 +25,10 @@ def invoices():
     with get_db() as conn:
         base_q = ("FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
                   "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id")
-        where = ""
+        where = " WHERE COALESCE(i.is_deleted,0)=0"
         params_filter = []
         if status_filter in ('paid', 'unpaid', 'partial'):
-            where = " WHERE i.status = ?"
+            where += " AND i.status = ?"
             params_filter = [status_filter]
         total = conn.execute(f"SELECT COUNT(*) {base_q}{where}", params_filter).fetchone()[0]
         all_invoices = conn.execute(
@@ -124,9 +124,9 @@ def quotes():
     page = safe_page(request.args.get('page', 1, type=int))
     per_page = 15
     with get_db() as conn:
-        total = conn.execute("SELECT COUNT(*) FROM quotes").fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM quotes WHERE COALESCE(is_deleted,0)=0").fetchone()[0]
         total_pages = max(1, (total + per_page - 1) // per_page)
-        all_quotes = conn.execute("SELECT * FROM quotes ORDER BY id DESC LIMIT ? OFFSET ?",
+        all_quotes = conn.execute("SELECT * FROM quotes WHERE COALESCE(is_deleted,0)=0 ORDER BY id DESC LIMIT ? OFFSET ?",
             (per_page, (page - 1) * per_page)).fetchall()
     return render_template("quotes.html", quotes=all_quotes, page=page, total_pages=total_pages)
 
@@ -301,19 +301,19 @@ def expenses():
                 me = f"{year+1}-01-01"
             else:
                 me = f"{year}-{mon+1:02d}-01"
-            total = conn.execute("SELECT COUNT(*) FROM expenses WHERE date >= ? AND date < ?", (ms, me)).fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM expenses WHERE COALESCE(is_deleted,0)=0 AND date >= ? AND date < ?", (ms, me)).fetchone()[0]
             all_expenses = conn.execute(
-                "SELECT * FROM expenses WHERE date >= ? AND date < ? ORDER BY date DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM expenses WHERE COALESCE(is_deleted,0)=0 AND date >= ? AND date < ? ORDER BY date DESC LIMIT ? OFFSET ?",
                 (ms, me, PER_PAGE, (page - 1) * PER_PAGE)).fetchall()
             total_amount = conn.execute(
-                "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ? AND date < ?",
+                "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE COALESCE(is_deleted,0)=0 AND date >= ? AND date < ?",
                 (ms, me)).fetchone()[0]
         else:
-            total = conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0]
+            total = conn.execute("SELECT COUNT(*) FROM expenses WHERE COALESCE(is_deleted,0)=0").fetchone()[0]
             all_expenses = conn.execute(
-                "SELECT * FROM expenses ORDER BY date DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM expenses WHERE COALESCE(is_deleted,0)=0 ORDER BY date DESC LIMIT ? OFFSET ?",
                 (PER_PAGE, (page - 1) * PER_PAGE)).fetchall()
-            total_amount = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses").fetchone()[0]
+            total_amount = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE COALESCE(is_deleted,0)=0").fetchone()[0]
     total_pages = (total + PER_PAGE - 1) // PER_PAGE
     return render_template("expenses.html", expenses=all_expenses,
         page=page, total_pages=total_pages, total_amount=total_amount, month=month)
