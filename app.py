@@ -86,8 +86,9 @@ def set_security_headers(response):
     # Static file caching (CSS, JS, images: 7 days)
     if request.path.startswith('/static/'):
         response.headers['Cache-Control'] = 'public, max-age=604800'
-    # Gzip compression for text responses
+    # Gzip compression for text responses (only if client supports it)
     if (response.content_type and
+        'gzip' in request.headers.get('Accept-Encoding', '') and
         any(ct in response.content_type for ct in ('text/', 'application/json', 'application/javascript')) and
         'Content-Encoding' not in response.headers and
         response.content_length and response.content_length > 500):
