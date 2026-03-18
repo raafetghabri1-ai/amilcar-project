@@ -285,16 +285,27 @@ def import_customers():
     if not file or not file.filename:
         flash("Sélectionnez un fichier", "error")
         return redirect("/customers")
-    if not file.filename.lower().endswith(('.csv', '.txt')):
-        flash("Format non supporté. Utilisez CSV", "error")
+    fname = file.filename.lower()
+    if not fname.endswith(('.csv', '.txt', '.xlsx')):
+        flash("Format non supporté. Utilisez CSV ou Excel (.xlsx)", "error")
         return redirect("/customers")
     try:
-        content = file.read().decode('utf-8-sig')
-        reader = csv.reader(io.StringIO(content), delimiter=';')
-        header = next(reader, None)
-        if not header:
-            flash("Fichier vide", "error")
-            return redirect("/customers")
+        rows = []
+        if fname.endswith('.xlsx'):
+            from openpyxl import load_workbook
+            wb = load_workbook(filename=io.BytesIO(file.read()), read_only=True, data_only=True)
+            ws = wb.active
+            for data_row in ws.iter_rows(min_row=2, values_only=True):
+                rows.append([str(c).strip() if c is not None else '' for c in data_row])
+            wb.close()
+        else:
+            content = file.read().decode('utf-8-sig')
+            reader = csv.reader(io.StringIO(content), delimiter=';')
+            header = next(reader, None)
+            if not header:
+                flash("Fichier vide", "error")
+                return redirect("/customers")
+            rows = list(reader)
         imported = 0
         skipped = 0
         with get_db() as conn:

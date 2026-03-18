@@ -628,13 +628,34 @@ def import_center_upload():
     import io
     import_type = request.form['import_type']
     file = request.files.get('file')
-    if not file or not file.filename.endswith('.csv'):
-        flash("Veuillez fournir un fichier CSV valide", "danger")
+    if not file or not file.filename:
+        flash("Veuillez fournir un fichier valide", "danger")
         return redirect("/import_center")
 
-    content = file.read().decode('utf-8-sig')
-    reader = csv.DictReader(io.StringIO(content), delimiter=';')
-    rows = list(reader)
+    fname = file.filename.lower()
+    rows = []
+
+    # ─── Excel XLSX support ───
+    if fname.endswith('.xlsx'):
+        from openpyxl import load_workbook
+        wb = load_workbook(filename=io.BytesIO(file.read()), read_only=True, data_only=True)
+        ws = wb.active
+        all_rows = list(ws.iter_rows(values_only=True))
+        wb.close()
+        if len(all_rows) < 2:
+            flash("Fichier vide ou sans données", "warning")
+            return redirect("/import_center")
+        headers = [str(h).strip().lower() if h else '' for h in all_rows[0]]
+        for data_row in all_rows[1:]:
+            rows.append({headers[i]: (str(data_row[i]).strip() if data_row[i] is not None else '') for i in range(len(headers))})
+    # ─── CSV support ───
+    elif fname.endswith('.csv'):
+        content = file.read().decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(content), delimiter=';')
+        rows = list(reader)
+    else:
+        flash("Format non supporté. Utilisez CSV ou XLSX", "danger")
+        return redirect("/import_center")
     if not rows:
         flash("Fichier vide", "warning")
         return redirect("/import_center")
@@ -687,6 +708,46 @@ def import_center_upload():
 
     flash(f"Import terminé: {imported} importés, {errors} erreurs", "success" if errors == 0 else "warning")
     return redirect("/import_center")
+
+
+@admin_bp.route('/import_center/template/<import_type>')
+@login_required
+def import_template(import_type):
+    """Download an Excel template for import."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    import io as iomod
+    wb = Workbook()
+    ws = wb.active
+    gold_fill = PatternFill(start_color='D4AF37', end_color='D4AF37', fill_type='solid')
+    bold = Font(bold=True, color='000000')
+    templates = {
+        'customers': {'headers': ['name', 'phone', 'email', 'notes'],
+                      'example': ['Ahmed Ben Ali', '55123456', 'ahmed@email.com', 'Client fidèle']},
+        'cars':      {'headers': ['brand', 'model', 'plate', 'customer_id'],
+                      'example': ['BMW', 'X5', 'TUN-1234', '1']},
+        'services':  {'headers': ['name', 'price'],
+                      'example': ['Vidange complète', '45.00']},
+        'inventory': {'headers': ['name', 'quantity', 'price'],
+                      'example': ['Filtre à huile', '50', '12.50']},
+    }
+    t = templates.get(import_type)
+    if not t:
+        flash("Type d'import inconnu", "error")
+        return redirect("/import_center")
+    ws.title = import_type.capitalize()
+    for i, h in enumerate(t['headers'], 1):
+        cell = ws.cell(row=1, column=i, value=h)
+        cell.font = bold
+        cell.fill = gold_fill
+        ws.column_dimensions[cell.column_letter].width = max(15, len(h) + 5)
+    for i, v in enumerate(t['example'], 1):
+        ws.cell(row=2, column=i, value=v)
+    buf = iomod.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, download_name=f'modele_{import_type}.xlsx',
+                     as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 # ── 9. PDF Report Builder ──
 @admin_bp.route('/report_builder')

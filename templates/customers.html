@@ -55,7 +55,7 @@
         <p style="color:var(--text-muted);font-size:0.75rem;margin-bottom:16px">Format CSV avec séparateur <b>;</b><br>Colonnes : Nom ; Téléphone ; Email ; Notes<br>ou : ID ; Nom ; Téléphone ; Email ; Notes</p>
         <form method="POST" action="/import/customers" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <input type="file" name="file" accept=".csv,.txt" class="form-control mb-3" required>
+            <input type="file" name="file" accept=".csv,.txt,.xlsx" class="form-control mb-3" required>
             <div class="d-flex gap-2">
                 <button type="submit" class="btn-gold flex-fill">Importer</button>
                 <button type="button" class="btn-ghost flex-fill" onclick="document.getElementById('importModal').style.display='none'">Annuler</button>
