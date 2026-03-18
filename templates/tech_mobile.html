@@ -2,99 +2,149 @@
 {% block title %} — Espace Technicien{% endblock %}
 {% block content %}
 <style>
-    @media (max-width: 768px) { .tech-header h2 { font-size: 1.2rem; } .tech-card { padding: 12px !important; } }
+    .tech-page .sidebar, .tech-page .topbar { display: none !important; }
+    .tech-page .main-content { margin-left: 0 !important; padding: 12px !important; }
+    .tech-stat { text-align:center;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px 8px }
+    .tech-stat .num { font-size:1.8rem;font-weight:800;line-height:1 }
+    .tech-stat small { color:var(--text-muted);font-size:.7rem }
+    .work-card { background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;margin-bottom:12px;transition:all .2s }
+    .work-card:active { transform:scale(.98) }
+    .status-pill { padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;display:inline-block }
+    .work-actions { display:flex;gap:6px;margin-top:10px }
+    .work-actions button, .work-actions a { flex:1;text-align:center;padding:8px;border-radius:var(--radius);font-size:.75rem;font-weight:700;border:none;cursor:pointer;text-decoration:none }
+    .note-input { width:100%;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-hover);color:var(--text-primary);font-size:.8rem;resize:none;margin-top:6px }
+    .tab-bar { display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch }
+    .tab-bar button { flex-shrink:0;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border-color);background:transparent;color:var(--text-muted);font-size:.8rem;cursor:pointer }
+    .tab-bar button.active { background:var(--gold);color:#000;border-color:var(--gold);font-weight:700 }
+    @media (max-width: 768px) {
+        .tech-stat .num { font-size:1.5rem }
+        .work-card { padding:12px }
+    }
 </style>
 
-<div class="tech-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+<div class="tech-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <div>
-        <h2 style="color:var(--gold);margin-bottom:4px">📱 Espace Technicien</h2>
-        <p style="color:var(--text-muted);font-size:.8rem;margin:0">{{ user.full_name or user.username }} — {{ today }}</p>
+        <h2 style="color:var(--gold);margin-bottom:2px;font-size:1.3rem">🔧 Espace Technicien</h2>
+        <p style="color:var(--text-muted);font-size:.75rem;margin:0">{{ user.full_name or user.username }} — {{ today }}</p>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:6px;align-items:center">
         {% if not time_entry or not time_entry.clock_in %}
         <form method="POST" action="{{ url_for('team_bp.tech_clock') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="clock_in">
-            <button type="submit" class="btn" style="background:var(--green-light);color:#000;font-weight:700;font-size:.85rem;padding:8px 16px">🟢 Pointer Entrée</button>
+            <button type="submit" class="btn" style="background:var(--green-light);color:#000;font-weight:700;font-size:.8rem;padding:6px 14px;border-radius:20px">🟢 Entrée</button>
         </form>
         {% elif time_entry and not time_entry.clock_out %}
         <form method="POST" action="{{ url_for('team_bp.tech_clock') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="clock_out">
-            <button type="submit" class="btn" style="background:var(--red);color:#fff;font-weight:700;font-size:.85rem;padding:8px 16px">🔴 Pointer Sortie</button>
+            <button type="submit" class="btn" style="background:var(--red);color:#fff;font-weight:700;font-size:.8rem;padding:6px 14px;border-radius:20px">🔴 Sortie</button>
         </form>
         {% else %}
-        <span style="padding:8px 16px;background:var(--bg-hover);border-radius:var(--radius);color:var(--text-muted);font-size:.8rem">✅ {{ time_entry.clock_in }} - {{ time_entry.clock_out }}</span>
+        <span style="padding:6px 14px;background:var(--bg-hover);border-radius:20px;color:var(--text-muted);font-size:.75rem">✅ {{ time_entry.clock_in }} → {{ time_entry.clock_out }}</span>
         {% endif %}
     </div>
 </div>
 
-<!-- Stats -->
-<div class="row g-3 mb-4">
-    <div class="col-4">
-        <div class="card text-center tech-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
-            <div style="font-size:2rem;font-weight:800;color:var(--gold)">{{ orders|length }}</div>
-            <small style="color:var(--text-muted)">Total</small>
-        </div>
-    </div>
-    <div class="col-4">
-        <div class="card text-center tech-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
-            <div style="font-size:2rem;font-weight:800;color:var(--green-light)">{{ completed }}</div>
-            <small style="color:var(--text-muted)">Terminés</small>
-        </div>
-    </div>
-    <div class="col-4">
-        <div class="card text-center tech-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px">
-            <div style="font-size:2rem;font-weight:800;color:#f59e0b">{{ pending }}</div>
-            <small style="color:var(--text-muted)">En attente</small>
-        </div>
-    </div>
+<!-- Stats Row -->
+<div class="row g-2 mb-3">
+    <div class="col-3"><div class="tech-stat"><div class="num" style="color:var(--gold)">{{ orders|length }}</div><small>Total</small></div></div>
+    <div class="col-3"><div class="tech-stat"><div class="num" style="color:var(--green-light)">{{ completed }}</div><small>Fait</small></div></div>
+    <div class="col-3"><div class="tech-stat"><div class="num" style="color:#60a5fa">{{ in_progress }}</div><small>En cours</small></div></div>
+    <div class="col-3"><div class="tech-stat"><div class="num" style="color:#f59e0b">{{ pending }}</div><small>Attente</small></div></div>
+</div>
+
+<!-- Tab bar -->
+<div class="tab-bar">
+    <button class="active" onclick="filterOrders('all',this)">Tous ({{ orders|length }})</button>
+    <button onclick="filterOrders('pending',this)">⏳ Attente</button>
+    <button onclick="filterOrders('in_progress',this)">🔧 En cours</button>
+    <button onclick="filterOrders('completed',this)">✅ Fait</button>
 </div>
 
 <!-- Work Orders -->
-<h5 style="color:var(--gold);margin-bottom:12px">📋 Ordres de travail — {{ today }}</h5>
 {% for o in orders %}
-{% set status_colors = {'pending':'#f59e0b','in_progress':'#60a5fa','completed':'var(--green-light)','cancelled':'var(--text-muted)'} %}
-<div class="card mb-3 tech-card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;border-left:4px solid {{ status_colors.get(o.status, 'var(--border-color)') }}">
-    <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px">
-        <div style="flex:1;min-width:200px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span style="color:var(--gold);font-weight:700;font-size:1.1rem">{{ o.service }}</span>
-                {% if o.time %}<span style="color:var(--text-muted);font-size:.75rem">⏰ {{ o.time }}</span>{% endif %}
+{% set sc = {'pending':'border-left:4px solid #f59e0b','in_progress':'border-left:4px solid #60a5fa','completed':'border-left:4px solid var(--green-light)','cancelled':'border-left:4px solid #666'} %}
+<div class="work-card" data-status="{{ o.status }}" style="{{ sc.get(o.status, '') }}">
+    <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="color:var(--gold);font-weight:700;font-size:1rem">{{ o.service }}</span>
+                {% if o.time %}<span style="color:var(--text-muted);font-size:.7rem">⏰ {{ o.time }}</span>{% endif %}
             </div>
-            <div style="font-size:.85rem;margin-bottom:6px">
-                <span style="font-weight:600">{{ o.customer_name }}</span>
-                <span style="color:var(--text-muted);margin-left:6px">📞 {{ o.phone or '—' }}</span>
+            <div style="font-size:.8rem;margin-top:4px">
+                <strong>{{ o.customer_name }}</strong>
             </div>
-            <div style="font-size:.8rem;color:var(--text-muted)">
-                🚗 <strong>{{ o.plate }}</strong> — {{ o.brand or '' }} {{ o.model or '' }}
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">
+                🚗 <strong>{{ o.plate }}</strong> {{ o.brand or '' }} {{ o.model or '' }}
             </div>
-            {% if o.notes %}
-            <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px;padding:4px 8px;background:var(--bg-hover);border-radius:4px">📝 {{ o.notes }}</div>
-            {% endif %}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:end;gap:6px">
-            <span style="padding:4px 12px;border-radius:var(--radius);font-size:.7rem;font-weight:600;background:{{ status_colors.get(o.status, 'var(--bg-hover)') }};color:#000">
-                {{ {'pending':'⏳ En attente','in_progress':'🔧 En cours','completed':'✅ Terminé','cancelled':'❌ Annulé'}.get(o.status, o.status) }}
-            </span>
-            <form method="POST" action="{{ url_for('team_bp.tech_update_status', appt_id=o.id) }}" style="display:flex;gap:4px">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                {% if o.status == 'pending' %}
-                <input type="hidden" name="status" value="in_progress">
-                <button type="submit" class="btn btn-sm" style="background:#60a5fa;color:#000;font-size:.7rem;font-weight:600">▶ Démarrer</button>
-                {% elif o.status == 'in_progress' %}
-                <input type="hidden" name="status" value="completed">
-                <button type="submit" class="btn btn-sm" style="background:var(--green-light);color:#000;font-size:.7rem;font-weight:600">✅ Terminer</button>
-                {% endif %}
-            </form>
-        </div>
+        <span class="status-pill" style="background:{{ {'pending':'#f59e0b','in_progress':'#60a5fa','completed':'var(--green-light)','cancelled':'#666'}.get(o.status,'#666') }};color:#000">
+            {{ {'pending':'Attente','in_progress':'En cours','completed':'Fait','cancelled':'Annulé'}.get(o.status, o.status) }}
+        </span>
+    </div>
+    {% if o.notes %}<div style="font-size:.7rem;color:var(--text-muted);margin-top:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px">📝 {{ o.notes }}</div>{% endif %}
+    
+    <div class="work-actions">
+        {% if o.status == 'pending' %}
+        <form method="POST" action="{{ url_for('team_bp.tech_update_status', appt_id=o.id) }}" style="flex:1;display:flex">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="in_progress">
+            <button type="submit" style="flex:1;background:#60a5fa;color:#000">▶ Démarrer</button>
+        </form>
+        {% elif o.status == 'in_progress' %}
+        <form method="POST" action="{{ url_for('team_bp.tech_update_status', appt_id=o.id) }}" style="flex:1;display:flex">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="completed">
+            <button type="submit" style="flex:1;background:var(--green-light);color:#000">✅ Terminer</button>
+        </form>
+        {% endif %}
+        <a href="tel:{{ o.phone }}" style="background:var(--bg-hover);color:var(--text-primary);{% if o.status == 'completed' %}flex:1{% endif %}">📞 Appeler</a>
+        <button onclick="toggleNote({{ o.id }})" style="background:var(--bg-hover);color:var(--text-primary)">📝</button>
+    </div>
+    <div id="note-{{ o.id }}" style="display:none;margin-top:8px">
+        <form method="POST" action="{{ url_for('team_bp.tech_add_note', appt_id=o.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <textarea name="tech_note" class="note-input" rows="2" placeholder="Diagnostic / remarque...">{{ o.tech_notes or '' }}</textarea>
+            <button type="submit" style="margin-top:4px;padding:6px 12px;background:var(--gold);color:#000;border:none;border-radius:var(--radius);font-size:.75rem;font-weight:700;width:100%">💾 Sauvegarder</button>
+        </form>
     </div>
 </div>
 {% endfor %}
+
 {% if not orders %}
 <div class="card text-center" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:40px">
     <div style="font-size:3rem;margin-bottom:8px">☕</div>
     <p style="color:var(--text-muted)">Aucun ordre de travail pour aujourd'hui</p>
 </div>
 {% endif %}
+
+<!-- Weekly Summary -->
+{% if weekly_stats %}
+<h6 style="color:var(--gold);margin:20px 0 10px">📊 Cette semaine</h6>
+<div class="card" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px">
+    <div style="display:flex;justify-content:space-between;font-size:.8rem">
+        <span style="color:var(--text-muted)">Jobs complétés</span>
+        <strong style="color:var(--green-light)">{{ weekly_stats.completed }}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-top:6px">
+        <span style="color:var(--text-muted)">Heures travaillées</span>
+        <strong style="color:var(--gold)">{{ weekly_stats.hours }}h</strong>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function filterOrders(status, btn) {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.work-card').forEach(c => {
+        c.style.display = (status === 'all' || c.dataset.status === status) ? '' : 'none';
+    });
+}
+function toggleNote(id) {
+    const el = document.getElementById('note-' + id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 {% endblock %}

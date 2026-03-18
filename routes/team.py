@@ -319,7 +319,7 @@ def employee_target_set():
 @team_bp.route("/tech_mobile")
 @login_required
 def tech_mobile():
-    from datetime import date
+    from datetime import date, timedelta
     today = date.today().isoformat()
     user_id = session.get('user_id')
     with get_db() as conn:
@@ -331,14 +331,27 @@ def tech_mobile():
             JOIN cars c ON a.car_id=c.id 
             JOIN customers cu ON c.customer_id=cu.id 
             WHERE a.date=? AND (a.assigned_to=? OR a.assigned_to=?)
-            ORDER BY a.time ASC""", (today, user_name, str(user_id))).fetchall()
+            ORDER BY CASE a.status WHEN 'in_progress' THEN 1 WHEN 'pending' THEN 2 ELSE 3 END, a.time ASC""",
+            (today, user_name, str(user_id))).fetchall()
         # Time tracking
         time_entry = conn.execute("SELECT * FROM time_tracking WHERE user_id=? AND date=?", (user_id, today)).fetchone()
         # Stats
         completed_today = sum(1 for o in orders if o['status'] == 'completed')
+        in_progress = sum(1 for o in orders if o['status'] == 'in_progress')
         pending = sum(1 for o in orders if o['status'] == 'pending')
+        # Weekly stats
+        week_start = (date.today() - timedelta(days=date.today().weekday())).isoformat()
+        week_completed = conn.execute(
+            "SELECT COUNT(*) FROM appointments WHERE (assigned_to=? OR assigned_to=?) AND date>=? AND status='completed'",
+            (user_name, str(user_id), week_start)).fetchone()[0]
+        week_hours = conn.execute(
+            "SELECT SUM(CASE WHEN clock_in IS NOT NULL AND clock_out IS NOT NULL "
+            "THEN (CAST(SUBSTR(clock_out,1,2) AS REAL)*60+CAST(SUBSTR(clock_out,4,2) AS REAL) "
+            "- CAST(SUBSTR(clock_in,1,2) AS REAL)*60-CAST(SUBSTR(clock_in,4,2) AS REAL))/60 ELSE 0 END) "
+            "FROM time_tracking WHERE user_id=? AND date>=?", (user_id, week_start)).fetchone()[0] or 0
     return render_template("tech_mobile.html", orders=orders, user=user, time_entry=time_entry,
-                          completed=completed_today, pending=pending, today=today)
+                          completed=completed_today, in_progress=in_progress, pending=pending,
+                          today=today, weekly_stats={'completed': week_completed, 'hours': f'{week_hours:.1f}'})
 
 
 
@@ -374,6 +387,22 @@ def tech_clock():
         elif action == "clock_out" and entry:
             conn.execute("UPDATE time_tracking SET clock_out=? WHERE id=?", (now, entry['id']))
         conn.commit()
+    return redirect("/tech_mobile")
+
+
+@team_bp.route("/tech_mobile/note/<int:appt_id>", methods=["POST"])
+@login_required
+def tech_add_note(appt_id):
+    note = request.form.get("tech_note", "").strip()
+    if note:
+        with get_db() as conn:
+            existing = conn.execute("SELECT notes FROM appointments WHERE id=?", (appt_id,)).fetchone()
+            current = existing['notes'] or '' if existing else ''
+            prefix = f"[{session.get('username', 'tech')}] "
+            new_notes = f"{current}\n{prefix}{note}".strip() if current else f"{prefix}{note}"
+            conn.execute("UPDATE appointments SET notes=? WHERE id=?", (new_notes, appt_id))
+            conn.commit()
+        flash("Note ajoutée", "success")
     return redirect("/tech_mobile")
 
 
