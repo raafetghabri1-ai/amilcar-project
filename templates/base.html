@@ -4,82 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AMILCAR{% block title %}{% endblock %}</title>
+    <link rel="preload" href="/static/style.css?v=46" as="style">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/style.css?v=45" rel="stylesheet">
+    <link href="/static/style.css?v=46" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#D4AF37">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     {% block head %}{% endblock %}
-    <style>
-    /* ─── Sidebar Layout ─── */
-    .sidebar{position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg-navbar);border-right:1px solid var(--border-color);overflow-y:auto;z-index:1100;transition:transform .3s var(--ease);display:flex;flex-direction:column;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-    .sidebar::-webkit-scrollbar{width:3px}.sidebar::-webkit-scrollbar-thumb{background:rgba(212,175,55,0.3);border-radius:3px}
-    .sidebar-brand{padding:20px 20px 14px;text-align:center;border-bottom:1px solid var(--border-subtle);position:relative}
-    .sidebar-brand::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
-    .sidebar-brand img{height:38px;margin-bottom:6px;filter:drop-shadow(0 2px 8px rgba(212,175,55,0.15))}
-    .sidebar-brand h2{font-family:var(--font-display);color:var(--gold);font-size:1.25rem;margin:0;letter-spacing:4px;font-weight:700}
-    .sidebar-brand small{color:var(--text-dim);font-size:.5rem;letter-spacing:2.5px;display:block;margin-top:2px}
-    .sidebar-search{padding:12px 14px}
-    .sidebar-search input{width:100%;background:var(--bg-input);border:1.5px solid var(--border-subtle);color:var(--text-primary);padding:8px 12px 8px 32px;border-radius:var(--radius-sm);font-size:.76rem;transition:all .3s var(--ease)}
-    .sidebar-search input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
-    .sidebar-search{position:relative}
-    .sidebar-search::before{content:'⌕';position:absolute;left:24px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:.85rem;pointer-events:none}
-    .sidebar-section{padding:2px 0}
-    .sidebar-section-title{color:var(--text-dim);font-size:.55rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:10px 20px 4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;transition:color .2s var(--ease)}
-    .sidebar-section-title:hover{color:var(--gold)}
-    .sidebar-section-title .chevron{transition:transform .25s var(--ease);font-size:.45rem;opacity:.5}
-    .sidebar-section-title.collapsed .chevron{transform:rotate(-90deg)}
-    .sidebar-links{list-style:none;padding:0;margin:0}
-    .sidebar-links.collapsed{display:none}
-    .sidebar-links li a{display:flex;align-items:center;gap:10px;padding:7px 16px 7px 20px;color:var(--text-secondary);text-decoration:none;font-size:.74rem;font-weight:500;letter-spacing:.3px;transition:all .2s var(--ease);border-left:2px solid transparent;margin:0 0 1px}
-    .sidebar-links li a:hover{color:var(--gold);background:var(--bg-hover);border-left-color:rgba(212,175,55,0.3)}
-    .sidebar-links li a.active{color:var(--gold);background:var(--bg-active);border-left-color:var(--gold);font-weight:600}
-    .sidebar-links li a .icon{width:18px;text-align:center;font-size:.82rem;flex-shrink:0;opacity:.8}
-    .sidebar-links li a:hover .icon{opacity:1}
-    .sidebar-links li a .badge-notif{background:var(--red);color:#fff;font-size:.5rem;padding:1px 6px;border-radius:10px;margin-left:auto;font-weight:700;box-shadow:0 0 0 2px var(--bg-navbar)}
-    .sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border-subtle);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-    .sidebar-footer .sf-user{color:var(--gold);font-size:.68rem;font-weight:700;letter-spacing:1.5px;flex:1}
-    .sidebar-footer .sf-role{color:var(--red);font-size:.48rem;font-weight:700;background:var(--red-soft);padding:2px 8px;border-radius:var(--radius-full);letter-spacing:.5px}
-    .sidebar-footer a{color:var(--text-muted);font-size:.75rem;text-decoration:none;padding:4px 6px;border-radius:var(--radius-xs);transition:all .2s var(--ease)}
-    .sidebar-footer a:hover{color:var(--gold);background:var(--bg-hover)}
-    .sidebar-lang{display:flex;gap:4px;width:100%;margin-top:6px}
-    .sidebar-lang a{font-size:.64rem;padding:3px 10px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);transition:all .2s var(--ease)}
-    .sidebar-lang a:hover{border-color:var(--border-hover)}
-    .sidebar-lang a.active-lang{color:var(--gold) !important;font-weight:700;border-color:var(--gold);background:var(--gold-dim)}
-    /* Main content shifted */
-    .layout-main{margin-left:260px;min-height:100vh;transition:margin .3s var(--ease)}
-    /* Mobile topbar */
-    .topbar-mobile{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:var(--bg-navbar);border-bottom:1px solid var(--border-color);z-index:1050;align-items:center;padding:0 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-    .topbar-mobile .burger{background:none;border:none;color:var(--gold);font-size:1.4rem;cursor:pointer;padding:8px;border-radius:var(--radius-xs);transition:background .2s;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
-    .topbar-mobile .burger:hover{background:var(--bg-hover)}
-    .topbar-mobile .tb-brand{color:var(--gold);font-family:var(--font-display);font-size:1rem;letter-spacing:4px;margin-left:8px;font-weight:700}
-    .sidebar-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:1090}
-    @media(max-width:991px){
-        .sidebar{transform:translateX(-100%)}
-        .sidebar.open{transform:translateX(0)}
-        .sidebar-overlay.open{display:block}
-        .layout-main{margin-left:0;padding-top:62px}
-        .topbar-mobile{display:flex}
-    }
-    .sidebar-search-results{position:absolute;background:var(--bg-card-solid);border:1px solid var(--border-color);border-radius:var(--radius-sm);width:calc(100% - 28px);margin:0 14px;z-index:9999;display:none;max-height:220px;overflow-y:auto;box-shadow:var(--shadow-lg)}
-    .sidebar-search-results a{display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--text-primary);text-decoration:none;font-size:.74rem;border-bottom:1px solid var(--border-subtle);transition:background .15s var(--ease)}
-    .sidebar-search-results a:hover{background:var(--bg-hover)}
-    .sidebar-search-results a:last-child{border-bottom:none}
-    /* RTL Support */
-    [dir="rtl"] .sidebar{left:auto;right:0;border-right:none;border-left:1px solid var(--border-color)}
-    [dir="rtl"] .sidebar-links li a{border-left:none;border-right:2px solid transparent;padding:7px 20px 7px 16px}
-    [dir="rtl"] .sidebar-links li a:hover{border-left-color:transparent;border-right-color:rgba(212,175,55,0.3)}
-    [dir="rtl"] .sidebar-links li a.active{border-left-color:transparent;border-right-color:var(--gold)}
-    [dir="rtl"] .layout-main{margin-left:0;margin-right:260px}
-    [dir="rtl"] .sidebar-search input{padding:8px 32px 8px 12px}
-    [dir="rtl"] .sidebar-search::before{left:auto;right:24px}
-    @media(max-width:991px){
-        [dir="rtl"] .sidebar{transform:translateX(100%)}
-        [dir="rtl"] .sidebar.open{transform:translateX(0)}
-        [dir="rtl"] .layout-main{margin-right:0}
-    }
-    </style>
 </head>
 <body>
     <!-- Mobile Topbar -->
@@ -443,7 +376,6 @@
         });
     })();
     </script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(function(){});
@@ -465,30 +397,8 @@
         var b = document.getElementById('pwaInstallBanner');
         if (b) { b.style.opacity='0'; b.style.transition='opacity .3s'; setTimeout(function(){ b.remove(); }, 300); }
     }
-    /* Toast notifications via SocketIO */
+    /* Toast UI (lightweight, no socket.io needed) */
     (function(){
-        try {
-            var socket = io();
-            socket.on('connect', function(){ socket.emit('join_dashboard'); });
-            socket.on('update', function(msg){
-                var titles = {
-                    'new_booking': '📱 Nouvelle réservation en ligne',
-                    'invoice_paid': '💰 Facture payée',
-                    'new_appointment': '📅 Nouveau rendez-vous'
-                };
-                var title = titles[msg.type] || ('🔔 ' + msg.type);
-                showToast(title, msg.data);
-                /* Browser notification if permission granted */
-                if (Notification.permission === 'granted') {
-                    new Notification('AMILCAR', {body: title, icon: '/static/logo.png'});
-                }
-            });
-        } catch(e) {}
-        /* Request notification permission */
-        if ('Notification' in window && Notification.permission === 'default') {
-            setTimeout(function(){ Notification.requestPermission(); }, 5000);
-        }
-        /* Toast UI */
         var container = document.createElement('div');
         container.id = 'toastContainer';
         container.style.cssText = 'position:fixed;top:60px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none';
@@ -500,6 +410,35 @@
             container.appendChild(t);
             setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(function(){ t.remove(); }, 300); }, 5000);
         };
+        /* Lazy-load Socket.IO only after page is fully loaded */
+        window.addEventListener('load', function(){
+            setTimeout(function(){
+                var s = document.createElement('script');
+                s.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+                s.onload = function(){
+                    try {
+                        var socket = io();
+                        socket.on('connect', function(){ socket.emit('join_dashboard'); });
+                        socket.on('update', function(msg){
+                            var titles = {
+                                'new_booking': '📱 Nouvelle réservation en ligne',
+                                'invoice_paid': '💰 Facture payée',
+                                'new_appointment': '📅 Nouveau rendez-vous'
+                            };
+                            var title = titles[msg.type] || ('🔔 ' + msg.type);
+                            showToast(title);
+                            if (Notification.permission === 'granted') {
+                                new Notification('AMILCAR', {body: title, icon: '/static/logo.png'});
+                            }
+                        });
+                    } catch(e) {}
+                };
+                document.body.appendChild(s);
+            }, 2000);
+        });
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(function(){ Notification.requestPermission(); }, 5000);
+        }
     })();
     </script>
     <style>@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}</style>
