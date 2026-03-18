@@ -13,6 +13,7 @@ from datetime import datetime, date, timedelta
 import os, re, uuid, io
 import time as time_module
 import sqlite3
+from models.customer import add_customer
 
 invoices_bp = Blueprint("invoices_bp", __name__)
 
@@ -71,7 +72,7 @@ def new_customer():
                     conn_c.commit()
         log_activity('Add Customer', f'Customer: {name}')
         flash('Client ajouté avec succès', 'success')
-        return redirect(url_for('customers'))
+        return redirect(url_for('customers_bp.customers'))
     return render_template('add_customer.html')
 
 

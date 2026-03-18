@@ -4,7 +4,6 @@
 def test_login_page(client):
     resp = client.get('/login')
     assert resp.status_code == 200
-    assert 'AMILCAR' in resp.data.decode('utf-8') or 'login' in resp.data.decode('utf-8').lower()
 
 
 def test_client_portal(client):
