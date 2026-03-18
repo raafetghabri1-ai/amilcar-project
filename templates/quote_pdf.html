@@ -90,7 +90,7 @@
                 <div class="d-flex gap-2 flex-wrap">
                     {% for photo in quote.photos.split(',') %}
                     {% if photo.strip() %}
-                    <img src="/static/uploads/{{ photo.strip() }}" style="width:120px;height:90px;object-fit:cover;border-radius:8px">
+                    <img src="/static/uploads/{{ photo.strip() }}" style="width:120px;height:90px;object-fit:cover;border-radius:8px" loading="lazy">
                     {% endif %}
                     {% endfor %}
                 </div>

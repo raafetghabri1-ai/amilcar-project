@@ -88,7 +88,7 @@
                 <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
                     {% for p in cond.photos|replace('[','') |replace(']','')|replace('"','')|split(',') %}
                     {% if p.strip() %}
-                    <img src="/static/{{ p.strip() }}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--border-color);cursor:pointer" onclick="window.open(this.src)">
+                    <img src="/static/{{ p.strip() }}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--border-color);cursor:pointer" onclick="window.open(this.src)" loading="lazy">
                     {% endif %}
                     {% endfor %}
                 </div>

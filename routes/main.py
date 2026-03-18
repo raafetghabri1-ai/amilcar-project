@@ -47,31 +47,34 @@ AVAILABLE_WIDGETS = [
 @login_required
 def index():
     from datetime import date, timedelta
+    today_str = str(date.today())
+    tomorrow = str(date.today() + timedelta(days=1))
+    week_start = str(date.today() - timedelta(days=date.today().weekday()))
     with get_db() as conn:
-        pending_quotes = conn.execute("SELECT COUNT(*) FROM quotes WHERE status = 'pending'").fetchone()[0]
-        total_expenses = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses").fetchone()[0]
-        pending_appointments = conn.execute(
-            "SELECT a.id, cu.name, ca.brand, ca.model, a.date, a.service "
-            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
-            "JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.status = 'pending' ORDER BY a.date"
-        ).fetchall()
-        tomorrow = str(date.today() + timedelta(days=1))
-        tomorrow_appointments = conn.execute(
-            "SELECT a.id, cu.name, ca.brand, ca.model, a.service "
-            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
-            "JOIN customers cu ON ca.customer_id = cu.id "
-            "WHERE a.date = ? AND a.status = 'pending'", (tomorrow,)
-        ).fetchall()
-        today_str = str(date.today())
-        today_revenue = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
-            "WHERE a.date = ? AND i.status = 'paid'", (today_str,)).fetchone()[0]
-        today_appointments = conn.execute(
-            "SELECT COUNT(*) FROM appointments WHERE date = ?", (today_str,)).fetchone()[0]
-        unpaid_total = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status = 'unpaid'").fetchone()[0]
-        # Rich dashboard stats
+        # Single combined query for all scalar stats
+        counts = conn.execute(
+            "SELECT "
+            "(SELECT COUNT(*) FROM customers), "
+            "(SELECT COUNT(*) FROM appointments), "
+            "(SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='paid'), "
+            "(SELECT COUNT(*) FROM quotes WHERE status='pending'), "
+            "(SELECT COALESCE(SUM(amount),0) FROM expenses), "
+            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date=? AND i.status='paid'), "
+            "(SELECT COUNT(*) FROM appointments WHERE date=?), "
+            "(SELECT COALESCE(SUM(amount),0) FROM invoices WHERE status='unpaid'), "
+            "(SELECT COUNT(*) FROM invoices WHERE status='paid'), "
+            "(SELECT COUNT(*) FROM invoices), "
+            "(SELECT COUNT(*) FROM online_bookings WHERE status='pending'), "
+            "(SELECT COUNT(*) FROM online_bookings WHERE date(created_at)=?), "
+            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND i.status='paid')",
+            (today_str, today_str, today_str, week_start)
+        ).fetchone()
+        total_cust, total_appt, revenue, pending_quotes, total_expenses = counts[0], counts[1], counts[2], counts[3], counts[4]
+        today_revenue, today_appointments, unpaid_total = counts[5], counts[6], counts[7]
+        paid_count, total_inv_count = counts[8], counts[9]
+        pending_bookings, today_bookings, week_revenue = counts[10], counts[11], counts[12]
+        pay_rate = round((paid_count / total_inv_count * 100) if total_inv_count > 0 else 0)
+        # Rich dashboard stats (2 queries with LIMIT 1)
         top_customer = conn.execute(
             "SELECT cu.name, COALESCE(SUM(i.amount),0) as total "
             "FROM customers cu JOIN cars ca ON ca.customer_id = cu.id "
@@ -84,26 +87,25 @@ def index():
             "FROM cars ca JOIN appointments a ON a.car_id = ca.id "
             "GROUP BY ca.id ORDER BY cnt DESC LIMIT 1"
         ).fetchone()
-        paid_count = conn.execute("SELECT COUNT(*) FROM invoices WHERE status = 'paid'").fetchone()[0]
-        total_inv_count = conn.execute("SELECT COUNT(*) FROM invoices").fetchone()[0]
-        pay_rate = round((paid_count / total_inv_count * 100) if total_inv_count > 0 else 0)
-        # Online bookings stats
-        pending_bookings = conn.execute(
-            "SELECT COUNT(*) FROM online_bookings WHERE status='pending'").fetchone()[0]
-        today_bookings = conn.execute(
-            "SELECT COUNT(*) FROM online_bookings WHERE date(created_at)=?", (today_str,)).fetchone()[0]
-        # This week revenue
-        week_start = str(date.today() - timedelta(days=date.today().weekday()))
-        week_revenue = conn.execute(
-            "SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
-            "WHERE a.date >= ? AND i.status='paid'", (week_start,)).fetchone()[0]
+        pending_appointments = conn.execute(
+            "SELECT a.id, cu.name, ca.brand, ca.model, a.date, a.service "
+            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+            "JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE a.status = 'pending' ORDER BY a.date"
+        ).fetchall()
+        tomorrow_appointments = conn.execute(
+            "SELECT a.id, cu.name, ca.brand, ca.model, a.service "
+            "FROM appointments a JOIN cars ca ON a.car_id = ca.id "
+            "JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE a.date = ? AND a.status = 'pending'", (tomorrow,)
+        ).fetchall()
     stats = {
-        'customers': total_customers(),
-        'appointments': total_appointments(),
-        'revenue': total_revenue(),
+        'customers': total_cust,
+        'appointments': total_appt,
+        'revenue': revenue,
         'quotes': pending_quotes,
         'expenses': total_expenses,
-        'profit': total_revenue() - total_expenses,
+        'profit': revenue - total_expenses,
         'today_revenue': today_revenue,
         'today_appointments': today_appointments,
         'unpaid_total': unpaid_total,

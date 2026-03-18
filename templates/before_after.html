@@ -29,11 +29,11 @@
         <div class="comparison-container" style="position:relative;overflow:hidden;cursor:ew-resize" id="comp{{ i }}">
             <div style="display:flex">
                 <div style="flex:1;position:relative">
-                    <img src="/static/uploads/{{ before_photos[i].photo_path }}" class="w-100" style="display:block" alt="Avant">
+                    <img src="/static/uploads/{{ before_photos[i].photo_path }}" class="w-100" style="display:block" alt="Avant" loading="lazy">
                     <span class="badge bg-danger position-absolute top-0 start-0 m-2 fs-6">AVANT</span>
                 </div>
                 <div style="flex:1;position:relative">
-                    <img src="/static/uploads/{{ after_photos[i].photo_path }}" class="w-100" style="display:block" alt="Après">
+                    <img src="/static/uploads/{{ after_photos[i].photo_path }}" class="w-100" style="display:block" alt="Après" loading="lazy">
                     <span class="badge bg-success position-absolute top-0 end-0 m-2 fs-6">APRÈS</span>
                 </div>
             </div>
@@ -53,7 +53,7 @@
                 <div class="row g-2">
                 {% for p in before_photos %}
                 <div class="col-6">
-                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Avant" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')">
+                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Avant" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')" loading="lazy">
                     {% if p.caption %}<small class="text-muted">{{ p.caption }}</small>{% endif %}
                 </div>
                 {% endfor %}
@@ -72,7 +72,7 @@
                 <div class="row g-2">
                 {% for p in after_photos %}
                 <div class="col-6">
-                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Après" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')">
+                    <img src="/static/uploads/{{ p.photo_path }}" class="w-100 rounded shadow-sm" alt="Après" style="cursor:pointer" onclick="this.classList.toggle('shadow-lg')" loading="lazy">
                     {% if p.caption %}<small class="text-muted">{{ p.caption }}</small>{% endif %}
                 </div>
                 {% endfor %}
