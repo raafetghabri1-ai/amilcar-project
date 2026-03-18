@@ -430,17 +430,30 @@ def send_bulk_message():
 def email_settings():
     with get_db() as conn:
         if request.method == "POST":
-            for key in ['smtp_server', 'smtp_port', 'smtp_email', 'smtp_password', 'smtp_from_name']:
+            for key in ['smtp_server', 'smtp_port', 'smtp_email', 'smtp_password', 'smtp_from_name',
+                        'email_auto_receipt', 'email_auto_remind']:
                 val = request.form.get(key, '')
                 conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
             conn.commit()
             flash("Paramètres email enregistrés !", "success")
             return redirect("/email_settings")
         settings = {}
-        for row in conn.execute("SELECT key, value FROM settings WHERE key LIKE 'smtp_%'").fetchall():
+        for row in conn.execute("SELECT key, value FROM settings WHERE key LIKE 'smtp_%' OR key LIKE 'email_%'").fetchall():
             settings[row[0]] = row[1]
         logs = conn.execute("SELECT * FROM email_log ORDER BY created_at DESC LIMIT 50").fetchall()
     return render_template("email_settings.html", settings=settings, logs=logs)
+
+
+@comms_bp.route("/test_smtp", methods=["POST"])
+@login_required
+def test_smtp():
+    from helpers_email import test_smtp_connection
+    success, message = test_smtp_connection()
+    if success:
+        flash(f"✅ {message}", "success")
+    else:
+        flash(f"❌ {message}", "error")
+    return redirect("/email_settings")
 
 
 

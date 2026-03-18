@@ -33,6 +33,40 @@
                 </div>
                 <button class="btn-gold btn-sm w-100">💾 Enregistrer</button>
             </form>
+            <hr style="border-color:#222;margin:16px 0">
+            <form method="POST" action="/test_smtp">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button class="btn btn-outline-warning btn-sm w-100">🔌 Tester la connexion SMTP</button>
+            </form>
+        </div>
+        <!-- Auto-send preferences -->
+        <div class="card p-3 mt-3">
+            <h6 style="color:var(--gold);margin-bottom:15px">🤖 Envoi Automatique</h6>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% for key in ['smtp_server','smtp_port','smtp_email','smtp_password','smtp_from_name'] %}
+                <input type="hidden" name="{{ key }}" value="{{ settings.get(key, '') }}">
+                {% endfor %}
+                <div class="form-check form-switch mb-2">
+                    <input type="hidden" name="email_auto_receipt" value="0">
+                    <input type="checkbox" name="email_auto_receipt" class="form-check-input" id="autoReceipt" value="1"
+                        {% if settings.get('email_auto_receipt','0') == '1' %}checked{% endif %}
+                        style="accent-color:#D4AF37">
+                    <label class="form-check-label" for="autoReceipt" style="font-size:0.8rem;color:var(--text-secondary)">
+                        📧 Envoyer reçu automatiquement après paiement
+                    </label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input type="hidden" name="email_auto_remind" value="0">
+                    <input type="checkbox" name="email_auto_remind" class="form-check-input" id="autoRemind" value="1"
+                        {% if settings.get('email_auto_remind','0') == '1' %}checked{% endif %}
+                        style="accent-color:#D4AF37">
+                    <label class="form-check-label" for="autoRemind" style="font-size:0.8rem;color:var(--text-secondary)">
+                        ⏰ Rappels automatiques par email (19h, veille du RDV)
+                    </label>
+                </div>
+                <button class="btn-gold btn-sm w-100">💾 Enregistrer Préférences</button>
+            </form>
         </div>
     </div>
     <div class="col-md-7">

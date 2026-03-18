@@ -115,6 +115,28 @@ def pay_invoice(invoice_id):
             notify('invoice_paid', {'id': invoice_id})
     except Exception:
         pass
+    # Auto-send payment receipt email
+    try:
+        from helpers_email import send_email, build_payment_receipt_email, get_setting_value
+        if get_setting_value('email_auto_receipt', '0') == '1':
+            with get_db() as conn:
+                inv_data = conn.execute(
+                    "SELECT i.id, i.amount, COALESCE(i.paid_amount,0), i.payment_method, a.date, a.service, "
+                    "cu.name, COALESCE(cu.email,''), ca.brand, ca.model, ca.plate, cu.id "
+                    "FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+                    "JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
+                    "WHERE i.id=?", (invoice_id,)).fetchone()
+            if inv_data and inv_data[7]:
+                shop = get_setting_value('shop_name', 'AMILCAR')
+                html = build_payment_receipt_email({
+                    'id': inv_data[0], 'amount': inv_data[1], 'paid_amount': inv_data[2],
+                    'payment_method': inv_data[3] or 'cash', 'date': inv_data[4],
+                    'service': inv_data[5], 'customer_name': inv_data[6],
+                    'car': f"{inv_data[8]} {inv_data[9]} ({inv_data[10]})"
+                }, shop)
+                send_email(inv_data[7], f'Reçu #{invoice_id} — {shop}', html, customer_id=inv_data[11])
+    except Exception:
+        pass
     return redirect("/invoices")
 
 

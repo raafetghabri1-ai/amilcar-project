@@ -327,6 +327,50 @@ def _run_appointment_reminders():
 _reminder_thread = threading.Thread(target=_run_appointment_reminders, daemon=True)
 _reminder_thread.start()
 
+# ─── Auto Email Reminders (Background) ───
+def _run_email_reminders():
+    """Background thread: send email reminders for tomorrow's appointments at 19:00 daily."""
+    while True:
+        now = datetime.now()
+        target = now.replace(hour=19, minute=0, second=0, microsecond=0)
+        if now >= target:
+            target += timedelta(days=1)
+        wait_seconds = (target - now).total_seconds()
+        time_module.sleep(wait_seconds)
+        try:
+            with app.app_context():
+                from helpers_email import send_email, build_reminder_email, get_setting_value
+                if get_setting_value('email_auto_remind', '0') != '1':
+                    continue
+                shop = get_setting_value('shop_name', 'AMILCAR')
+                tomorrow = (date.today() + timedelta(days=1)).isoformat()
+                db = get_db()
+                appts = db.execute(
+                    "SELECT a.id, a.date, COALESCE(a.time,''), a.service, cu.name, "
+                    "COALESCE(cu.email,''), ca.brand, ca.model, cu.id "
+                    "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                    "JOIN customers cu ON ca.customer_id=cu.id "
+                    "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
+                db.close()
+                sent = 0
+                for a in appts:
+                    email = a[5]
+                    if not email:
+                        continue
+                    html = build_reminder_email({
+                        'customer_name': a[4], 'date': a[1], 'time': a[2],
+                        'service': a[3], 'car': f"{a[6]} {a[7]}"
+                    }, shop)
+                    if send_email(email, f'Rappel RDV — {shop}', html, customer_id=a[8]):
+                        sent += 1
+                if sent:
+                    logging.getLogger('amilcar.email').info('Auto-email reminders: %d sent for %s', sent, tomorrow)
+        except Exception as e:
+            logging.getLogger('amilcar.email').error('Email reminder failed: %s', e)
+
+_email_reminder_thread = threading.Thread(target=_run_email_reminders, daemon=True)
+_email_reminder_thread.start()
+
 if __name__ == '__main__':
     # Development only — production uses gunicorn (see Procfile)
     import os
