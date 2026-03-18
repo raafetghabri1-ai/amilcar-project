@@ -18,8 +18,8 @@ admin_bp = Blueprint("admin_bp", __name__)
 
 # ─── Backup Helpers ───
 def _perform_backup():
-    """Create a timestamped backup of the database. Returns filename or None."""
-    import shutil
+    """Create a timestamped backup of the database using SQLite backup API. Returns filename or None."""
+    import sqlite3
     backup_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backups')
     os.makedirs(backup_dir, exist_ok=True)
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'amilcar.db')
@@ -28,7 +28,12 @@ def _perform_backup():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f'amilcar_backup_{timestamp}.db'
     dest = os.path.join(backup_dir, filename)
-    shutil.copy2(db_path, dest)
+    # Use SQLite backup API (safe for WAL mode, consistent snapshot)
+    src_conn = sqlite3.connect(db_path)
+    dst_conn = sqlite3.connect(dest)
+    src_conn.backup(dst_conn)
+    dst_conn.close()
+    src_conn.close()
     # Clean old backups
     try:
         with get_db() as conn:

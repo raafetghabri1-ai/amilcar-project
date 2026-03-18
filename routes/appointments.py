@@ -6,6 +6,8 @@ Routes: 32
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
 from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, csrf, cache
+from helpers_validation import Validator
+from helpers_logging import get_logger
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,6 +17,7 @@ import time as time_module
 import sqlite3
 
 appointments_bp = Blueprint("appointments_bp", __name__)
+_log = get_logger('appointments')
 
 
 @appointments_bp.route('/appointments')

@@ -25,11 +25,15 @@ from flask_socketio import SocketIO
 from database.db import create_tables, get_db
 from database.migrations import migrate
 from helpers import check_api_rate_limit, TRANSLATIONS, csrf
+from helpers_logging import setup_logging, get_logger
 import os
 import time as time_module
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
+
+# ─── Logging ───
+log = setup_logging(app)
 
 # ─── Persistent Secret Key ───
 def _get_secret_key():
@@ -208,14 +212,17 @@ def forbidden(e):
 
 @app.errorhandler(404)
 def page_not_found(e):
+    log.warning('404 %s — %s', request.path, request.remote_addr)
     return render_template('error.html', code=404, message="Page introuvable"), 404
 
 @app.errorhandler(429)
 def too_many_requests(e):
+    log.warning('429 rate-limited — %s %s', request.path, request.remote_addr)
     return render_template('error.html', code=429, message="Trop de requêtes — réessayez dans quelques minutes"), 429
 
 @app.errorhandler(500)
 def internal_error(e):
+    log.error('500 %s — %s — %s', request.path, request.remote_addr, e)
     return render_template('error.html', code=500, message="Erreur interne du serveur"), 500
 
 # ─── Health Check ───

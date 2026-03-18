@@ -6,6 +6,8 @@ Routes: 51
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
 from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit, cache
+from helpers_validation import Validator
+from helpers_logging import get_logger
 from models.report import total_customers, total_appointments, total_revenue
 from database.db import get_db
 from werkzeug.utils import secure_filename
@@ -16,6 +18,7 @@ import time as time_module
 import sqlite3
 
 main_bp = Blueprint("main_bp", __name__)
+_log = get_logger('main')
 
 EXPENSE_CATEGORIES = [
     'Pièces & Matériaux',
@@ -127,37 +130,33 @@ def index():
 @login_required
 def new_invoice():
     if request.method == "POST":
-        appointment_id = request.form.get("appointment_id")
-        amount = request.form.get("amount", '').strip()
+        v = Validator()
+        appointment_id = v.require_int(request.form.get("appointment_id"), 'appointment_id', 'Rendez-vous', min_val=1)
+        amount_val = v.amount(request.form.get("amount", ''), 'amount', 'Montant')
         discount_type = request.form.get("discount_type", "").strip()
         discount_value = request.form.get("discount_value", "0").strip()
-        if not appointment_id:
-            flash('Sélectionnez un rendez-vous', 'error')
-        elif not amount:
-            flash('Entrez un montant', 'error')
+        if not v.ok:
+            flash(v.first_error(), 'error')
+        elif amount_val <= 0:
+            flash('Entrez un montant positif valide', 'error')
         else:
-            try:
-                amount_val = float(amount)
-                if amount_val <= 0:
-                    raise ValueError
-                disc_val = float(discount_value) if discount_value else 0
-                if disc_val < 0:
-                    disc_val = 0
-                if discount_type == 'percent' and disc_val > 100:
-                    disc_val = 100
-                if discount_type == 'fixed' and disc_val >= amount_val:
-                    disc_val = amount_val - 0.01
-                with get_db() as conn_inv:
-                    cursor_inv = conn_inv.execute(
-                        "INSERT INTO invoices (appointment_id, amount, discount_type, discount_value) VALUES (?,?,?,?)",
-                        (appointment_id, amount_val, discount_type if discount_type in ('percent','fixed') else '', disc_val))
-                    conn_inv.commit()
-                log_activity('Add Invoice', f'Amount: {amount_val} DT')
-                cache.clear()
-                flash('Facture ajoutée avec succès', 'success')
-                return redirect("/invoices")
-            except ValueError:
-                flash('Entrez un montant positif valide', 'error')
+            disc_val = float(discount_value) if discount_value else 0
+            if disc_val < 0:
+                disc_val = 0
+            if discount_type == 'percent' and disc_val > 100:
+                disc_val = 100
+            if discount_type == 'fixed' and disc_val >= amount_val:
+                disc_val = amount_val - 0.01
+            with get_db() as conn_inv:
+                cursor_inv = conn_inv.execute(
+                    "INSERT INTO invoices (appointment_id, amount, discount_type, discount_value) VALUES (?,?,?,?)",
+                    (appointment_id, amount_val, discount_type if discount_type in ('percent','fixed') else '', disc_val))
+                conn_inv.commit()
+            log_activity('Add Invoice', f'Amount: {amount_val} DT')
+            _log.info('Invoice created: %.2f DT for appointment %d', amount_val, appointment_id)
+            cache.clear()
+            flash('Facture ajoutée avec succès', 'success')
+            return redirect("/invoices")
     from models.appointment import get_appointments
     all_appointments = get_appointments()
     return render_template("add_invoice.html", appointments=all_appointments)
@@ -233,29 +232,24 @@ def new_car():
 def edit_customer(customer_id):
     with get_db() as conn:
         if request.method == "POST":
-            name = request.form.get("name", '').strip()
-            phone = request.form.get("phone", '').strip()
-            notes = request.form.get("notes", '').strip()
-            email = request.form.get("email", '').strip()
-            if not name or len(name) < 2:
-                flash('Le nom doit contenir au moins 2 caractères', 'error')
+            v = Validator()
+            name = v.string(request.form.get("name"), 'name', 'Nom', min_len=2, max_len=100)
+            phone = v.phone(request.form.get("phone"))
+            email = v.email(request.form.get("email"))
+            notes = v.safe_text(request.form.get("notes"), 'notes', 'Notes', max_len=2000)
+            if not v.ok:
+                flash(v.first_error(), 'error')
                 customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
                 return render_template("edit_customer.html", customer=customer)
-            if phone and not re.match(r'^[0-9+\s\-]{4,20}$', phone):
-                flash('Entrez un numéro de téléphone valide', 'error')
-                customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
-                return render_template("edit_customer.html", customer=customer)
-            if email and not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email):
-                flash('Adresse email invalide', 'error')
-                customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
-                return render_template("edit_customer.html", customer=customer)
-            dup = conn.execute("SELECT id, name FROM customers WHERE phone = ? AND id != ?", (phone, customer_id)).fetchone()
-            if dup:
-                flash(f'Ce numéro est déjà utilisé par le client : {dup[1]}', 'error')
-                customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
-                return render_template("edit_customer.html", customer=customer)
+            if phone:
+                dup = conn.execute("SELECT id, name FROM customers WHERE phone = ? AND id != ?", (phone, customer_id)).fetchone()
+                if dup:
+                    flash(f'Ce numéro est déjà utilisé par le client : {dup[1]}', 'error')
+                    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+                    return render_template("edit_customer.html", customer=customer)
             conn.execute("UPDATE customers SET name = ?, phone = ?, notes = ?, email = ? WHERE id = ?", (name, phone, notes, email, customer_id))
             conn.commit()
+            _log.info('Customer %d updated: %s', customer_id, name)
             flash('Client mis à jour avec succès', 'success')
             return redirect(f"/customer/{customer_id}")
         customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
