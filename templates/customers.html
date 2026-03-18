@@ -21,14 +21,14 @@
     </form>
     <div class="table-responsive sticky-header">
     <table class="table">
-        <thead><tr><th>#</th><th>Nom</th><th>Téléphone</th><th>Email</th><th>Action</th></tr></thead>
+        <thead><tr><th class="hide-mobile">#</th><th>Nom</th><th>Téléphone</th><th class="hide-mobile">Email</th><th>Action</th></tr></thead>
         <tbody>
         {% for customer in customers %}
         <tr>
-            <td style="color:var(--text-muted)">{{ customer[0] }}</td>
+            <td class="hide-mobile" style="color:var(--text-muted)">{{ customer[0] }}</td>
             <td><a href="/customer/{{ customer[0] }}" style="color:var(--gold);text-decoration:none;font-weight:600">{{ customer[1] }}</a></td>
             <td>{{ customer[2] }}</td>
-            <td style="color:var(--text-muted);font-size:0.78rem">{{ customer[4] if customer|length > 4 and customer[4] else '—' }}</td>
+            <td class="hide-mobile" style="color:var(--text-muted);font-size:0.78rem">{{ customer[4] if customer|length > 4 and customer[4] else '—' }}</td>
             <td>
                 <form method="POST" action="/delete_customer/{{ customer[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer ce client et toutes les données associées ?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

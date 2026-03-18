@@ -8,7 +8,7 @@
         </div>
         <a href="/add_appointment" class="btn-gold">+ Nouveau Rendez-vous</a>
     </div>
-    <form method="GET" action="/appointments" class="d-flex gap-2 mb-4 align-items-end flex-wrap">
+    <form method="GET" action="/appointments" class="d-flex gap-2 mb-4 align-items-end flex-wrap" style="row-gap:8px">
         <div>
             <label class="form-label">Statut</label>
             <select name="status" class="form-control" style="min-width:130px">
@@ -34,17 +34,17 @@
     </form>
     <div class="table-responsive sticky-header">
     <table class="table">
-        <thead><tr><th>#</th><th>Client</th><th>Voiture</th><th>Date</th><th>Heure</th><th>Service</th><th>Tech</th><th>Statut</th><th>Action</th></tr></thead>
+        <thead><tr><th class="hide-mobile">#</th><th>Client</th><th class="hide-mobile">Voiture</th><th>Date</th><th class="hide-mobile">Heure</th><th>Service</th><th class="hide-mobile">Tech</th><th>Statut</th><th>Action</th></tr></thead>
         <tbody>
         {% for a in appointments %}
         <tr>
-            <td style="color:var(--text-muted)">{{ a[0] }}</td>
+            <td class="hide-mobile" style="color:var(--text-muted)">{{ a[0] }}</td>
             <td style="font-weight:600">{{ a[1] }}</td>
-            <td>{{ a[2] }} {{ a[3] }}</td>
+            <td class="hide-mobile">{{ a[2] }} {{ a[3] }}</td>
             <td>{{ a[4] }}</td>
-            <td>{% if a[8] %}<span style="color:var(--gold);font-size:0.8rem">{{ a[8] }}</span>{% else %}<span style="color:var(--text-dim)">—</span>{% endif %}</td>
+            <td class="hide-mobile">{% if a[8] %}<span style="color:var(--gold);font-size:0.8rem">{{ a[8] }}</span>{% else %}<span style="color:var(--text-dim)">—</span>{% endif %}</td>
             <td>{{ a[5] }}</td>
-            <td>{% if a[7] %}<span style="color:var(--gold);font-size:0.75rem">{{ a[7] }}</span>{% else %}<span style="color:var(--text-dim)">—</span>{% endif %}</td>
+            <td class="hide-mobile">{% if a[7] %}<span style="color:var(--gold);font-size:0.75rem">{{ a[7] }}</span>{% else %}<span style="color:var(--text-dim)">—</span>{% endif %}</td>
             <td>
             {% if a[6] == "pending" %}
             <span class="badge-pending">En attente</span>

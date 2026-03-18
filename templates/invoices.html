@@ -8,7 +8,7 @@
         </div>
         <a href="/add_invoice" class="btn-gold">+ Nouvelle Facture</a>
     </div>
-    <form method="GET" action="/invoices" class="d-flex gap-2 mb-4 align-items-end">
+    <form method="GET" action="/invoices" class="d-flex gap-2 mb-4 align-items-end flex-wrap" style="row-gap:8px">
         <div>
             <label class="form-label">Statut</label>
             <select name="status" class="form-control" style="min-width:130px">
@@ -37,7 +37,7 @@
     </div>
     <div class="table-responsive sticky-header">
     <table class="table">
-        <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll" class="form-check-input" style="width:14px;height:14px"></th><th>#</th><th>Client</th><th>Service</th><th>Date</th><th>Montant</th><th>Remise</th><th>Payé</th><th>Statut</th><th>Paiement</th><th>Action</th></tr></thead>
+        <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll" class="form-check-input" style="width:14px;height:14px"></th><th class="hide-mobile">#</th><th>Client</th><th class="hide-mobile">Service</th><th class="hide-mobile">Date</th><th>Montant</th><th class="hide-mobile">Remise</th><th class="hide-mobile">Payé</th><th>Statut</th><th class="hide-mobile">Paiement</th><th>Action</th></tr></thead>
         <tbody>
         {% for inv in invoices %}
         <tr>
@@ -46,17 +46,17 @@
             <input type="checkbox" name="invoice_ids" value="{{ inv[0] }}" class="inv-check form-check-input" style="width:14px;height:14px">
             {% endif %}
             </td>
-            <td style="color:var(--text-muted)">{{ inv[0] }}</td>
+            <td class="hide-mobile" style="color:var(--text-muted)">{{ inv[0] }}</td>
             <td style="font-weight:600">{{ inv[6] }}</td>
-            <td>{{ inv[5] }}</td>
-            <td>{{ inv[4] }}</td>
+            <td class="hide-mobile">{{ inv[5] }}</td>
+            <td class="hide-mobile">{{ inv[4] }}</td>
             <td class="amount">{{ inv[2] }} DT</td>
-            <td>
+            <td class="hide-mobile">
             {% if inv[9] and inv[10] > 0 %}
             <span style="color:var(--green);font-size:0.75rem">{% if inv[9] == 'percent' %}-{{ inv[10] }}%{% else %}-{{ inv[10] }} DT{% endif %}</span>
             {% else %}<span style="color:var(--text-dim)">—</span>{% endif %}
             </td>
-            <td>
+            <td class="hide-mobile">
             {% if inv[8] and inv[8] > 0 and inv[3] != 'paid' %}
             <span style="color:var(--gold);font-size:0.8rem;font-weight:600">{{ inv[8] }} DT</span>
             {% elif inv[3] == 'paid' %}
@@ -72,7 +72,7 @@
             <span class="badge-paid">Payé</span>
             {% endif %}
             </td>
-            <td>
+            <td class="hide-mobile">
             {% if inv[7] %}
             <span class="badge-payment-method">{{ inv[7]|upper }}</span>
             {% else %}<span style="color:var(--text-dim)">—</span>{% endif %}
