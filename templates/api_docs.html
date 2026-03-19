@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}API Documentation{% endblock %}
 {% block content %}
-<div style="max-width:900px;margin:0 auto">
-<h2 style="color:var(--gold);margin-bottom:20px">📡 API Documentation</h2>
+<div style="max-width:960px;margin:0 auto">
+<h2 style="color:var(--gold);margin-bottom:20px">📡 API Documentation — Swagger</h2>
 
 <div class="card" style="margin-bottom:20px;padding:16px">
   <h4>Authentication</h4>
@@ -15,33 +15,34 @@
   </p>
 </div>
 
-<div class="card" style="padding:16px">
-  <h4>Endpoints</h4>
-  <table class="table" style="width:100%;font-size:.85rem">
-    <thead>
-      <tr>
-        <th>Method</th>
-        <th>Path</th>
-        <th>Description</th>
-        <th>Auth</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ep in endpoints %}
-      <tr>
-        <td><span style="background:{{ 'var(--green-light)' if ep.method == 'GET' else 'var(--gold)' }};color:#000;padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:700">{{ ep.method }}</span></td>
-        <td style="font-family:monospace;color:var(--gold)">{{ ep.path }}</td>
-        <td style="color:var(--text-muted)">{{ ep.desc }}</td>
-        <td><span style="font-size:.7rem">{{ ep.auth }}</span></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- Swagger UI -->
+<div class="card" style="padding:0;overflow:hidden">
+  <div id="swagger-ui"></div>
 </div>
 
 <div class="card" style="margin-top:20px;padding:16px">
   <h4>Example Request</h4>
   <pre style="background:var(--bg-card);border:1px solid var(--border-subtle);padding:12px;border-radius:6px;font-size:.8rem;color:var(--gold);overflow-x:auto">curl -H "X-API-Key: YOUR_KEY" {{ request.host_url }}api/v1/stats</pre>
+  <h4 style="margin-top:16px">OpenAPI Spec</h4>
+  <p style="color:var(--text-muted);font-size:.85rem">
+    Download the full spec: <a href="/api/openapi.json" style="color:var(--gold)">/api/openapi.json</a>
+  </p>
 </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    SwaggerUIBundle({
+        url: '/api/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        layout: 'BaseLayout',
+        defaultModelsExpandDepth: 1,
+        docExpansion: 'list',
+    });
+});
+</script>
 {% endblock %}

@@ -234,6 +234,14 @@ def check_booking_rate_limit():
 
 # ─── Authentication Decorators ───
 
+ROLE_PERMISSIONS = {
+    'admin': ['all'],
+    'manager': ['customers', 'appointments', 'invoices', 'reports', 'inventory', 'services', 'expenses', 'team', 'calendar', 'settings'],
+    'receptionist': ['customers', 'appointments', 'invoices', 'calendar', 'quotes'],
+    'technician': ['appointments', 'live_board', 'time_tracking', 'gallery', 'inspections'],
+    'employee': ['appointments', 'customers'],
+}
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -253,6 +261,22 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def permission_required(*perms):
+    """Decorator: user must have at least one of the given permissions."""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if not session.get('user_id'):
+                return redirect('/login')
+            role = session.get('role', 'employee')
+            allowed = ROLE_PERMISSIONS.get(role, [])
+            if 'all' in allowed or any(p in allowed for p in perms):
+                return f(*args, **kwargs)
+            flash('Accès non autorisé pour votre rôle', 'error')
+            return redirect('/')
+        return decorated
+    return decorator
+
 def client_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -260,6 +284,18 @@ def client_required(f):
             return redirect('/espace-client')
         return f(*args, **kwargs)
     return decorated
+
+def get_branch_id():
+    """Return the current user's branch_id (0 = all branches / HQ)."""
+    return session.get('branch_id', 0)
+
+def branch_sql(table_alias='', column='branch_id'):
+    """Return SQL condition + params to filter by current branch. Returns ('', []) for HQ/admin."""
+    bid = get_branch_id()
+    if bid and bid > 0:
+        prefix = f"{table_alias}." if table_alias else ""
+        return f" AND {prefix}{column} = ?", [bid]
+    return "", []
 
 # ─── Utility Functions ───
 

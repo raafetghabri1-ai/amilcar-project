@@ -1,0 +1,14 @@
+.venv
+__pycache__
+*.pyc
+.git
+.gitignore
+*.db
+*.db-journal
+*.db-wal
+logs/
+backups/
+node_modules
+.env
+*.md
+tests/

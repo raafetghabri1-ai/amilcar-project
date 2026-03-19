@@ -1,0 +1,44 @@
+# AMILCAR Auto Care — Docker Compose (Production)
+# Usage: docker compose up -d
+
+services:
+  app:
+    build: .
+    container_name: amilcar-app
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/data/amilcar.db
+    volumes:
+      - amilcar-data:/data
+      - amilcar-logs:/app/logs
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: amilcar-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - amilcar-certs:/etc/nginx/certs
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  amilcar-data:
+    driver: local
+  amilcar-logs:
+    driver: local
+  amilcar-certs:
+    driver: local

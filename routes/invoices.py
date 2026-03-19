@@ -4,7 +4,7 @@ Blueprint: invoices_bp
 Routes: 42
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
-from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
+from helpers import login_required, admin_required, client_required, permission_required, get_db, get_services, get_setting, get_all_settings
 from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, cache
 from database.db import get_db
 from werkzeug.utils import secure_filename
@@ -20,6 +20,7 @@ invoices_bp = Blueprint("invoices_bp", __name__)
 
 @invoices_bp.route('/invoices')
 @login_required
+@permission_required('invoices')
 def invoices():
     page = safe_page(request.args.get('page', 1, type=int))
     status_filter = request.args.get('status', '')
@@ -322,6 +323,7 @@ def download_invoice(invoice_id):
 
 @invoices_bp.route("/expenses")
 @login_required
+@permission_required('expenses')
 def expenses():
     page = safe_page(request.args.get('page', 1, type=int))
     month = request.args.get('month', '')

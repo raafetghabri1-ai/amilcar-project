@@ -22,9 +22,9 @@ LOGIN_LOCKOUT_SECONDS = 300
 
 PERMISSIONS = {
     'admin': ['all'],
-    'manager': ['customers', 'appointments', 'invoices', 'reports', 'inventory', 'services', 'expenses'],
-    'receptionist': ['customers', 'appointments', 'invoices', 'calendar'],
-    'technician': ['appointments', 'live_board', 'time_tracking', 'gallery'],
+    'manager': ['customers', 'appointments', 'invoices', 'reports', 'inventory', 'services', 'expenses', 'team', 'calendar', 'settings'],
+    'receptionist': ['customers', 'appointments', 'invoices', 'calendar', 'quotes'],
+    'technician': ['appointments', 'live_board', 'time_tracking', 'gallery', 'inspections'],
     'employee': ['appointments', 'customers'],
 }
 
@@ -54,6 +54,10 @@ def login():
             session['user_id'] = user[0]
             session['username'] = user[1]
             session['role'] = user[3] if len(user) > 3 and user[3] else 'employee'
+            # Set branch_id from users table
+            with get_db() as conn:
+                bid = conn.execute("SELECT COALESCE(branch_id, 0) FROM users WHERE id=?", (user[0],)).fetchone()
+                session['branch_id'] = bid[0] if bid else 0
             return redirect('/')
         # Track failed attempt
         if ip in _login_attempts:
@@ -119,7 +123,7 @@ def add_user():
         if not password or len(password) < 6:
             flash("Le mot de passe doit contenir au moins 6 caractères", "error")
             return render_template("add_user.html")
-        if role not in ('admin', 'employee'):
+        if role not in ('admin', 'manager', 'receptionist', 'technician', 'employee'):
             role = 'employee'
         full_name = request.form.get("full_name", "").strip()
         with get_db() as conn:

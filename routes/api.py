@@ -33,19 +33,120 @@ def check_api_key():
 @api_bp.route("/api/docs")
 @login_required
 def api_docs():
-    """API documentation page."""
-    endpoints = [
-        {"method": "GET", "path": "/api/v1/customers", "desc": "List all customers", "auth": "API Key"},
-        {"method": "GET", "path": "/api/v1/appointments", "desc": "List all appointments", "auth": "API Key"},
-        {"method": "GET", "path": "/api/v1/invoices", "desc": "List all invoices", "auth": "API Key"},
-        {"method": "GET", "path": "/api/v1/stats", "desc": "Dashboard statistics", "auth": "API Key"},
-        {"method": "GET", "path": "/api/appointments_calendar", "desc": "Calendar data (JSON)", "auth": "Session"},
-        {"method": "GET", "path": "/api/chart_data", "desc": "Chart data for dashboard", "auth": "Session"},
-        {"method": "GET", "path": "/api/search?q=term", "desc": "Global search", "auth": "Session"},
-        {"method": "POST", "path": "/api/v1/customers", "desc": "Create customer", "auth": "API Key"},
-        {"method": "POST", "path": "/api/v1/appointments", "desc": "Create appointment", "auth": "API Key"},
-    ]
-    return render_template("api_docs.html", endpoints=endpoints)
+    """Interactive API documentation (Swagger UI)."""
+    return render_template("api_docs.html")
+
+
+@api_bp.route("/api/openapi.json")
+@login_required
+def api_openapi():
+    """OpenAPI 3.0 specification."""
+    spec = {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "AMILCAR Auto Care API",
+            "version": "1.0.0",
+            "description": "API REST pour la gestion du garage AMILCAR — clients, rendez-vous, factures, statistiques.",
+        },
+        "servers": [{"url": request.host_url.rstrip('/'), "description": "Serveur actuel"}],
+        "components": {
+            "securitySchemes": {
+                "ApiKeyAuth": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-API-Key",
+                    "description": "Clé API (configurable dans Paramètres > API)",
+                }
+            },
+            "schemas": {
+                "Customer": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"}, "name": {"type": "string"},
+                        "phone": {"type": "string"}, "email": {"type": "string"},
+                    },
+                },
+                "Appointment": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"}, "date": {"type": "string", "format": "date"},
+                        "time": {"type": "string"}, "service": {"type": "string"},
+                        "status": {"type": "string"}, "customer": {"type": "string"},
+                        "plate": {"type": "string"},
+                    },
+                },
+                "Invoice": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"}, "amount": {"type": "number"},
+                        "status": {"type": "string"}, "service": {"type": "string"},
+                        "customer": {"type": "string"},
+                    },
+                },
+                "Stats": {
+                    "type": "object",
+                    "properties": {
+                        "today_revenue": {"type": "number"}, "month_revenue": {"type": "number"},
+                        "total_customers": {"type": "integer"}, "today_appointments": {"type": "integer"},
+                    },
+                },
+            },
+        },
+        "paths": {
+            "/api/v1/customers": {
+                "get": {
+                    "summary": "Lister les clients",
+                    "tags": ["Clients"],
+                    "security": [{"ApiKeyAuth": []}],
+                    "parameters": [
+                        {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 100}},
+                    ],
+                    "responses": {"200": {"description": "Liste des clients", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Customer"}}}}}},
+                },
+            },
+            "/api/v1/appointments": {
+                "get": {
+                    "summary": "Lister les rendez-vous",
+                    "tags": ["Rendez-vous"],
+                    "security": [{"ApiKeyAuth": []}],
+                    "parameters": [
+                        {"name": "date", "in": "query", "schema": {"type": "string", "format": "date"}, "description": "Filtrer par date (YYYY-MM-DD)"},
+                    ],
+                    "responses": {"200": {"description": "Liste des RDV", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Appointment"}}}}}},
+                },
+            },
+            "/api/v1/invoices": {
+                "get": {
+                    "summary": "Lister les factures",
+                    "tags": ["Factures"],
+                    "security": [{"ApiKeyAuth": []}],
+                    "parameters": [
+                        {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["paid", "unpaid", "partial"]}},
+                    ],
+                    "responses": {"200": {"description": "Liste des factures", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Invoice"}}}}}},
+                },
+            },
+            "/api/v1/stats": {
+                "get": {
+                    "summary": "Statistiques du tableau de bord",
+                    "tags": ["Statistiques"],
+                    "security": [{"ApiKeyAuth": []}],
+                    "responses": {"200": {"description": "Stats du jour/mois", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Stats"}}}}},
+                },
+            },
+            "/api/search": {
+                "get": {
+                    "summary": "Recherche globale",
+                    "tags": ["Recherche"],
+                    "parameters": [
+                        {"name": "q", "in": "query", "required": True, "schema": {"type": "string", "minLength": 2}},
+                    ],
+                    "responses": {"200": {"description": "Résultats de recherche"}},
+                },
+            },
+        },
+    }
+    return jsonify(spec)
 
 
 @api_bp.route("/api/appointments_calendar")
