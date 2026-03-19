@@ -51,8 +51,11 @@ AVAILABLE_WIDGETS = [
 def index():
     from datetime import date, timedelta
     today_str = str(date.today())
+    yesterday_str = str(date.today() - timedelta(days=1))
     tomorrow = str(date.today() + timedelta(days=1))
     week_start = str(date.today() - timedelta(days=date.today().weekday()))
+    last_week_start = str(date.today() - timedelta(days=date.today().weekday() + 7))
+    last_week_end = week_start
     with get_db() as conn:
         # Single combined query for all scalar stats
         counts = conn.execute(
@@ -69,14 +72,22 @@ def index():
             "(SELECT COUNT(*) FROM invoices), "
             "(SELECT COUNT(*) FROM online_bookings WHERE status='pending'), "
             "(SELECT COUNT(*) FROM online_bookings WHERE date(created_at)=?), "
-            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND i.status='paid')",
-            (today_str, today_str, today_str, week_start)
+            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND i.status='paid'), "
+            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date=? AND i.status='paid'), "
+            "(SELECT COUNT(*) FROM appointments WHERE date=?), "
+            "(SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND a.date<? AND i.status='paid'), "
+            "(SELECT COUNT(*) FROM appointments WHERE status='completed')",
+            (today_str, today_str, today_str, week_start, yesterday_str, yesterday_str, last_week_start, last_week_end)
         ).fetchone()
         total_cust, total_appt, revenue, pending_quotes, total_expenses = counts[0], counts[1], counts[2], counts[3], counts[4]
         today_revenue, today_appointments, unpaid_total = counts[5], counts[6], counts[7]
         paid_count, total_inv_count = counts[8], counts[9]
         pending_bookings, today_bookings, week_revenue = counts[10], counts[11], counts[12]
+        yesterday_revenue, yesterday_appointments = counts[13], counts[14]
+        last_week_revenue = counts[15]
+        completed_appt = counts[16]
         pay_rate = round((paid_count / total_inv_count * 100) if total_inv_count > 0 else 0)
+        completion_rate = round((completed_appt / total_appt * 100) if total_appt > 0 else 0)
         # Rich dashboard stats (2 queries with LIMIT 1)
         top_customer = conn.execute(
             "SELECT cu.name, COALESCE(SUM(i.amount),0) as total "
@@ -117,9 +128,16 @@ def index():
         'most_visited_car': most_visited_car[0] if most_visited_car else '—',
         'most_visited_count': most_visited_car[1] if most_visited_car else 0,
         'pay_rate': pay_rate,
+        'completion_rate': completion_rate,
         'pending_bookings': pending_bookings,
         'today_bookings': today_bookings,
         'week_revenue': week_revenue,
+        'yesterday_revenue': yesterday_revenue,
+        'yesterday_appointments': yesterday_appointments,
+        'last_week_revenue': last_week_revenue,
+        'revenue_trend': today_revenue - yesterday_revenue,
+        'appt_trend': today_appointments - yesterday_appointments,
+        'week_trend': week_revenue - last_week_revenue,
     }
     return render_template('index.html', stats=stats, pending_appointments=pending_appointments,
                            tomorrow_appointments=tomorrow_appointments)
@@ -947,6 +965,13 @@ def online_booking():
             notify = current_app.config.get('notify_update')
             if notify:
                 notify('new_booking', {'name': name, 'service': service, 'date': pref_date})
+        except Exception:
+            pass
+        # Push notification
+        try:
+            from helpers_push import send_push
+            with get_db() as conn_p:
+                send_push(conn_p, 'Réservation en ligne 📱', f'{name} — {service} le {pref_date}', '/bookings_admin')
         except Exception:
             pass
 

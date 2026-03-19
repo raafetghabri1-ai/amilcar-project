@@ -346,30 +346,42 @@
             if(el.classList.contains('collapsed'))arr.push(i);
         });localStorage.setItem('sb_collapsed',JSON.stringify(arr));
     });
-    /* Search autocomplete */
+    /* Search autocomplete with keyboard navigation */
     (function(){
         var input = document.getElementById('searchInput');
         var box = document.getElementById('searchResults');
         if (!input || !box) return;
-        var timer = null;
+        var timer = null, idx = -1;
+        function setActive(items) {
+            items.forEach(function(a,i){ a.classList.toggle('active', i===idx); });
+            if (idx >= 0 && items[idx]) items[idx].scrollIntoView({block:'nearest'});
+        }
         input.addEventListener('input', function(){
-            clearTimeout(timer);
+            clearTimeout(timer); idx = -1;
             var q = input.value.trim();
             if (q.length < 2) { box.style.display = 'none'; return; }
             timer = setTimeout(function(){
                 fetch('/api/search?q=' + encodeURIComponent(q))
                 .then(function(r){ return r.json(); })
                 .then(function(data){
-                    if (!data.length) { box.style.display = 'none'; return; }
+                    if (!data.length) { box.innerHTML = '<div class="search-empty">Aucun résultat</div>'; box.style.display='block'; return; }
                     var html = '';
                     data.forEach(function(r){
-                        var icon = r.type === 'client' ? '◉' : '▤';
-                        html += '<a href="'+r.url+'">'+icon+' '+r.label+' <small style="color:var(--text-muted)">'+r.sub+'</small></a>';
+                        html += '<a href="'+r.url+'" class="search-item"><span class="search-icon">'+(r.icon||'◉')+'</span><span class="search-text"><span class="search-label">'+r.label+'</span><span class="search-sub">'+r.sub+'</span></span><span class="search-type">'+r.type+'</span></a>';
                     });
+                    html += '<a href="/search?q='+encodeURIComponent(q)+'" class="search-item search-all">Voir tous les résultats →</a>';
                     box.innerHTML = html;
                     box.style.display = 'block';
                 });
-            }, 250);
+            }, 200);
+        });
+        input.addEventListener('keydown', function(e){
+            var items = box.querySelectorAll('.search-item');
+            if (!items.length) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx+1, items.length-1); setActive(items); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx-1, 0); setActive(items); }
+            else if (e.key === 'Enter' && idx >= 0) { e.preventDefault(); items[idx].click(); }
+            else if (e.key === 'Escape') { box.style.display = 'none'; }
         });
         document.addEventListener('click', function(e){
             if (!box.contains(e.target) && e.target !== input) box.style.display = 'none';

@@ -62,6 +62,11 @@
             <div class="quick-stat">
                 <p class="quick-stat-label">{{ t.today_revenue }}</p>
                 <p class="quick-stat-value">{{ stats.today_appointments }} <span style="font-size:0.7rem;color:var(--text-muted);font-weight:400">rdv</span> — {{ stats.today_revenue }} DT</p>
+                {% if stats.revenue_trend != 0 %}
+                <p class="trend {% if stats.revenue_trend > 0 %}trend-up{% else %}trend-down{% endif %}">
+                    {% if stats.revenue_trend > 0 %}▲{% else %}▼{% endif %} {{ stats.revenue_trend|abs }} DT vs hier
+                </p>
+                {% endif %}
             </div>
         </div>
         <div class="col-md-3 col-6">
@@ -80,6 +85,11 @@
             <div class="quick-stat" style="border-left:3px solid #3B82F6">
                 <p class="quick-stat-label">{{ t.week_revenue }}</p>
                 <p class="quick-stat-value" style="color:#3B82F6">{{ stats.week_revenue }} DT</p>
+                {% if stats.week_trend != 0 %}
+                <p class="trend {% if stats.week_trend > 0 %}trend-up{% else %}trend-down{% endif %}">
+                    {% if stats.week_trend > 0 %}▲{% else %}▼{% endif %} {{ stats.week_trend|abs }} DT vs semaine dern.
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -99,27 +109,38 @@
 
     <!-- Insights -->
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="insight-card">
                 <p class="insight-label">{{ t.best_customer }}</p>
                 <p class="insight-value" style="color:var(--gold)">{{ stats.top_customer }}</p>
                 <p class="insight-sub">{{ stats.top_customer_amount }} DT</p>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="insight-card">
                 <p class="insight-label">{{ t.most_visited_car }}</p>
                 <p class="insight-value" style="color:var(--blue)">{{ stats.most_visited_car }}</p>
                 <p class="insight-sub">{{ stats.most_visited_count }} {{ t.visits }}</p>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3 col-6">
             <div class="insight-card">
                 <p class="insight-label">{{ t.payment_rate }}</p>
                 <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
                     <span class="{% if stats.pay_rate >= 70 %}text-profit{% elif stats.pay_rate >= 40 %}text-gold{% else %}text-loss{% endif %}" style="font-size:1.4rem;font-weight:800">{{ stats.pay_rate }}%</span>
                     <div class="progress-bar-wrap" style="flex:1">
                         <div class="progress-bar-fill {% if stats.pay_rate >= 70 %}green{% elif stats.pay_rate < 40 %}red{% endif %}" style="width:{{ stats.pay_rate }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="insight-card">
+                <p class="insight-label">Taux de complétion</p>
+                <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+                    <span class="{% if stats.completion_rate >= 70 %}text-profit{% elif stats.completion_rate >= 40 %}text-gold{% else %}text-loss{% endif %}" style="font-size:1.4rem;font-weight:800">{{ stats.completion_rate }}%</span>
+                    <div class="progress-bar-wrap" style="flex:1">
+                        <div class="progress-bar-fill {% if stats.completion_rate >= 70 %}green{% elif stats.completion_rate < 40 %}red{% endif %}" style="width:{{ stats.completion_rate }}%"></div>
                     </div>
                 </div>
             </div>

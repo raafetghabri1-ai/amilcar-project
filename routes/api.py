@@ -120,19 +120,32 @@ def api_search():
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
         return jsonify([])
+    like = f'%{q}%'
     with get_db() as conn:
         customers = conn.execute(
             "SELECT 'client' as type, id, name, phone FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 5",
-            (f'%{q}%', f'%{q}%')).fetchall()
+            (like, like)).fetchall()
         cars = conn.execute(
             "SELECT 'voiture' as type, ca.id, ca.brand || ' ' || ca.model, ca.plate "
             "FROM cars ca WHERE ca.brand LIKE ? OR ca.model LIKE ? OR ca.plate LIKE ? LIMIT 5",
-            (f'%{q}%', f'%{q}%', f'%{q}%')).fetchall()
+            (like, like, like)).fetchall()
+        appointments = conn.execute(
+            "SELECT 'rdv' as type, a.id, cu.name || ' — ' || a.service, a.date || ' (' || a.status || ')' "
+            "FROM appointments a JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
+            "WHERE cu.name LIKE ? OR a.service LIKE ? LIMIT 4",
+            (like, like)).fetchall()
+        invoices = conn.execute(
+            "SELECT 'facture' as type, i.id, 'Facture #' || i.id || ' — ' || cu.name, i.amount || ' DT (' || i.status || ')' "
+            "FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+            "JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
+            "WHERE cu.name LIKE ? OR CAST(i.id AS TEXT) = ? LIMIT 4",
+            (like, q)).fetchall()
     results = []
-    for c in customers:
-        results.append({'type': 'client', 'id': c[1], 'label': c[2], 'sub': c[3], 'url': f'/customer/{c[1]}'})
-    for c in cars:
-        results.append({'type': 'voiture', 'id': c[1], 'label': c[2], 'sub': c[3], 'url': f'/car/{c[1]}'})
+    icons = {'client': '👤', 'voiture': '🚗', 'rdv': '📅', 'facture': '📄'}
+    urls = {'client': '/customer/', 'voiture': '/car/', 'rdv': '/edit_appointment/', 'facture': '/print_invoice/'}
+    for row in (*customers, *cars, *appointments, *invoices):
+        t = row[0]
+        results.append({'type': t, 'icon': icons[t], 'id': row[1], 'label': row[2], 'sub': row[3], 'url': f'{urls[t]}{row[1]}'})
     return jsonify(results)
 
 

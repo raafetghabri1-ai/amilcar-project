@@ -109,6 +109,13 @@ def pay_invoice(invoice_id):
     cache.invalidate_prefix('weekly_')
     cache.invalidate_prefix('monthly_')
     cache.invalidate_prefix('profit_')
+    # Push notification
+    try:
+        from helpers_push import send_push
+        with get_db() as conn:
+            send_push(conn, 'Paiement reçu 💰', f'Facture #{invoice_id} payée ({payment_method})', '/invoices')
+    except Exception:
+        pass
     try:
         notify = current_app.config.get('notify_update')
         if notify:
@@ -269,7 +276,8 @@ def print_invoice(invoice_id):
             "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
             "WHERE i.id = ?", (invoice_id,)).fetchone()
     settings = get_all_settings()
-    return render_template("print_invoice.html", inv=inv, settings=settings)
+    now = datetime.now().strftime('%d/%m/%Y %H:%M')
+    return render_template("print_invoice.html", inv=inv, settings=settings, now=now)
 
 
 
@@ -288,7 +296,8 @@ def download_invoice(invoice_id):
     if not inv:
         return redirect("/invoices")
     settings = get_all_settings()
-    html = render_template("print_invoice.html", inv=inv, settings=settings)
+    now = datetime.now().strftime('%d/%m/%Y %H:%M')
+    html = render_template("print_invoice.html", inv=inv, settings=settings, now=now)
     # Embed logo as base64 for PDF compatibility
     import base64
     logo_path = os.path.join(os.path.abspath('static'), 'logo.png')

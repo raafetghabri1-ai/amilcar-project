@@ -125,6 +125,13 @@ def new_appointment():
             flash(f'{created} rendez-vous créés avec succès', 'success')
         log_activity('Add Appointment', f'Service: {service} (x{created})')
         cache.clear()
+        # Push notification
+        try:
+            from helpers_push import send_push
+            with get_db() as conn2:
+                send_push(conn2, 'Nouveau RDV 📅', f'{service} — {created} rendez-vous créé(s)', '/appointments')
+        except Exception:
+            pass
         return redirect("/appointments")
     from models.customer import get_all_customers
     all_customers = get_all_customers()

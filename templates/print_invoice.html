@@ -170,13 +170,31 @@
             </span>
         </div>
 
+        <!-- QR Code & Terms -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:20px;gap:16px">
+            <div style="flex:1">
+                <p style="font-size:7px;color:#999;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:700">Conditions</p>
+                <p style="font-size:7.5px;color:#888;line-height:1.6;margin:0">
+                    {{ settings.get('invoice_terms', "• Paiement dû à réception sauf accord contraire.|• Tout retard entraîne des pénalités de 1,5% par mois.|• Les travaux effectués sont garantis selon nos conditions générales.")|replace('|', '<br>')|safe }}
+                </p>
+            </div>
+            {% if settings.get('shop_domain') %}
+            <div style="text-align:center;flex-shrink:0">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ settings.get('shop_domain') }}/invoice_view/{{ inv[0] }}" 
+                     alt="QR" style="width:70px;height:70px;opacity:0.8" onerror="this.style.display='none'">
+                <p style="font-size:6px;color:#bbb;margin-top:3px">Vérifier en ligne</p>
+            </div>
+            {% endif %}
+        </div>
+
         <!-- Footer -->
         <div class="footer">
             <p>{{ settings.get('shop_name', 'AMILCAR') }} SOIN AUTOMOBILE — {{ settings.get('shop_address', 'MAHRES, SFAX, TUNISIA') }}</p>
             {% if settings.get('shop_phone') %}
-            <p>Tél : {{ settings.get('shop_phone') }}</p>
+            <p>Tél : {{ settings.get('shop_phone') }}{% if settings.get('shop_email') %} · {{ settings.get('shop_email') }}{% endif %}</p>
             {% endif %}
             <p class="thanks">Merci d'avoir choisi {{ settings.get('shop_name', 'AMILCAR') }}</p>
+            <p style="font-size:6px;color:#ccc;margin-top:8px">Imprimé le {{ now if now else '' }} · Ref: FAC-{{ inv[0] }}</p>
         </div>
     </div>
 </body>
