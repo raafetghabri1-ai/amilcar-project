@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %} - Rappels Automatiques{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">RAPPELS WHATSAPP AUTOMATIQUES</p>
+    {% if not sent %}
+    <form method="POST" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-gold" style="font-size:0.8rem;padding:8px 18px">📲 ENVOYER LES RAPPELS</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if sent %}
+<div class="alert" style="background:rgba(45,106,79,0.15);border:1px solid var(--green);color:var(--green);border-radius:12px;padding:16px">
+    ✅ {{ reminder_urls|length }} rappel(s) généré(s). Cliquez sur chaque lien pour envoyer via WhatsApp.
+</div>
+<div class="card-dark">
+    <table class="table mb-0">
+        <thead><tr><th>Client</th><th>Téléphone</th><th>Service</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for r in reminder_urls %}
+        <tr>
+            <td>{{ r.name }}</td>
+            <td>{{ r.phone }}</td>
+            <td>{{ r.service }}</td>
+            <td><a href="{{ r.url }}" target="_blank" class="btn-gold" style="font-size:0.72rem;padding:4px 12px">📲 WhatsApp</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card-dark mb-4">
+    <h5 class="mb-3" style="color:var(--gold)">📅 RDV de demain ({{ tomorrow }})</h5>
+    {% if appointments %}
+    <table class="table mb-0">
+        <thead><tr><th>Client</th><th>Téléphone</th><th>Heure</th><th>Service</th><th>Véhicule</th></tr></thead>
+        <tbody>
+        {% for a in appointments %}
+        <tr>
+            <td>{{ a.name }}</td>
+            <td>{{ a.phone }}</td>
+            <td>{{ a.time or '—' }}</td>
+            <td>{{ a.service }}</td>
+            <td>{{ a.brand }} {{ a.model }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="mt-3" style="color:var(--text-secondary);font-size:0.85rem">
+        Cliquez "ENVOYER LES RAPPELS" pour générer les liens WhatsApp pour chaque client.
+    </p>
+    {% else %}
+    <p style="color:var(--text-secondary)">Aucun rendez-vous demain nécessitant un rappel.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

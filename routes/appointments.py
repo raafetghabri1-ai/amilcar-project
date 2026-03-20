@@ -59,22 +59,29 @@ def appointments():
 @login_required
 def new_appointment():
     if request.method == "POST":
-        car_id = request.form["car_id"]
-        date = request.form["date"]
-        time_val = request.form.get("time", "").strip()
-        service = request.form["service"]
+        v = Validator()
+        car_id = v.require_int(request.form.get("car_id"), 'car_id', 'Véhicule', min_val=1)
+        date_val = v.date_str(request.form.get("date"), 'date', 'Date')
+        time_val = v.time_str(request.form.get("time", ""), 'time', 'Heure')
+        service = v.require(request.form.get("service"), 'service', 'Service')
         assigned_to = request.form.get("assigned_to", "").strip()
         repeat = request.form.get("repeat", "").strip()
         repeat_count = request.form.get("repeat_count", "1").strip()
+        if not v.ok:
+            flash(v.first_error(), 'error')
+            all_cars = []
+            with get_db() as cn:
+                all_cars = cn.execute("SELECT ca.id, cu.name, ca.brand, ca.model FROM cars ca JOIN customers cu ON ca.customer_id=cu.id WHERE COALESCE(ca.is_deleted,0)=0 ORDER BY cu.name").fetchall()
+            return render_template("add_appointment.html", cars=all_cars, services=get_services())
         try:
             rcount = max(1, min(int(repeat_count), 52))
         except ValueError:
             rcount = 1
         from datetime import datetime, timedelta
-        dates_to_create = [date]
+        dates_to_create = [date_val]
         if repeat in ('weekly', 'biweekly', 'monthly') and rcount > 1:
             try:
-                base_date = datetime.strptime(date, '%Y-%m-%d')
+                base_date = datetime.strptime(date_val, '%Y-%m-%d')
                 for i in range(1, rcount):
                     if repeat == 'weekly':
                         next_date = base_date + timedelta(weeks=i)
@@ -173,7 +180,7 @@ def update_appointment(appointment_id, status):
                 msg = STATUS_MESSAGES[status].format(
                     name=appt_data['name'], car=f"{appt_data['brand']} {appt_data['model']}",
                     shop=shop_name, service=appt_data['service'], date=appt_data['date'])
-                wa_url = _build_wa_status_url(appt_data['phone'], msg)
+                wa_url = build_wa_url(appt_data['phone'], msg)
                 return redirect(wa_url)
     
     return redirect("/appointments")

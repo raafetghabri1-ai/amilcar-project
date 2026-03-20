@@ -374,9 +374,24 @@ def safe_page(page):
     return max(1, min(page, 10000))
 
 def log_activity(action, detail=''):
+    ip = request.remote_addr if request else ''
+    role = session.get('role', '')
+    branch_id = session.get('branch_id', '')
     with get_db() as conn:
         conn.execute("INSERT INTO activity_log (user_id, username, action, detail) VALUES (?,?,?,?)",
-            (session.get('user_id'), session.get('username', ''), action, detail))
+            (session.get('user_id'), session.get('username', ''), action,
+             f"[{role}|b:{branch_id}|{ip}] {detail}"))
+        conn.commit()
+
+def log_audit(action, entity_type='', entity_id=0, old_value='', new_value=''):
+    """Write detailed audit trail entry."""
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO audit_log (user_id, username, action, entity_type, entity_id, old_value, new_value, ip_address) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (session.get('user_id', 0), session.get('username', ''), action,
+             entity_type, entity_id, str(old_value)[:500], str(new_value)[:500],
+             request.remote_addr if request else ''))
         conn.commit()
 
 def build_wa_url(phone, message):

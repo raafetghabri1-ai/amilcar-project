@@ -5,7 +5,7 @@ Routes: 42
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, permission_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, cache
+from helpers import allowed_file, safe_page, log_activity, log_audit, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, cache
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,6 +14,7 @@ import os, re, uuid, io
 import time as time_module
 import sqlite3
 from models.customer import add_customer
+from helpers_validation import Validator
 
 invoices_bp = Blueprint("invoices_bp", __name__)
 
@@ -46,25 +47,22 @@ def invoices():
 @login_required
 def new_customer():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        phone = request.form.get('phone', '').strip()
-        email = request.form.get('email', '').strip()
-        if not name or len(name) < 2:
-            flash('Le nom doit contenir au moins 2 caractères', 'error')
-            return render_template('add_customer.html')
-        if not phone or not re.match(r'^[0-9+\s\-]{4,20}$', phone):
-            flash('Entrez un numéro de téléphone valide (4-20 chiffres)', 'error')
-            return render_template('add_customer.html')
-        if email and not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email):
-            flash('Adresse email invalide', 'error')
+        v = Validator()
+        name = v.string(request.form.get('name', ''), 'name', 'Nom', min_len=2, max_len=100)
+        phone = v.phone(request.form.get('phone', ''), 'phone', 'Téléphone')
+        email = v.email(request.form.get('email', ''), 'email', 'Email')
+        notes = v.safe_text(request.form.get('notes', ''), 'notes', 'Notes', max_len=2000)
+        if not phone:
+            v.error('phone', 'Le numéro de téléphone est requis')
+        if not v.ok:
+            flash(v.first_error(), 'error')
             return render_template('add_customer.html')
         with get_db() as conn_dup:
             existing = conn_dup.execute("SELECT id, name FROM customers WHERE phone = ?", (phone,)).fetchone()
             if existing:
                 flash(f'Ce numéro est déjà utilisé par le client : {existing[1]}', 'error')
                 return render_template('add_customer.html')
-        add_customer(name, phone, request.form.get('notes', '').strip())
-        # Update email
+        add_customer(name, phone, notes)
         if email:
             with get_db() as conn_c:
                 cust = conn_c.execute("SELECT id FROM customers WHERE phone = ? ORDER BY id DESC LIMIT 1", (phone,)).fetchone()
@@ -106,6 +104,7 @@ def pay_invoice(invoice_id):
                     (payment_method, new_total_paid, invoice_id))
             conn.commit()
     log_activity('Pay Invoice', f'Invoice #{invoice_id} ({payment_method})')
+    log_audit('payment', 'invoice', invoice_id, '', f'method={payment_method}')
     cache.invalidate_prefix('chart_')
     cache.invalidate_prefix('weekly_')
     cache.invalidate_prefix('monthly_')
@@ -1185,7 +1184,7 @@ def quote_whatsapp(quote_id):
     shop_name = shop.get('shop_name', 'AMILCAR')
     price_text = f" - Montant: {quote['price']} DT" if quote['price'] else ""
     msg = f"Bonjour {quote['name']},\n\nVoici votre devis chez {shop_name} :\n📋 Service : {quote['service']}{price_text}\n\nPour confirmer, répondez à ce message ou appelez-nous.\nMerci ! 🙏"
-    wa_url = _build_wa_status_url(quote['phone'], msg)
+    wa_url = build_wa_url(quote['phone'], msg)
     return redirect(wa_url)
 
 

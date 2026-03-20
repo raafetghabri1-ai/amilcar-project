@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} - Tableau de Bord Technicien{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">🔧 MON TABLEAU DE BORD</p>
+    <span style="color:var(--text-secondary);font-size:0.85rem">{{ today }} — {{ username }}</span>
+</div>
+
+<!-- Quick Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--gold)">{{ appointments|length }}</h2>
+            <p>RDV AUJOURD'HUI</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--green)">{{ completed }}</h2>
+            <p>TERMINÉS</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:#ff6b35">{{ pending }}</h2>
+            <p>EN ATTENTE</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--text-secondary)">{{ tomorrow_appts|length }}</h2>
+            <p>DEMAIN</p>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Appointments -->
+<div class="card-dark mb-4">
+    <h5 class="mb-3" style="color:var(--gold)">📋 Mes Rendez-vous — Aujourd'hui</h5>
+    {% if appointments %}
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Heure</th>
+                    <th>Client</th>
+                    <th>Véhicule</th>
+                    <th>Service</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in appointments %}
+                <tr style="{% if a.status == 'completed' %}opacity:0.6{% elif a.status == 'in_progress' %}border-left:3px solid var(--gold){% endif %}">
+                    <td><strong>{{ a.time or '—' }}</strong></td>
+                    <td>{{ a.customer_name }}</td>
+                    <td>{{ a.brand }} {{ a.model }}<br><small style="color:var(--text-secondary)">{{ a.plate }}</small></td>
+                    <td>{{ a.service }}</td>
+                    <td>
+                        {% if a.status == 'completed' %}
+                            <span class="badge bg-success">Terminé</span>
+                        {% elif a.status == 'in_progress' %}
+                            <span class="badge" style="background:var(--gold);color:#000">En cours</span>
+                        {% elif a.status == 'confirmed' %}
+                            <span class="badge bg-info">Confirmé</span>
+                        {% else %}
+                            <span class="badge bg-secondary">En attente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if a.status != 'completed' %}
+                        <a href="/update_appointment_status/{{ a.id }}?status=in_progress" class="btn" style="border:1px solid var(--gold);color:var(--gold);font-size:0.7rem;padding:3px 10px">▶ Démarrer</a>
+                        <a href="/update_appointment_status/{{ a.id }}?status=completed" class="btn" style="border:1px solid var(--green);color:var(--green);font-size:0.7rem;padding:3px 10px">✅ Terminer</a>
+                        {% endif %}
+                        <a href="/notify_car_ready/{{ a.id }}" class="btn" style="border:1px solid #25D366;color:#25D366;font-size:0.7rem;padding:3px 10px" title="Notifier prêt">📲</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--text-secondary)">Aucun rendez-vous prévu pour aujourd'hui.</p>
+    {% endif %}
+</div>
+
+<!-- Tomorrow Preview -->
+{% if tomorrow_appts %}
+<div class="card-dark">
+    <h5 class="mb-3" style="color:var(--text-secondary)">📅 Aperçu de Demain</h5>
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>Heure</th><th>Client</th><th>Véhicule</th><th>Service</th></tr></thead>
+            <tbody>
+                {% for a in tomorrow_appts %}
+                <tr>
+                    <td>{{ a.time or '—' }}</td>
+                    <td>{{ a.customer_name }}</td>
+                    <td>{{ a.brand }} {{ a.model }}</td>
+                    <td>{{ a.service }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

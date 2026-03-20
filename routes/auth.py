@@ -5,7 +5,7 @@ Routes: 10
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, log_audit, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -58,6 +58,7 @@ def login():
             with get_db() as conn:
                 bid = conn.execute("SELECT COALESCE(branch_id, 0) FROM users WHERE id=?", (user[0],)).fetchone()
                 session['branch_id'] = bid[0] if bid else 0
+            log_audit('login', 'user', user[0])
             return redirect('/')
         # Track failed attempt
         if ip in _login_attempts:
@@ -135,6 +136,7 @@ def add_user():
                 (username, generate_password_hash(password), role, full_name))
             conn.commit()
         log_activity('Add User', f'User: {username} ({role})')
+        log_audit('create', 'user', 0, '', f'{username} ({role})')
         flash(f"Utilisateur {username} ajouté avec succès", "success")
         return redirect("/users")
     return render_template("add_user.html")

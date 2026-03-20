@@ -1305,7 +1305,7 @@ def protection_renewal_remind(appt_id):
     shop = get_all_settings()
     shop_name = shop.get('shop_name', 'AMILCAR')
     msg = f"Bonjour {data['name']}, votre traitement {data['service']} appliqué sur votre {data['brand']} {data['model']} le {data['date']} arrive à échéance. Prenez RDV chez {shop_name} pour renouveler votre protection ! 🛡️"
-    wa_url = _build_wa_status_url(data['phone'], msg)
+    wa_url = build_wa_url(data['phone'], msg)
     return redirect(wa_url)
 
 

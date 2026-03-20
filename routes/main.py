@@ -5,7 +5,7 @@ Routes: 51
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file, current_app
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit, cache
+from helpers import allowed_file, safe_page, log_activity, log_audit, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, check_booking_rate_limit, cache
 from helpers_validation import Validator
 from helpers_logging import get_logger
 from models.report import total_customers, total_appointments, total_revenue
@@ -45,10 +45,47 @@ AVAILABLE_WIDGETS = [
 ]
 
 
+def _technician_dashboard():
+    """Simplified dashboard for technicians — shows only their assignments."""
+    from datetime import date, timedelta
+    today_str = str(date.today())
+    user_id = session.get('user_id')
+    username = session.get('username', '')
+    with get_db() as conn:
+        my_appts = conn.execute("""
+            SELECT a.id, a.date, a.time, a.service, a.status,
+                   c.name as customer_name, car.brand, car.model, car.plate
+            FROM appointments a
+            JOIN cars car ON a.car_id=car.id
+            JOIN customers c ON car.customer_id=c.id
+            WHERE a.date=? AND a.is_deleted=0
+            AND (a.assigned_to=? OR a.assigned_to=? OR a.assigned_to IS NULL)
+            ORDER BY a.time
+        """, (today_str, str(user_id), username)).fetchall()
+        completed_today = sum(1 for a in my_appts if a['status'] == 'completed')
+        pending_today = sum(1 for a in my_appts if a['status'] in ('pending', 'confirmed', 'in_progress'))
+        tomorrow_str = str(date.today() + timedelta(days=1))
+        tomorrow_appts = conn.execute("""
+            SELECT a.id, a.time, a.service, c.name as customer_name, car.brand, car.model
+            FROM appointments a JOIN cars car ON a.car_id=car.id
+            JOIN customers c ON car.customer_id=c.id
+            WHERE a.date=? AND a.is_deleted=0
+            AND (a.assigned_to=? OR a.assigned_to=? OR a.assigned_to IS NULL)
+            ORDER BY a.time
+        """, (tomorrow_str, str(user_id), username)).fetchall()
+    return render_template('tech_dashboard.html',
+        appointments=my_appts, completed=completed_today, pending=pending_today,
+        tomorrow_appts=tomorrow_appts, today=today_str, username=username)
+
+
 
 @main_bp.route('/')
 @login_required
 def index():
+    role = session.get('role', 'employee')
+    # Technician gets a focused view
+    if role == 'technician':
+        return _technician_dashboard()
     from datetime import date, timedelta
     today_str = str(date.today())
     yesterday_str = str(date.today() - timedelta(days=1))
@@ -171,6 +208,7 @@ def new_invoice():
                     (appointment_id, amount_val, discount_type if discount_type in ('percent','fixed') else '', disc_val))
                 conn_inv.commit()
             log_activity('Add Invoice', f'Amount: {amount_val} DT')
+            log_audit('create', 'invoice', cursor_inv.lastrowid, '', f'amount={amount_val}')
             _log.info('Invoice created: %.2f DT for appointment %d', amount_val, appointment_id)
             cache.clear()
             flash('Facture ajoutée avec succès', 'success')
@@ -222,15 +260,19 @@ def request_quote():
 @login_required
 def new_car():
     if request.method == "POST":
-        customer_id = request.form["customer_id"]
-        brand = request.form["brand"]
-        model = request.form["model"]
-        plate = request.form["plate"]
+        v = Validator()
+        customer_id = v.require_int(request.form.get("customer_id"), 'customer_id', 'Client', min_val=1)
+        brand = v.string(request.form.get("brand", ""), 'brand', 'Marque', min_len=1, max_len=50)
+        model = v.string(request.form.get("model", ""), 'model', 'Modèle', min_len=1, max_len=50)
+        plate = v.plate(request.form.get("plate", ""), 'plate', 'Immatriculation')
         year = request.form.get("year", "").strip()
         color = request.form.get("color", "").strip()
+        if not v.ok:
+            flash(v.first_error(), 'error')
+            from models.customer import get_all_customers
+            return render_template("add_car.html", customers=get_all_customers())
         from models.car import add_car
         add_car(customer_id, brand, model, plate)
-        # Update year and color
         with get_db() as conn2:
             car_id = conn2.execute("SELECT id FROM cars WHERE customer_id = ? AND plate = ? ORDER BY id DESC LIMIT 1",
                 (customer_id, plate)).fetchone()
@@ -315,6 +357,7 @@ def delete_car(car_id):
         conn.execute("UPDATE cars SET is_deleted=1, deleted_at=? WHERE id = ?", (now, car_id))
         conn.commit()
     log_activity('Delete Car', f'Car #{car_id} (soft)')
+    log_audit('delete', 'car', car_id)
     flash('V\u00e9hicule supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect(f"/customer/{customer_id}")
 
@@ -335,6 +378,7 @@ def delete_customer(customer_id):
         conn.execute("UPDATE customers SET is_deleted=1, deleted_at=? WHERE id = ?", (now, customer_id))
         conn.commit()
     log_activity('Delete Customer', f'Customer #{customer_id} (soft)')
+    log_audit('delete', 'customer', customer_id)
     flash('Client supprim\u00e9 — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/customers")
 
@@ -347,6 +391,7 @@ def delete_invoice(invoice_id):
     with get_db() as conn:
         conn.execute("UPDATE invoices SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), invoice_id))
         conn.commit()
+    log_audit('delete', 'invoice', invoice_id)
     log_activity('Delete Invoice', f'Invoice #{invoice_id} (soft)')
     flash('Facture supprim\u00e9e — r\u00e9cup\u00e9rable depuis la corbeille', 'success')
     return redirect("/invoices")
@@ -457,18 +502,15 @@ def delete_quote(quote_id):
 @login_required
 def add_expense():
     if request.method == "POST":
-        date_val = request.form.get("date", "").strip()
-        category = request.form.get("category", "").strip()
-        description = request.form.get("description", "").strip()
-        amount = request.form.get("amount", "").strip()
-        if not date_val or not category or not amount:
-            flash("La date, la catégorie et le montant sont requis", "error")
+        v = Validator()
+        date_val = v.date_str(request.form.get("date", ""), 'date', 'Date')
+        category = v.require(request.form.get("category", ""), 'category', 'Catégorie')
+        description = v.safe_text(request.form.get("description", ""), 'description', 'Description')
+        amount_val = v.amount(request.form.get("amount", ""), 'amount', 'Montant')
+        if not v.ok:
+            flash(v.first_error(), "error")
             return render_template("add_expense.html", categories=EXPENSE_CATEGORIES)
-        try:
-            amount_val = float(amount)
-            if amount_val <= 0:
-                raise ValueError
-        except ValueError:
+        if amount_val <= 0:
             flash("Entrez un montant positif valide", "error")
             return render_template("add_expense.html", categories=EXPENSE_CATEGORIES)
         with get_db() as conn:

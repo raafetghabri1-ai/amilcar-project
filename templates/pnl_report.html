@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %} - Compte de Résultat{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">COMPTE DE RÉSULTAT {{ year }}</p>
+    <div class="d-flex gap-2">
+        <a href="/pnl_report?year={{ year - 1 }}" class="btn" style="border:1px solid var(--gold);color:var(--gold);font-size:0.72rem;padding:6px 14px">◀ {{ year - 1 }}</a>
+        <a href="/pnl_report?year={{ year + 1 }}" class="btn" style="border:1px solid var(--gold);color:var(--gold);font-size:0.72rem;padding:6px 14px">{{ year + 1 }} ▶</a>
+        <a href="/export/financial_excel?year={{ year }}" class="btn" style="border:1px solid #2d6a4f;color:var(--green);font-size:0.72rem;padding:6px 14px">📊 EXCEL</a>
+    </div>
+</div>
+
+<!-- Totals Summary -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--green)">{{ "%.0f"|format(total_rev) }} DT</h2>
+            <p>REVENU TOTAL {{ year }}</p>
+            <small style="color:var(--text-secondary)">{{ prev_year }}: {{ "%.0f"|format(prev_total_rev) }} DT</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--red)">{{ "%.0f"|format(total_exp) }} DT</h2>
+            <p>DÉPENSES {{ year }}</p>
+            <small style="color:var(--text-secondary)">{{ prev_year }}: {{ "%.0f"|format(prev_total_exp) }} DT</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--gold)">{{ "%.0f"|format(total_profit) }} DT</h2>
+            <p>PROFIT NET {{ year }}</p>
+            <small style="color:var(--text-secondary)">{{ prev_year }}: {{ "%.0f"|format(prev_total_profit) }} DT</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            {% set yoy_change = ((total_rev - prev_total_rev) / prev_total_rev * 100) if prev_total_rev > 0 else 0 %}
+            <h2 style="color:{{ 'var(--green)' if yoy_change >= 0 else 'var(--red)' }}">{{ "%.1f"|format(yoy_change) }}%</h2>
+            <p>ÉVOLUTION YoY</p>
+            <small style="color:var(--text-secondary)">vs {{ prev_year }}</small>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly P&L Table -->
+<div class="card-dark mb-4" style="overflow-x:auto">
+    <h5 class="mb-3" style="color:var(--gold)">📊 Détail Mensuel — {{ year }} vs {{ prev_year }}</h5>
+    <table class="table mb-0">
+        <thead>
+            <tr>
+                <th>Mois</th>
+                <th class="text-end">Revenu {{ year }}</th>
+                <th class="text-end">Revenu {{ prev_year }}</th>
+                <th class="text-end">Δ%</th>
+                <th class="text-end">Dépenses</th>
+                <th class="text-end">Profit</th>
+                <th class="text-end">Marge</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in months %}
+            <tr>
+                <td><strong>{{ m.label }}</strong></td>
+                <td class="text-end" style="color:var(--green)">{{ "%.0f"|format(m.revenue) }}</td>
+                <td class="text-end" style="color:var(--text-secondary)">{{ "%.0f"|format(m.prev_revenue) }}</td>
+                <td class="text-end">
+                    <span style="color:{{ 'var(--green)' if m.rev_change >= 0 else 'var(--red)' }}">
+                        {{ '▲' if m.rev_change > 0 else ('▼' if m.rev_change < 0 else '—') }} {{ "%.1f"|format(m.rev_change|abs) }}%
+                    </span>
+                </td>
+                <td class="text-end" style="color:var(--red)">{{ "%.0f"|format(m.expenses) }}</td>
+                <td class="text-end" style="color:{{ 'var(--green)' if m.profit >= 0 else 'var(--red)' }}">{{ "%.0f"|format(m.profit) }}</td>
+                <td class="text-end">{{ "%.0f"|format(m.revenue and (m.profit / m.revenue * 100) or 0) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top:2px solid var(--gold);font-weight:bold">
+                <td>TOTAL</td>
+                <td class="text-end" style="color:var(--green)">{{ "%.0f"|format(total_rev) }}</td>
+                <td class="text-end" style="color:var(--text-secondary)">{{ "%.0f"|format(prev_total_rev) }}</td>
+                <td class="text-end">
+                    {% set total_yoy = ((total_rev - prev_total_rev) / prev_total_rev * 100) if prev_total_rev > 0 else 0 %}
+                    <span style="color:{{ 'var(--green)' if total_yoy >= 0 else 'var(--red)' }}">{{ "%.1f"|format(total_yoy) }}%</span>
+                </td>
+                <td class="text-end" style="color:var(--red)">{{ "%.0f"|format(total_exp) }}</td>
+                <td class="text-end" style="color:{{ 'var(--green)' if total_profit >= 0 else 'var(--red)' }}">{{ "%.0f"|format(total_profit) }}</td>
+                <td class="text-end">{{ "%.0f"|format(total_rev and (total_profit / total_rev * 100) or 0) }}%</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="row g-4">
+    <!-- Revenue Chart -->
+    <div class="col-md-8">
+        <div class="card-dark">
+            <h5 class="mb-3" style="color:var(--gold)">📈 Évolution Revenu — {{ year }} vs {{ prev_year }}</h5>
+            <canvas id="revenueYoY" height="280"></canvas>
+        </div>
+    </div>
+    <!-- Expense Categories -->
+    <div class="col-md-4">
+        <div class="card-dark">
+            <h5 class="mb-3" style="color:var(--gold)">📊 Dépenses par Catégorie</h5>
+            {% for cat in expense_cats %}
+            <div class="d-flex justify-content-between mb-2" style="font-size:0.85rem">
+                <span>{{ cat[0] }}</span>
+                <span style="color:var(--gold)">{{ "%.0f"|format(cat[1]) }} DT</span>
+            </div>
+            {% endfor %}
+            {% if not expense_cats %}
+            <p style="color:var(--text-secondary)">Aucune dépense enregistrée</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('revenueYoY'), {
+    type: 'line',
+    data: {
+        labels: [{% for m in months %}'{{ m.label }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: '{{ year }}',
+            data: [{% for m in months %}{{ m.revenue }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.1)',
+            fill: true, tension: 0.4
+        },{
+            label: '{{ prev_year }}',
+            data: [{% for m in months %}{{ m.prev_revenue }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.05)',
+            borderDash: [5,5], fill: true, tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#ccc' } } },
+        scales: {
+            x: { ticks: { color: '#999' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#999', callback: v => v + ' DT' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+</script>
+{% endblock %}

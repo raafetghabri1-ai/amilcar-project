@@ -837,3 +837,29 @@ def empty_recycle_bin():
     return redirect('/recycle_bin')
 
 
+@admin_bp.route('/db_health')
+@login_required
+@admin_required
+def db_health():
+    """Database health check — shows table sizes and identifies unused tables."""
+    with get_db() as conn:
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
+        table_stats = []
+        total_rows = 0
+        for t in tables:
+            name = t[0]
+            try:
+                count = conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+            except Exception:
+                count = -1
+            table_stats.append({'name': name, 'rows': count})
+            if count > 0:
+                total_rows += count
+        db_size = conn.execute("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()").fetchone()[0]
+        non_empty = sum(1 for t in table_stats if t['rows'] > 0)
+        empty = sum(1 for t in table_stats if t['rows'] == 0)
+    return render_template('db_health.html', tables=table_stats, total_tables=len(table_stats),
+                           non_empty=non_empty, empty=empty, total_rows=total_rows,
+                           db_size=round(db_size / 1024 / 1024, 2))
+
+

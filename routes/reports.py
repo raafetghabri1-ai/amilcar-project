@@ -2188,3 +2188,261 @@ def export_quote_pdf(quote_id):
     return send_file(buf, as_attachment=True,
                      download_name=f"devis_{quote_id}_{today}.pdf",
                      mimetype="application/pdf")
+
+
+# ─── P&L Report with Year-over-Year Comparison ──────────────────────────────
+
+@reports_bp.route("/pnl_report")
+@login_required
+def pnl_report():
+    """Formal Profit & Loss statement with year-over-year comparison."""
+    year = request.args.get('year', date.today().year, type=int)
+    prev_year = year - 1
+    month_names = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+
+    with get_db() as conn:
+        months = []
+        for m in range(1, 13):
+            ms = f"{year}-{m:02d}-01"
+            me = f"{year}-{m+1:02d}-01" if m < 12 else f"{year+1}-01-01"
+            pms = f"{prev_year}-{m:02d}-01"
+            pme = f"{prev_year}-{m+1:02d}-01" if m < 12 else f"{prev_year+1}-01-01"
+
+            rev = conn.execute(
+                "SELECT COALESCE(SUM(i.amount),0) FROM invoices i "
+                "JOIN appointments a ON i.appointment_id=a.id "
+                "WHERE a.date>=? AND a.date<? AND i.status='paid'", (ms, me)).fetchone()[0]
+            exp = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date>=? AND date<?", (ms, me)).fetchone()[0]
+            prev_rev = conn.execute(
+                "SELECT COALESCE(SUM(i.amount),0) FROM invoices i "
+                "JOIN appointments a ON i.appointment_id=a.id "
+                "WHERE a.date>=? AND a.date<? AND i.status='paid'", (pms, pme)).fetchone()[0]
+            prev_exp = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date>=? AND date<?", (pms, pme)).fetchone()[0]
+
+            months.append({
+                'label': month_names[m-1],
+                'revenue': rev, 'expenses': exp, 'profit': rev - exp,
+                'prev_revenue': prev_rev, 'prev_expenses': prev_exp, 'prev_profit': prev_rev - prev_exp,
+                'rev_change': round(((rev - prev_rev) / prev_rev * 100) if prev_rev > 0 else 0, 1),
+                'exp_change': round(((exp - prev_exp) / prev_exp * 100) if prev_exp > 0 else 0, 1),
+            })
+
+        # Expense breakdown by category
+        expense_cats = conn.execute(
+            "SELECT COALESCE(category,'Autre'), COALESCE(SUM(amount),0) "
+            "FROM expenses WHERE strftime('%%Y',date)=? GROUP BY category ORDER BY SUM(amount) DESC",
+            (str(year),)).fetchall()
+
+        # Totals
+        total_rev = sum(m['revenue'] for m in months)
+        total_exp = sum(m['expenses'] for m in months)
+        prev_total_rev = sum(m['prev_revenue'] for m in months)
+        prev_total_exp = sum(m['prev_expenses'] for m in months)
+
+    return render_template("pnl_report.html", months=months, year=year, prev_year=prev_year,
+                           expense_cats=expense_cats, total_rev=total_rev, total_exp=total_exp,
+                           total_profit=total_rev - total_exp,
+                           prev_total_rev=prev_total_rev, prev_total_exp=prev_total_exp,
+                           prev_total_profit=prev_total_rev - prev_total_exp)
+
+
+@reports_bp.route("/export/financial_excel")
+@login_required
+def export_financial_excel():
+    """Export full financial report as multi-sheet Excel."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    year = request.args.get('year', date.today().year, type=int)
+    wb = Workbook()
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="1B2A4A", end_color="1B2A4A", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin'))
+    month_names = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+
+    with get_db() as conn:
+        # Sheet 1: P&L Monthly
+        ws = wb.active
+        ws.title = "P&L Mensuel"
+        headers = ["Mois", "Revenu", "Dépenses", "Profit", "Marge %",
+                    f"Revenu {year-1}", f"Dépenses {year-1}", f"Profit {year-1}", "Évolution %"]
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+
+        for m in range(1, 13):
+            ms = f"{year}-{m:02d}-01"
+            me = f"{year}-{m+1:02d}-01" if m < 12 else f"{year+1}-01-01"
+            pms = f"{year-1}-{m:02d}-01"
+            pme = f"{year-1}-{m+1:02d}-01" if m < 12 else f"{year}-01-01"
+            rev = conn.execute("SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND a.date<? AND i.status='paid'", (ms, me)).fetchone()[0]
+            exp = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date>=? AND date<?", (ms, me)).fetchone()[0]
+            prev_rev = conn.execute("SELECT COALESCE(SUM(i.amount),0) FROM invoices i JOIN appointments a ON i.appointment_id=a.id WHERE a.date>=? AND a.date<? AND i.status='paid'", (pms, pme)).fetchone()[0]
+            prev_exp = conn.execute("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date>=? AND date<?", (pms, pme)).fetchone()[0]
+            profit = rev - exp
+            margin = round(profit / rev * 100, 1) if rev > 0 else 0
+            yoy = round((rev - prev_rev) / prev_rev * 100, 1) if prev_rev > 0 else 0
+            row = [month_names[m-1], rev, exp, profit, margin, prev_rev, prev_exp, prev_rev - prev_exp, yoy]
+            for col, val in enumerate(row, 1):
+                cell = ws.cell(row=m+1, column=col, value=val)
+                cell.border = thin_border
+                if col >= 2:
+                    cell.number_format = '#,##0.000' if isinstance(val, float) and col in (5, 9) else '#,##0'
+
+        for col in range(1, 10):
+            ws.column_dimensions[chr(64+col)].width = 16
+
+        # Sheet 2: Expense Categories
+        ws2 = wb.create_sheet("Dépenses par Catégorie")
+        ws2_headers = ["Catégorie", "Montant Total", "% du Total"]
+        for col, h in enumerate(ws2_headers, 1):
+            cell = ws2.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = thin_border
+        cats = conn.execute(
+            "SELECT COALESCE(category,'Autre'), COALESCE(SUM(amount),0) "
+            "FROM expenses WHERE strftime('%%Y',date)=? GROUP BY category ORDER BY SUM(amount) DESC",
+            (str(year),)).fetchall()
+        total_exp_all = sum(c[1] for c in cats) if cats else 1
+        for r, cat in enumerate(cats, 2):
+            ws2.cell(row=r, column=1, value=cat[0]).border = thin_border
+            ws2.cell(row=r, column=2, value=cat[1]).border = thin_border
+            ws2.cell(row=r, column=3, value=round(cat[1]/total_exp_all*100, 1)).border = thin_border
+        for col in range(1, 4):
+            ws2.column_dimensions[chr(64+col)].width = 22
+
+        # Sheet 3: Top Services
+        ws3 = wb.create_sheet("Top Services")
+        ws3_headers = ["Service", "Nombre", "Revenu Total"]
+        for col, h in enumerate(ws3_headers, 1):
+            cell = ws3.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = thin_border
+        svcs = conn.execute(
+            "SELECT a.service, COUNT(*), COALESCE(SUM(i.amount),0) "
+            "FROM appointments a LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid' "
+            "GROUP BY a.service ORDER BY SUM(i.amount) DESC LIMIT 20").fetchall()
+        for r, s in enumerate(svcs, 2):
+            for col, val in enumerate(s, 1):
+                ws3.cell(row=r, column=col, value=val).border = thin_border
+        for col in range(1, 4):
+            ws3.column_dimensions[chr(64+col)].width = 30
+
+        # Sheet 4: Top Customers
+        ws4 = wb.create_sheet("Top Clients")
+        ws4_headers = ["Client", "Total Payé", "Visites"]
+        for col, h in enumerate(ws4_headers, 1):
+            cell = ws4.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = thin_border
+        custs = conn.execute(
+            "SELECT cu.name, COALESCE(SUM(i.amount),0), COUNT(DISTINCT a.id) "
+            "FROM customers cu JOIN cars ca ON ca.customer_id=cu.id "
+            "JOIN appointments a ON a.car_id=ca.id "
+            "LEFT JOIN invoices i ON i.appointment_id=a.id AND i.status='paid' "
+            "GROUP BY cu.id ORDER BY SUM(i.amount) DESC LIMIT 20").fetchall()
+        for r, c in enumerate(custs, 2):
+            for col, val in enumerate(c, 1):
+                ws4.cell(row=r, column=col, value=val).border = thin_border
+        for col in range(1, 4):
+            ws4.column_dimensions[chr(64+col)].width = 25
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    log_activity('Export', f'Financial Excel {year}')
+    return send_file(buf, as_attachment=True,
+                     download_name=f"rapport_financier_{year}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ─── WhatsApp Auto Reminders ────────────────────────────────────────────────
+
+@reports_bp.route("/auto_reminders", methods=["GET", "POST"])
+@login_required
+def auto_reminders():
+    """Send automatic WhatsApp reminders for tomorrow's appointments."""
+    if request.method == "POST":
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        shop_name = get_setting('shop_name', 'AMILCAR')
+        sent_count = 0
+        with get_db() as conn:
+            appts = conn.execute("""
+                SELECT a.id, a.date, a.time, a.service, c.name, c.phone, car.brand, car.model
+                FROM appointments a
+                JOIN cars car ON a.car_id=car.id
+                JOIN customers c ON car.customer_id=c.id
+                WHERE a.date=? AND a.status IN ('pending','confirmed')
+                AND c.phone IS NOT NULL AND c.phone != ''
+            """, (tomorrow,)).fetchall()
+
+            reminder_urls = []
+            for appt in appts:
+                time_str = appt['time'] or ''
+                msg = (f"Bonjour {appt['name']},\n\n"
+                       f"Rappel de votre RDV demain{' à ' + time_str if time_str else ''} "
+                       f"chez {shop_name}.\n"
+                       f"Service : {appt['service']}\n"
+                       f"Véhicule : {appt['brand']} {appt['model']}\n\n"
+                       f"À demain ! 🚗")
+                url = build_wa_url(appt['phone'], msg)
+                reminder_urls.append({'name': appt['name'], 'phone': appt['phone'],
+                                      'service': appt['service'], 'url': url})
+                conn.execute(
+                    "INSERT INTO communication_log (customer_id, type, subject, message) "
+                    "SELECT cu.id, 'whatsapp', 'Rappel RDV', ? FROM customers cu WHERE cu.phone=?",
+                    (msg, appt['phone']))
+                sent_count += 1
+            conn.commit()
+
+        flash(f"{sent_count} rappel(s) préparé(s) pour demain", "success")
+        return render_template("auto_reminders.html", reminder_urls=reminder_urls, sent=True)
+
+    # GET: show tomorrow's appointments that need reminders
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    with get_db() as conn:
+        appts = conn.execute("""
+            SELECT a.id, a.date, a.time, a.service, c.name, c.phone, car.brand, car.model
+            FROM appointments a
+            JOIN cars car ON a.car_id=car.id
+            JOIN customers c ON car.customer_id=c.id
+            WHERE a.date=? AND a.status IN ('pending','confirmed')
+            AND c.phone IS NOT NULL AND c.phone != ''
+        """, (tomorrow,)).fetchall()
+    return render_template("auto_reminders.html", appointments=appts, sent=False,
+                           tomorrow=tomorrow)
+
+
+@reports_bp.route("/notify_car_ready/<int:appointment_id>")
+@login_required
+def notify_car_ready(appointment_id):
+    """Send WhatsApp notification that car is ready for pickup."""
+    with get_db() as conn:
+        data = conn.execute("""
+            SELECT c.name, c.phone, car.brand, car.model, a.service
+            FROM appointments a JOIN cars car ON a.car_id=car.id
+            JOIN customers c ON car.customer_id=c.id WHERE a.id=?
+        """, (appointment_id,)).fetchone()
+    if not data or not data['phone']:
+        flash("Numéro de téléphone introuvable", "warning")
+        return redirect("/appointments")
+
+    shop_name = get_setting('shop_name', 'AMILCAR')
+    msg = (f"Bonjour {data['name']},\n\n"
+           f"Votre {data['brand']} {data['model']} est prête ! ✅\n"
+           f"Service effectué : {data['service']}\n\n"
+           f"Vous pouvez passer la récupérer chez {shop_name}.\n"
+           f"Merci de votre confiance ! 🙏")
+    url = build_wa_url(data['phone'], msg)
+    log_activity('WhatsApp', f'Car ready notification for appointment #{appointment_id}')
+    return redirect(url)

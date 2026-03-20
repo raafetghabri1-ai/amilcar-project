@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %} - Santé Base de Données{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <p class="page-title mb-0">🗄️ SANTÉ DE LA BASE DE DONNÉES</p>
+    <a href="/backup" class="btn-gold" style="font-size:0.8rem;padding:8px 14px">💾 Sauvegarder</a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--gold)">{{ total_tables }}</h2>
+            <p>TABLES TOTAL</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--green)">{{ non_empty }}</h2>
+            <p>TABLES ACTIVES</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--text-secondary)">{{ empty }}</h2>
+            <p>TABLES VIDES</p>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <h2 style="color:var(--gold)">{{ db_size }} MB</h2>
+            <p>TAILLE BD</p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card-dark">
+            <h5 class="mb-3" style="color:var(--green)">✅ Tables Actives ({{ non_empty }})</h5>
+            <div style="max-height:400px;overflow-y:auto">
+                <table class="table mb-0" style="font-size:0.8rem">
+                    <thead><tr><th>Table</th><th class="text-end">Lignes</th></tr></thead>
+                    <tbody>
+                    {% for t in tables if t.rows > 0 %}
+                    <tr><td>{{ t.name }}</td><td class="text-end" style="color:var(--green)">{{ t.rows }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card-dark">
+            <h5 class="mb-3" style="color:var(--text-secondary)">⚪ Tables Vides ({{ empty }})</h5>
+            <div style="max-height:400px;overflow-y:auto">
+                <table class="table mb-0" style="font-size:0.8rem">
+                    <thead><tr><th>Table</th><th class="text-end">Lignes</th></tr></thead>
+                    <tbody>
+                    {% for t in tables if t.rows == 0 %}
+                    <tr><td style="color:var(--text-secondary)">{{ t.name }}</td><td class="text-end">0</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="mt-2" style="font-size:0.75rem;color:var(--text-secondary)">
+                Ces tables sont prêtes à utiliser mais ne contiennent pas encore de données.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
