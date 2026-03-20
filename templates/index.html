@@ -19,38 +19,38 @@
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <span class="stat-icon">◉</span>
-                <h2>{{ stats.customers }}</h2>
+                <h2 data-countup="{{ stats.customers }}">0</h2>
                 <p>{{ t.customers }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
                 <span class="stat-icon">▦</span>
-                <h2>{{ stats.appointments }}</h2>
+                <h2 data-countup="{{ stats.appointments }}">0</h2>
                 <p>{{ t.appointments }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2>{{ stats.revenue }}</h2>
+                <h2 data-countup="{{ stats.revenue }}">0</h2>
                 <p>{{ t.revenue }} (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2 style="color:var(--red)">{{ stats.expenses }}</h2>
+                <h2 style="color:var(--red)" data-countup="{{ stats.expenses }}">0</h2>
                 <p>{{ t.expenses }} (DT)</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="background:none;-webkit-text-fill-color:unset">{{ stats.profit }}</h2>
+                <h2 class="{% if stats.profit >= 0 %}text-profit{% else %}text-loss{% endif %}" style="background:none;-webkit-text-fill-color:unset" data-countup="{{ stats.profit }}">0</h2>
                 <p>{{ t.net_profit }}</p>
             </div>
         </div>
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
-                <h2>{{ stats.quotes }}</h2>
+                <h2 data-countup="{{ stats.quotes }}">0</h2>
                 <p>{{ t.pending_quotes }}</p>
             </div>
         </div>
@@ -335,6 +335,35 @@ fetch('/api/chart_data').then(r=>r.json()).then(data=>{
             }
         });
     } catch(e) { console.log('SocketIO not available'); }
+})();
+
+// ── KPI Count-Up Animation ──
+(function(){
+    var els = document.querySelectorAll('[data-countup]');
+    if (!els.length) return;
+    var duration = 900;
+    var observer = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+            if (!entry.isIntersecting) return;
+            var el = entry.target;
+            observer.unobserve(el);
+            var raw = el.getAttribute('data-countup');
+            var target = parseFloat(raw.replace(/[^\d.\-]/g,''));
+            if (isNaN(target)) { el.textContent = raw; return; }
+            var isFloat = raw.indexOf('.') !== -1;
+            var start = performance.now();
+            function tick(now){
+                var t = Math.min((now - start) / duration, 1);
+                var ease = 1 - Math.pow(1 - t, 3);
+                var val = ease * target;
+                el.textContent = isFloat ? val.toFixed(2) : Math.round(val);
+                if (t < 1) requestAnimationFrame(tick);
+                else el.textContent = raw;
+            }
+            requestAnimationFrame(tick);
+        });
+    }, {threshold: 0.3});
+    els.forEach(function(el){ observer.observe(el); });
 })();
 </script>
 {% endblock %}

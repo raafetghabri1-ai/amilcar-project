@@ -470,3 +470,39 @@ def paginate_query(conn, query, params=(), page=1, per_page=PER_PAGE):
     offset = (page - 1) * per_page
     rows = conn.execute(f"{query} LIMIT ? OFFSET ?", (*params, per_page, offset)).fetchall()
     return rows, total, pages, page
+
+
+# ── Fuzzy Search Helpers ──
+import unicodedata
+
+def _normalize(text):
+    """Strip accents and lowercase for fuzzy matching."""
+    if not text:
+        return ''
+    nfkd = unicodedata.normalize('NFKD', str(text))
+    return ''.join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
+
+def _trigrams(s):
+    """Generate character trigrams for similarity scoring."""
+    s = f'  {s} '
+    return {s[i:i+3] for i in range(len(s) - 2)}
+
+def fuzzy_score(query, text):
+    """Return 0.0-1.0 similarity between query and text (trigram Jaccard + prefix bonus)."""
+    nq, nt = _normalize(query), _normalize(text)
+    if not nq or not nt:
+        return 0.0
+    # exact substring match → high score
+    if nq in nt:
+        return 1.0
+    # prefix match on any word
+    words = nt.split()
+    if any(w.startswith(nq) for w in words):
+        return 0.95
+    # trigram similarity (Jaccard)
+    tq, tt = _trigrams(nq), _trigrams(nt)
+    if not tq or not tt:
+        return 0.0
+    intersection = len(tq & tt)
+    union = len(tq | tt)
+    return intersection / union if union else 0.0

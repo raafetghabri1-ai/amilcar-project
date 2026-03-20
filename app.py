@@ -176,6 +176,25 @@ def inject_translations():
     lang = session.get('lang', 'fr')
     return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['fr']), 'current_lang': lang}
 
+# ─── CSS Minification at startup ───
+def _minify_css():
+    src = os.path.join(app.static_folder, 'style.css')
+    dst = os.path.join(app.static_folder, 'style.min.css')
+    try:
+        import rcssmin
+        with open(src) as f:
+            original = f.read()
+        minified = rcssmin.cssmin(original)
+        with open(dst, 'w') as f:
+            f.write(minified)
+    except Exception:
+        # Fallback: copy as-is if rcssmin not installed
+        import shutil
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+
+_minify_css()
+
 # ─── Cache-Busting: file hash-based versioning ───
 import hashlib
 

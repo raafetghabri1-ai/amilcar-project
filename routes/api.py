@@ -218,36 +218,72 @@ def reschedule_appointment():
 @api_bp.route("/api/search")
 @login_required
 def api_search():
+    from helpers import fuzzy_score
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
         return jsonify([])
     like = f'%{q}%'
+    threshold = 0.25
     with get_db() as conn:
+        # Phase 1: exact LIKE matches (fast, indexed)
         customers = conn.execute(
-            "SELECT 'client' as type, id, name, phone FROM customers WHERE name LIKE ? OR phone LIKE ? LIMIT 5",
+            "SELECT 'client' as type, id, name, phone FROM customers WHERE is_deleted=0 AND (name LIKE ? OR phone LIKE ?) LIMIT 8",
             (like, like)).fetchall()
         cars = conn.execute(
             "SELECT 'voiture' as type, ca.id, ca.brand || ' ' || ca.model, ca.plate "
-            "FROM cars ca WHERE ca.brand LIKE ? OR ca.model LIKE ? OR ca.plate LIKE ? LIMIT 5",
+            "FROM cars ca WHERE ca.is_deleted=0 AND (ca.brand LIKE ? OR ca.model LIKE ? OR ca.plate LIKE ?) LIMIT 8",
             (like, like, like)).fetchall()
         appointments = conn.execute(
             "SELECT 'rdv' as type, a.id, cu.name || ' — ' || a.service, a.date || ' (' || a.status || ')' "
             "FROM appointments a JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
-            "WHERE cu.name LIKE ? OR a.service LIKE ? LIMIT 4",
+            "WHERE a.is_deleted=0 AND (cu.name LIKE ? OR a.service LIKE ?) LIMIT 6",
             (like, like)).fetchall()
         invoices = conn.execute(
             "SELECT 'facture' as type, i.id, 'Facture #' || i.id || ' — ' || cu.name, i.amount || ' DT (' || i.status || ')' "
             "FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
             "JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
-            "WHERE cu.name LIKE ? OR CAST(i.id AS TEXT) = ? LIMIT 4",
+            "WHERE i.is_deleted=0 AND (cu.name LIKE ? OR CAST(i.id AS TEXT) = ?) LIMIT 6",
             (like, q)).fetchall()
+
+        # Phase 2: fuzzy fallback if LIKE found few results
+        exact_count = len(customers) + len(cars) + len(appointments) + len(invoices)
+        fuzzy_extra = []
+        if exact_count < 5:
+            # Scan first 200 customers for fuzzy matches not already found
+            exact_cust_ids = {r[1] for r in customers}
+            all_custs = conn.execute(
+                "SELECT id, name, phone FROM customers WHERE is_deleted=0 LIMIT 200").fetchall()
+            for c in all_custs:
+                if c[0] in exact_cust_ids:
+                    continue
+                score = max(fuzzy_score(q, c[1] or ''), fuzzy_score(q, c[2] or ''))
+                if score >= threshold:
+                    fuzzy_extra.append(('client', c[0], c[1], c[2], score))
+
+            exact_car_ids = {r[1] for r in cars}
+            all_cars = conn.execute(
+                "SELECT id, brand || ' ' || model, plate FROM cars WHERE is_deleted=0 LIMIT 200").fetchall()
+            for c in all_cars:
+                if c[0] in exact_car_ids:
+                    continue
+                score = max(fuzzy_score(q, c[1] or ''), fuzzy_score(q, c[2] or ''))
+                if score >= threshold:
+                    fuzzy_extra.append(('voiture', c[0], c[1], c[2], score))
+
+            fuzzy_extra.sort(key=lambda x: x[4], reverse=True)
+            fuzzy_extra = fuzzy_extra[:5]
+
     results = []
     icons = {'client': '👤', 'voiture': '🚗', 'rdv': '📅', 'facture': '📄'}
     urls = {'client': '/customer/', 'voiture': '/car/', 'rdv': '/edit_appointment/', 'facture': '/print_invoice/'}
     for row in (*customers, *cars, *appointments, *invoices):
         t = row[0]
         results.append({'type': t, 'icon': icons[t], 'id': row[1], 'label': row[2], 'sub': row[3], 'url': f'{urls[t]}{row[1]}'})
-    return jsonify(results)
+    # Append fuzzy matches (if any)
+    for fx in fuzzy_extra:
+        t = fx[0]
+        results.append({'type': t, 'icon': icons[t] + '≈', 'id': fx[1], 'label': fx[2], 'sub': fx[3], 'url': f'{urls[t]}{fx[1]}', 'fuzzy': True})
+    return jsonify(results[:18])
 
 
 

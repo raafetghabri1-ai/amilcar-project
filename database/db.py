@@ -1613,6 +1613,7 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category)",
         # Critical performance indexes
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
         "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
         "CREATE INDEX IF NOT EXISTS idx_online_bookings_created ON online_bookings(created_at)",
         "CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)",

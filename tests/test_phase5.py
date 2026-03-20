@@ -103,7 +103,7 @@ def test_dashboard_uses_asset_hash(admin_client):
     resp = admin_client.get('/')
     html = _decode(resp)
     assert '?v=46' not in html
-    assert 'style.css?v=' in html
+    assert 'style.min.css?v=' in html
 
 
 # ═══════════════════════════════════════

@@ -1,4 +1,13 @@
-# ── AMILCAR Auto Care — Production Dockerfile ──
+# ── AMILCAR Auto Care — Production Dockerfile (multi-stage) ──
+
+# ── Stage 1: Build dependencies ──
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── Stage 2: Production image ──
 FROM python:3.12-slim
 
 # System deps needed by weasyprint / xhtml2pdf / Pillow
@@ -12,20 +21,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy pre-built Python packages from builder
+COPY --from=builder /install /usr/local
+
+# Create non-root user
+RUN groupadd -r amilcar && useradd -r -g amilcar -d /app -s /sbin/nologin amilcar
+
 WORKDIR /app
 
-# Install Python deps first (layer cache)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
 # Copy app code
-COPY . .
+COPY --chown=amilcar:amilcar . .
 
 # Create data directory for SQLite + uploads persistence
-RUN mkdir -p /data/uploads && ln -sf /data/uploads static/uploads
+RUN mkdir -p /data/uploads && chown -R amilcar:amilcar /data && ln -sf /data/uploads static/uploads
 
 # Expose port
 EXPOSE 8080
+
+# Switch to non-root user
+USER amilcar
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s \
