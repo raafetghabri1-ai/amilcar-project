@@ -1202,6 +1202,13 @@ def add_warranty():
 @login_required
 def inspection_checklist(appointment_id):
     import json
+    INSPECTION_ITEMS = [
+        ('Extérieur', ['Carrosserie', 'Peinture', 'Pare-brise', 'Vitres', 'Rétroviseurs', 'Phares', 'Feux arrière', 'Essuie-glaces']),
+        ('Intérieur', ['Sièges', 'Tableau de bord', 'Moquettes', 'Climatisation', 'Ceintures', 'Volant', 'Plafond']),
+        ('Mécanique', ['Moteur', 'Freins', 'Pneus', 'Suspension', 'Direction', 'Échappement', 'Batterie', 'Courroies']),
+        ('Fluides', ['Huile moteur', 'Liquide frein', 'Liquide refroidissement', 'Direction assistée', 'Lave-glace']),
+        ('Électrique', ['Démarrage', 'Alternateur', 'Éclairage', 'Klaxon', 'Indicateurs tableau']),
+    ]
     with get_db() as conn:
         appt = conn.execute("SELECT a.*, cr.id as car_id, c.name FROM appointments a JOIN cars cr ON a.car_id=cr.id JOIN customers c ON cr.customer_id=c.id WHERE a.id=?", (appointment_id,)).fetchone()
         if not appt:
