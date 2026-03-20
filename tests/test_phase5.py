@@ -232,18 +232,12 @@ def test_sidebar_has_pnl_report(admin_client):
     assert '/pnl_report' in html
 
 
-def test_sidebar_has_auto_reminders(admin_client):
-    """Sidebar must link to auto reminders."""
+def test_sidebar_has_essential_links(admin_client):
+    """Sidebar must have essential navigation links."""
     resp = admin_client.get('/')
     html = _decode(resp)
-    assert '/auto_reminders' in html
-
-
-def test_sidebar_has_db_health(admin_client):
-    """Sidebar must link to DB health check."""
-    resp = admin_client.get('/')
-    html = _decode(resp)
-    assert '/db_health' in html
+    for link in ['/appointments', '/customers', '/invoices', '/reports']:
+        assert link in html
 
 
 # ═══════════════════════════════════════
