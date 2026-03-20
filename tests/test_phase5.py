@@ -225,11 +225,11 @@ def test_reset_password_mismatch(admin_client, client):
 # SIDEBAR LINKS
 # ═══════════════════════════════════════
 
-def test_sidebar_has_pnl_report(admin_client):
-    """Sidebar must link to P&L detailed report."""
+def test_sidebar_has_reports(admin_client):
+    """Sidebar must link to reports page."""
     resp = admin_client.get('/')
     html = _decode(resp)
-    assert '/pnl_report' in html
+    assert '/reports' in html
 
 
 def test_sidebar_has_essential_links(admin_client):

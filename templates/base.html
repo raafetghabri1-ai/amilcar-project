@@ -40,98 +40,17 @@
             <div class="sidebar-search-results" id="searchResults"></div>
         </div>
 
-        <!-- PRINCIPAL -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.principal }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/"><span class="icon">⌂</span> Accueil</a></li>
-                <li><a href="/daily"><span class="icon">◉</span> Aujourd'hui</a></li>
-                <li><a href="/notifications"><span class="icon">◎</span> Notifications{% if notif_count %}<span class="badge-notif">{{ notif_count }}</span>{% endif %}</a></li>
-            </ul>
-        </div>
-
-        <!-- CLIENTS -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.clients_crm }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/customers"><span class="icon">◉</span> Clients</a></li>
-                <li><a href="/crm_followups"><span class="icon">↻</span> Suivi CRM</a></li>
-            </ul>
-        </div>
-
-        <!-- PLANNING -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.planning }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/appointments"><span class="icon">▦</span> Rendez-vous</a></li>
-                <li><a href="/calendar"><span class="icon">◫</span> Calendrier</a></li>
-                <li><a href="/queue"><span class="icon">≡</span> File d'attente</a></li>
-            </ul>
-        </div>
-
-        <!-- FACTURATION -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.billing }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/invoices"><span class="icon">▤</span> Factures</a></li>
-                <li><a href="/quotes"><span class="icon">▦</span> Devis</a></li>
-                {% if session.get('role') == 'admin' %}
-                <li><a href="/expenses"><span class="icon">↓</span> Dépenses</a></li>
-                {% endif %}
-            </ul>
-        </div>
-
-        {% if session.get('role') == 'admin' %}
-        <!-- STOCK -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.stock }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/inventory"><span class="icon">▦</span> Inventaire</a></li>
-                <li><a href="/suppliers"><span class="icon">▣</span> Fournisseurs</a></li>
-            </ul>
-        </div>
-
-        <!-- RAPPORTS -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.reports_kpi }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/reports"><span class="icon">▤</span> Rapports</a></li>
-                <li><a href="/kpi"><span class="icon">◉</span> KPI</a></li>
-                <li><a href="/pnl_report"><span class="icon">▤</span> P&L</a></li>
-                <li><a href="/end_of_day"><span class="icon">◎</span> Bilan Journée</a></li>
-                <li><a href="/export_data"><span class="icon">↓</span> Export données</a></li>
-            </ul>
-        </div>
-
-        <!-- ÉQUIPE -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.team }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/users"><span class="icon">◉</span> Utilisateurs</a></li>
-                <li><a href="/tech_mobile"><span class="icon">▣</span> Vue Technicien</a></li>
-            </ul>
-        </div>
-
-        <!-- PARAMÈTRES -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.settings }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/settings"><span class="icon">◉</span> Général</a></li>
-                <li><a href="/services"><span class="icon">◆</span> Services</a></li>
-                <li><a href="/activity_log"><span class="icon">▤</span> Journal</a></li>
-                <li><a href="/backup"><span class="icon">◫</span> Sauvegarde</a></li>
-                <li><a href="/recycle_bin"><span class="icon">♻</span> Corbeille</a></li>
-            </ul>
-        </div>
-        {% endif %}
-
-        <!-- ACCÈS RAPIDE -->
-        <div class="sidebar-section">
-            <div class="sidebar-section-title" onclick="toggleSection(this)">{{ t.quick_access }} <span class="chevron">▾</span></div>
-            <ul class="sidebar-links">
-                <li><a href="/mobile"><span class="icon">▣</span> Vue Mobile</a></li>
-            </ul>
-        </div>
+        <ul class="sidebar-links" style="padding:10px 0">
+            <li><a href="/"><span class="icon">⌂</span> {{ t.get('home','Accueil') }}</a></li>
+            <li><a href="/customers"><span class="icon">◉</span> {{ t.get('customers','Clients') }}</a></li>
+            <li><a href="/appointments"><span class="icon">▦</span> {{ t.get('appointments','Rendez-vous') }}</a></li>
+            <li><a href="/invoices"><span class="icon">▤</span> {{ t.get('invoices_title','Factures') }}</a></li>
+            <li><a href="/quotes"><span class="icon">◆</span> {{ t.get('quotes','Devis') }}</a></li>
+            {% if session.get('role') == 'admin' %}
+            <li><a href="/reports"><span class="icon">▧</span> {{ t.get('reports','Rapports') }}</a></li>
+            <li><a href="/settings"><span class="icon">⚙</span> {{ t.get('settings','Paramètres') }}</a></li>
+            {% endif %}
+        </ul>
 
         <!-- Footer -->
         <div class="sidebar-footer">
