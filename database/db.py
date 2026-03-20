@@ -1626,6 +1626,11 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_invoices_deleted ON invoices(is_deleted)",
         "CREATE INDEX IF NOT EXISTS idx_expenses_deleted ON expenses(is_deleted)",
         "CREATE INDEX IF NOT EXISTS idx_quotes_deleted ON quotes(is_deleted)",
+        # Phase 8: additional performance indexes
+        "CREATE INDEX IF NOT EXISTS idx_appointments_assigned ON appointments(assigned_to)",
+        "CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(time)",
+        "CREATE INDEX IF NOT EXISTS idx_appointments_date_status ON appointments(date, status)",
+        "CREATE INDEX IF NOT EXISTS idx_invoices_status_amount ON invoices(status, amount)",
     ]
     for idx in indexes:
         try:
@@ -2038,9 +2043,57 @@ def create_tables():
         except:
             pass
 
+    # ─── Phase 8: FTS5 Full-Text Search ───
+    cursor.execute('''CREATE VIRTUAL TABLE IF NOT EXISTS fts_customers
+        USING fts5(name, phone, email, content='customers', content_rowid='id')''')
+    cursor.execute('''CREATE VIRTUAL TABLE IF NOT EXISTS fts_cars
+        USING fts5(brand, model, plate, content='cars', content_rowid='id')''')
+
+    # Push Notification Subscriptions
+    cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)")
+
+    # Rebuild FTS indexes from source tables
+    _rebuild_fts(cursor)
+
     conn.commit()
     conn.close()
     print("قاعدة البيانات جاهزة ✅")
+
+
+def _rebuild_fts(cursor):
+    """Rebuild FTS5 indexes from source tables (safe to run repeatedly)."""
+    try:
+        cursor.execute("DELETE FROM fts_customers")
+        cursor.execute(
+            "INSERT INTO fts_customers(rowid, name, phone, email) "
+            "SELECT id, COALESCE(name,''), COALESCE(phone,''), COALESCE(email,'') "
+            "FROM customers WHERE is_deleted=0")
+        cursor.execute("DELETE FROM fts_cars")
+        cursor.execute(
+            "INSERT INTO fts_cars(rowid, brand, model, plate) "
+            "SELECT id, COALESCE(brand,''), COALESCE(model,''), COALESCE(plate,'') "
+            "FROM cars WHERE is_deleted=0")
+    except Exception:
+        pass
+
+
+def rebuild_fts():
+    """Public helper to rebuild FTS indexes (called after insert/update/delete)."""
+    conn = connect()
+    cursor = conn.cursor()
+    _rebuild_fts(cursor)
+    conn.commit()
+    conn.close()
+
 
 if __name__ == "__main__":
     create_tables()

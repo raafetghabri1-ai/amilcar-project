@@ -55,10 +55,13 @@ def login():
             session['user_id'] = user[0]
             session['username'] = user[1]
             session['role'] = user[3] if len(user) > 3 and user[3] else 'employee'
-            # Set branch_id from users table
+            # Check must_change_password flag
             with get_db() as conn:
                 bid = conn.execute("SELECT COALESCE(branch_id, 0) FROM users WHERE id=?", (user[0],)).fetchone()
                 session['branch_id'] = bid[0] if bid else 0
+                mcp = conn.execute("SELECT COALESCE(must_change_password, 0) FROM users WHERE id=?", (user[0],)).fetchone()
+                if mcp and mcp[0]:
+                    session['must_change_password'] = True
             log_audit('login', 'user', user[0])
             return redirect('/')
         # Track failed attempt
@@ -94,9 +97,10 @@ def change_password():
             elif new_pass != confirm:
                 flash('Les mots de passe ne correspondent pas', 'error')
             else:
-                conn.execute("UPDATE users SET password = ? WHERE id = ?",
+                conn.execute("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?",
                     (generate_password_hash(new_pass), session['user_id']))
                 conn.commit()
+                session.pop('must_change_password', None)
                 flash('Mot de passe modifié avec succès', 'success')
     return render_template('change_password.html')
 

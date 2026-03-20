@@ -2,6 +2,7 @@ __pycache__/
 *.db
 .secret_key
 .admin_init_pw
+.vapid_keys
 *.backup
 *.backup2
 *.bak

@@ -20,7 +20,7 @@ Blueprint Structure:
   routes/client_portal.py — Client Portal (PWA)
   routes/api.py           — API Endpoints
 """
-from flask import Flask, jsonify, session, request, render_template
+from flask import Flask, jsonify, session, request, render_template, flash, redirect
 from flask_socketio import SocketIO
 from database.db import create_tables, get_db
 from database.migrations import migrate
@@ -129,16 +129,32 @@ def api_rate_limiter():
         if check_api_rate_limit():
             return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
 
+@app.before_request
+def force_password_change():
+    """Redirect users with must_change_password flag to /change_password."""
+    if not session.get('user_id'):
+        return
+    if request.path in ('/change_password', '/logout', '/static') or request.path.startswith('/static/'):
+        return
+    if session.get('must_change_password'):
+        flash('Veuillez changer votre mot de passe avant de continuer.', 'warning')
+        return redirect('/change_password')
+
 # ─── Initialize Admin User ───
 def init_admin():
     import secrets
     from werkzeug.security import generate_password_hash
     with get_db() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, role TEXT DEFAULT 'employee', full_name TEXT)")
+        # Add must_change_password column if missing
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0")
+        except Exception:
+            pass
         admin = conn.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
         if not admin:
             init_pw = secrets.token_urlsafe(12)
-            conn.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+            conn.execute("INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, 1)",
                 ('admin', generate_password_hash(init_pw), 'admin'))
             conn.commit()
             pw_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.admin_init_pw')
@@ -151,6 +167,37 @@ def init_admin():
             conn.commit()
 
 init_admin()
+
+# ─── VAPID Keys for Push Notifications ───
+def _get_vapid_keys():
+    """Load or generate VAPID key pair for Web Push."""
+    key_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.vapid_keys')
+    if os.path.exists(key_file):
+        with open(key_file, 'r') as f:
+            lines = f.read().strip().split('\n')
+            if len(lines) >= 2:
+                return {'private': lines[0], 'public': lines[1]}
+    try:
+        from py_vapid import Vapid
+        import base64
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+        v = Vapid()
+        v.generate_keys()
+        pub_raw = v.public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+        pub_b64 = base64.urlsafe_b64encode(pub_raw).decode().rstrip('=')
+        priv_raw = v.private_key.private_numbers().private_value.to_bytes(32, 'big')
+        priv_b64 = base64.urlsafe_b64encode(priv_raw).decode().rstrip('=')
+        with open(key_file, 'w') as f:
+            f.write(f'{priv_b64}\n{pub_b64}\n')
+        os.chmod(key_file, 0o600)
+        return {'private': priv_b64, 'public': pub_b64}
+    except Exception as e:
+        print(f'⚠️  VAPID key generation skipped: {e}')
+        return None
+
+VAPID_KEYS = _get_vapid_keys()
+if VAPID_KEYS:
+    app.config['VAPID_KEYS'] = VAPID_KEYS
 
 # ─── Context Processor for Notification Badge ───
 @app.context_processor

@@ -174,7 +174,23 @@
     </script>
     <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(function(){});
+        navigator.serviceWorker.register('/sw.js').then(function(reg){
+            /* Auto-subscribe to push notifications */
+            if ('PushManager' in window && Notification.permission !== 'denied') {
+                fetch('/api/push/vapid_key').then(r=>r.json()).then(function(d){
+                    if(!d.publicKey) return;
+                    var k = Uint8Array.from(atob(d.publicKey.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0));
+                    reg.pushManager.getSubscription().then(function(sub){
+                        if(sub) return sub;
+                        return Notification.requestPermission().then(function(p){
+                            if(p==='granted') return reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:k});
+                        });
+                    }).then(function(sub){
+                        if(sub) fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sub.toJSON())});
+                    });
+                }).catch(function(){});
+            }
+        }).catch(function(){});
     }
     /* PWA Install Prompt */
     var deferredPrompt;

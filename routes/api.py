@@ -214,7 +214,7 @@ def reschedule_appointment():
 
 
 
-# ─── AJAX Search API ───
+# ─── AJAX Search API (FTS5 + LIKE fallback) ───
 @api_bp.route("/api/search")
 @login_required
 def api_search():
@@ -224,15 +224,29 @@ def api_search():
         return jsonify([])
     like = f'%{q}%'
     threshold = 0.25
+    # Escape FTS5 special chars and build query
+    fts_q = q.replace('"', '').replace("'", '')
+    fts_term = f'"{fts_q}"*'
     with get_db() as conn:
-        # Phase 1: exact LIKE matches (fast, indexed)
-        customers = conn.execute(
-            "SELECT 'client' as type, id, name, phone FROM customers WHERE is_deleted=0 AND (name LIKE ? OR phone LIKE ?) LIMIT 8",
-            (like, like)).fetchall()
-        cars = conn.execute(
-            "SELECT 'voiture' as type, ca.id, ca.brand || ' ' || ca.model, ca.plate "
-            "FROM cars ca WHERE ca.is_deleted=0 AND (ca.brand LIKE ? OR ca.model LIKE ? OR ca.plate LIKE ?) LIMIT 8",
-            (like, like, like)).fetchall()
+        # Try FTS5 first (instant)
+        try:
+            customers = conn.execute(
+                "SELECT 'client' as type, c.id, c.name, c.phone "
+                "FROM fts_customers f JOIN customers c ON f.rowid=c.id "
+                "WHERE fts_customers MATCH ? AND c.is_deleted=0 LIMIT 8", (fts_term,)).fetchall()
+            cars = conn.execute(
+                "SELECT 'voiture' as type, ca.id, ca.brand || ' ' || ca.model, ca.plate "
+                "FROM fts_cars f JOIN cars ca ON f.rowid=ca.id "
+                "WHERE fts_cars MATCH ? AND ca.is_deleted=0 LIMIT 8", (fts_term,)).fetchall()
+        except Exception:
+            # FTS table not ready — fall back to LIKE
+            customers = conn.execute(
+                "SELECT 'client' as type, id, name, phone FROM customers WHERE is_deleted=0 AND (name LIKE ? OR phone LIKE ?) LIMIT 8",
+                (like, like)).fetchall()
+            cars = conn.execute(
+                "SELECT 'voiture' as type, ca.id, ca.brand || ' ' || ca.model, ca.plate "
+                "FROM cars ca WHERE ca.is_deleted=0 AND (ca.brand LIKE ? OR ca.model LIKE ? OR ca.plate LIKE ?) LIMIT 8",
+                (like, like, like)).fetchall()
         appointments = conn.execute(
             "SELECT 'rdv' as type, a.id, cu.name || ' — ' || a.service, a.date || ' (' || a.status || ')' "
             "FROM appointments a JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
@@ -245,7 +259,7 @@ def api_search():
             "WHERE i.is_deleted=0 AND (cu.name LIKE ? OR CAST(i.id AS TEXT) = ?) LIMIT 6",
             (like, q)).fetchall()
 
-        # Phase 2: fuzzy fallback if LIKE found few results
+        # Fuzzy fallback if few results
         exact_count = len(customers) + len(cars) + len(appointments) + len(invoices)
         fuzzy_extra = []
         if exact_count < 5:
@@ -705,14 +719,17 @@ def inventory_trends():
 @api_bp.route("/sw.js")
 def service_worker():
     sw_content = """
-const CACHE_NAME = 'amilcar-v7';
+const CACHE_NAME = 'amilcar-v8';
 const STATIC_ASSETS = [
     '/',
     '/offline',
-    '/static/style.css',
+    '/static/style.min.css',
     '/static/logo.png',
+    '/static/logo-small.png',
+    '/static/favicon.ico',
     '/manifest.json'
 ];
+const DYNAMIC_PAGES = ['/customers', '/appointments', '/invoices', '/quotes', '/reports'];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)));
@@ -731,7 +748,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
     var req = e.request;
     if (req.method !== 'GET') return;
-    /* Navigation requests: network-first with offline fallback */
+
+    /* Navigation: network-first, cache dynamic pages, offline fallback */
     if (req.mode === 'navigate') {
         e.respondWith(
             fetch(req).then(r => {
@@ -742,8 +760,9 @@ self.addEventListener('fetch', e => {
         );
         return;
     }
+
     /* Static assets: cache-first */
-    if (req.url.match(/\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$/)) {
+    if (req.url.match(/\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|webp)$/)) {
         e.respondWith(
             caches.match(req).then(r => {
                 if (r) return r;
@@ -756,7 +775,8 @@ self.addEventListener('fetch', e => {
         );
         return;
     }
-    /* API/other: network-first, fallback to cache */
+
+    /* API/other: network-first, cache fallback */
     e.respondWith(
         fetch(req).then(r => {
             var clone = r.clone();
@@ -772,8 +792,9 @@ self.addEventListener('push', e => {
     var options = {
         body: data.body || '',
         icon: '/static/logo.png',
-        badge: '/static/logo.png',
+        badge: '/static/logo-small.png',
         tag: data.tag || 'amilcar-notif',
+        vibrate: [200, 100, 200],
         data: {url: data.url || '/'}
     };
     e.waitUntil(self.registration.showNotification(title, options));
@@ -781,7 +802,14 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
     e.notification.close();
-    e.waitUntil(clients.openWindow(e.notification.data.url || '/'));
+    e.waitUntil(
+        clients.matchAll({type: 'window'}).then(cs => {
+            for (var c of cs) {
+                if (c.url.includes(self.location.origin) && 'focus' in c) return c.focus();
+            }
+            return clients.openWindow(e.notification.data.url || '/');
+        })
+    );
 });
 """
     response = make_response(sw_content)
@@ -895,18 +923,6 @@ def api_get_price():
                 return jsonify({'price': rule[1], 'base': base, 'modifier': 'fixed'})
             return jsonify({'price': round(base * rule[0], 2), 'base': base, 'modifier': rule[0]})
     return jsonify({'price': base, 'base': base, 'modifier': 1.0})
-
-
-
-@api_bp.route("/api/push_subscribe", methods=["POST"])
-def push_subscribe():
-    data = request.get_json()
-    if data:
-        with get_db() as conn:
-            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('push_sub_' || ?, ?)",
-                        (data.get('endpoint', '')[:50], str(data)))
-            conn.commit()
-    return jsonify({'status': 'ok'})
 
 
 
@@ -1193,5 +1209,150 @@ def webhook_events():
             "FROM audit_log WHERE created_at >= ? ORDER BY id DESC LIMIT ?",
             (since, limit)).fetchall()
     return jsonify({'events': [dict(e) for e in events], 'count': len(events)})
+
+
+# ─── Phase 8: CSV / Excel Export ───
+
+_EXPORT_QUERIES = {
+    'customers': (
+        "SELECT c.id, c.name, c.phone "
+        "FROM customers c WHERE c.is_deleted=0 ORDER BY c.name",
+        ['ID', 'Nom', 'Téléphone']),
+    'appointments': (
+        "SELECT a.id, cu.name, ca.brand||' '||ca.model, ca.plate, a.date, "
+        "COALESCE(a.time,''), a.service, a.status "
+        "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+        "JOIN customers cu ON ca.customer_id=cu.id "
+        "WHERE a.is_deleted=0 ORDER BY a.date DESC",
+        ['ID', 'Client', 'Véhicule', 'Plaque', 'Date', 'Heure', 'Service', 'Statut']),
+    'invoices': (
+        "SELECT i.id, cu.name, i.amount, i.status, i.paid_amount, "
+        "COALESCE(i.payment_method,''), a.date "
+        "FROM invoices i JOIN appointments a ON i.appointment_id=a.id "
+        "JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id "
+        "WHERE i.is_deleted=0 ORDER BY i.id DESC",
+        ['ID', 'Client', 'Montant', 'Statut', 'Payé', 'Méthode', 'Date']),
+}
+
+
+@api_bp.route("/api/export/<entity>")
+@admin_required
+def export_data(entity):
+    """Export customers/appointments/invoices as Excel or CSV.
+    Query: ?format=xlsx (default) or ?format=csv
+    """
+    if entity not in _EXPORT_QUERIES:
+        return jsonify({'error': 'Type invalide. Utilisez: customers, appointments, invoices'}), 400
+    fmt = request.args.get('format', 'xlsx').lower()
+    query, headers = _EXPORT_QUERIES[entity]
+    with get_db() as conn:
+        rows = conn.execute(query).fetchall()
+
+    if fmt == 'csv':
+        output = io.StringIO()
+        output.write(','.join(headers) + '\n')
+        for r in rows:
+            output.write(','.join(str(v).replace(',', ';') for v in r) + '\n')
+        resp = make_response(output.getvalue())
+        resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        resp.headers['Content-Disposition'] = f'attachment; filename=amilcar_{entity}.csv'
+        return resp
+
+    # Excel (xlsx)
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    wb = Workbook()
+    ws = wb.active
+    ws.title = entity.capitalize()
+    gold = PatternFill(start_color='D4AF37', end_color='D4AF37', fill_type='solid')
+    bold_white = Font(bold=True, color='FFFFFF')
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font = bold_white
+        cell.fill = gold
+    for row_idx, r in enumerate(rows, 2):
+        for col_idx, val in enumerate(r, 1):
+            ws.cell(row=row_idx, column=col_idx, value=val)
+    # Auto-width
+    for col in ws.columns:
+        max_len = max((len(str(c.value or '')) for c in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 40)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name=f'amilcar_{entity}.xlsx')
+
+
+# ─── Phase 8: Push Notification Endpoints ───
+
+@api_bp.route("/api/push/vapid_key")
+@login_required
+def push_vapid_key():
+    """Return the VAPID public key for push subscription."""
+    from flask import current_app
+    keys = current_app.config.get('VAPID_KEYS')
+    if not keys:
+        return jsonify({'error': 'Push notifications not configured'}), 503
+    return jsonify({'publicKey': keys['public']})
+
+
+@api_bp.route("/api/push/subscribe", methods=["POST"])
+@login_required
+@csrf.exempt
+def push_subscribe():
+    """Register a push subscription for the current user."""
+    data = request.get_json(silent=True) or {}
+    endpoint = (data.get('endpoint') or '').strip()
+    keys = data.get('keys') or {}
+    p256dh = keys.get('p256dh', '')
+    auth = keys.get('auth', '')
+    if not endpoint or not p256dh or not auth:
+        return jsonify({'error': 'Invalid subscription data'}), 400
+    user_id = session['user_id']
+    with get_db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)",
+            (user_id, endpoint, p256dh, auth))
+        conn.commit()
+    return jsonify({'success': True})
+
+
+@api_bp.route("/api/push/send", methods=["POST"])
+@admin_required
+@csrf.exempt
+def push_send():
+    """Send a push notification to all subscribed users. Admin only.
+    Body: {title, body, url?}
+    """
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    body = (data.get('body') or '').strip()
+    if not title or not body:
+        return jsonify({'error': 'title and body required'}), 400
+    url = data.get('url', '/')
+    from flask import current_app
+    keys = current_app.config.get('VAPID_KEYS')
+    if not keys:
+        return jsonify({'error': 'Push not configured'}), 503
+    import json
+    sent, failed = 0, 0
+    with get_db() as conn:
+        subs = conn.execute("SELECT id, endpoint, p256dh, auth FROM push_subscriptions").fetchall()
+    for sub in subs:
+        try:
+            from pywebpush import webpush
+            webpush(
+                subscription_info={'endpoint': sub['endpoint'], 'keys': {'p256dh': sub['p256dh'], 'auth': sub['auth']}},
+                data=json.dumps({'title': title, 'body': body, 'url': url}),
+                vapid_private_key=keys['private'],
+                vapid_claims={'sub': 'mailto:admin@amilcar.tn'})
+            sent += 1
+        except Exception:
+            failed += 1
+            with get_db() as conn:
+                conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (sub['id'],))
+                conn.commit()
+    return jsonify({'sent': sent, 'failed': failed})
 
 
