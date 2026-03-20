@@ -1207,6 +1207,8 @@ def create_tables():
         ("ALTER TABLE expenses ADD COLUMN deleted_at TEXT DEFAULT ''", None),
         ("ALTER TABLE quotes ADD COLUMN is_deleted INTEGER DEFAULT 0", None),
         ("ALTER TABLE quotes ADD COLUMN deleted_at TEXT DEFAULT ''", None),
+        # Phase 5: Password reset tokens
+        ("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''", None),
     ]
     import logging
     _mig_log = logging.getLogger('amilcar.migrations')
@@ -1217,6 +1219,15 @@ def create_tables():
             msg = str(e)
             if 'duplicate column' not in msg and 'already exists' not in msg:
                 _mig_log.warning('Migration failed: %s — %s', sql[:60], msg)
+
+    # ─── Password Reset Tokens ───
+    cursor.execute('''CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        used INTEGER DEFAULT 0
+    )''')
 
     # ─── Phase 13: Premium Car Care Intelligence Tables ───
 

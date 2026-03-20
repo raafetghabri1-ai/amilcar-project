@@ -13,6 +13,7 @@ from datetime import datetime, date, timedelta
 import os, re, uuid, io
 import time as time_module
 import sqlite3
+import secrets
 
 auth_bp = Blueprint("auth_bp", __name__)
 
@@ -168,6 +169,66 @@ def manage_roles():
     with get_db() as conn:
         users = conn.execute("SELECT id, username, role, COALESCE(full_name,'') FROM users ORDER BY id").fetchall()
     return render_template("manage_roles.html", users=users, roles=PERMISSIONS)
+
+
+
+# ─── Password Reset (Admin generates link) ───
+@auth_bp.route("/generate_reset_link/<int:user_id>", methods=["POST"])
+@admin_required
+def generate_reset_link(user_id):
+    """Admin generates a one-time password reset link for a user."""
+    with get_db() as conn:
+        user = conn.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            flash("Utilisateur introuvable", "error")
+            return redirect("/users")
+        token = secrets.token_urlsafe(32)
+        conn.execute(
+            "INSERT INTO password_reset_tokens (user_id, token, created_at) VALUES (?, ?, ?)",
+            (user_id, token, datetime.now().isoformat()))
+        conn.commit()
+    log_audit('create', 'password_reset', user_id, '', f'Reset link for {user[1]}')
+    reset_url = f"{request.host_url.rstrip('/')}/reset_password/{token}"
+    flash(f"Lien de réinitialisation pour {user[1]} : {reset_url}", "success")
+    return redirect("/users")
+
+
+
+@auth_bp.route("/reset_password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    """One-time token-based password reset (no login required)."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT t.id, t.user_id, t.created_at, t.used, u.username "
+            "FROM password_reset_tokens t JOIN users u ON t.user_id = u.id "
+            "WHERE t.token = ?", (token,)).fetchone()
+    if not row:
+        flash("Lien invalide ou expiré", "error")
+        return redirect("/login")
+    # Token valid for 24 hours, single use
+    from datetime import datetime as dt
+    created = dt.fromisoformat(row[2])
+    if row[3] == 1 or (datetime.now() - created).total_seconds() > 86400:
+        flash("Ce lien a expiré ou a déjà été utilisé", "error")
+        return redirect("/login")
+    if request.method == "POST":
+        new_pass = request.form.get("new_password", "")
+        confirm = request.form.get("confirm_password", "")
+        if len(new_pass) < 6:
+            flash("Le mot de passe doit contenir au moins 6 caractères", "error")
+            return render_template("reset_password.html", token=token, username=row[4])
+        if new_pass != confirm:
+            flash("Les mots de passe ne correspondent pas", "error")
+            return render_template("reset_password.html", token=token, username=row[4])
+        with get_db() as conn:
+            conn.execute("UPDATE users SET password = ? WHERE id = ?",
+                (generate_password_hash(new_pass), row[1]))
+            conn.execute("UPDATE password_reset_tokens SET used = 1 WHERE id = ?", (row[0],))
+            conn.commit()
+        log_audit('update', 'password_reset', row[1], '', f'Password reset for {row[4]}')
+        flash("Mot de passe modifié avec succès. Connectez-vous.", "success")
+        return redirect("/login")
+    return render_template("reset_password.html", token=token, username=row[4])
 
 
 

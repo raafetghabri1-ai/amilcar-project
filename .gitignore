@@ -16,3 +16,4 @@ gunicorn.ctl
 *.log
 .env
 .env.*
+!.env.example

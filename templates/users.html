@@ -22,10 +22,16 @@
             </td>
             <td>
             {% if u[0] != session.user_id %}
+            <div class="d-flex gap-1 align-items-center">
+            <form method="POST" action="/generate_reset_link/{{ u[0] }}" class="form-action-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-action-secondary" title="Générer lien reset">🔑</button>
+            </form>
             <form method="POST" action="/delete_user/{{ u[0] }}" class="form-action-inline" onsubmit="return confirm('Supprimer cet utilisateur ?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="btn-action-delete">✗</button>
             </form>
+            </div>
             {% else %}
             <span style="color:var(--text-muted);font-size:0.7rem">ACTUEL</span>
             {% endif %}

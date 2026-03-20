@@ -32,12 +32,13 @@
 <body>
   <div class="brand">AMILCAR</div>
   <div class="wrap">
-    <div class="icon">{% if code == 404 %}🔍{% elif code == 403 %}🔒{% elif code == 401 %}🔑{% elif code == 429 %}⏳{% else %}⚠{% endif %}</div>
+    <div class="icon">{% if code == 404 %}🔍{% elif code == 403 %}🔒{% elif code == 401 %}🔑{% elif code == 429 %}⏳{% elif code == 400 %}⚡{% else %}⚠{% endif %}</div>
     <div class="code">{{ code }}</div>
     <p class="msg">{{ message }}</p>
-    <p class="hint">{% if code == 404 %}La page que vous cherchez n'existe pas ou a été déplacée{% elif code == 403 %}Connectez-vous avec un compte autorisé{% elif code == 401 %}Votre session a peut-être expiré{% elif code == 429 %}Veuillez patienter avant de réessayer{% else %}Une erreur inattendue s'est produite{% endif %}</p>
+    <p class="hint">{% if code == 404 %}La page que vous cherchez n'existe pas ou a été déplacée{% elif code == 403 %}Connectez-vous avec un compte autorisé{% elif code == 401 %}Votre session a peut-être expiré{% elif code == 429 %}Veuillez patienter avant de réessayer{% elif code == 400 %}Rechargez la page et réessayez{% else %}Une erreur inattendue s'est produite{% endif %}</p>
     <div class="actions">
       <a href="/" class="btn">⌂ Accueil</a>
+      {% if code in (401, 403) %}<a href="/login" class="btn">🔑 Connexion</a>{% endif %}
       <a href="javascript:history.back()" class="btn-ghost">← Retour</a>
     </div>
   </div>

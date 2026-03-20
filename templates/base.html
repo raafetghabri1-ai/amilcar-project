@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AMILCAR{% block title %}{% endblock %}</title>
-    <link rel="preload" href="/static/style.css?v=46" as="style">
+    <link rel="preload" href="/static/style.css?v={{ asset_hash('style.css') }}" as="style">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/static/style.css?v=46" rel="stylesheet">
+    <link href="/static/style.css?v={{ asset_hash('style.css') }}" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#D4AF37">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -135,6 +135,7 @@
                 <li><a href="/commission_tracker"><span class="icon">◈</span> Commissions</a></li>
                 <li><a href="/flash_sales_manager"><span class="icon">⚡</span> Ventes Flash</a></li>
                 <li><a href="/smart_scheduling"><span class="icon">◫</span> Planning Intelligent</a></li>
+                <li><a href="/auto_reminders"><span class="icon">◎</span> Rappels Auto</a></li>
                 <li><a href="/import_center"><span class="icon">↓</span> Import Données</a></li>
                 <li><a href="/report_builder"><span class="icon">▤</span> Générateur Rapports</a></li>
                 <li><a href="/revenue_forecast"><span class="icon">↗</span> Prévisions Revenus</a></li>
@@ -190,6 +191,7 @@
                 <li><a href="/vehicle_history"><span class="icon">▦</span> Historique véhicule</a></li>
                 <li><a href="/export_data"><span class="icon">↓</span> Export données</a></li>
                 <li><a href="/pnl_dashboard"><span class="icon">◫</span> P&L</a></li>
+                <li><a href="/pnl_report"><span class="icon">▤</span> P&L Détaillé</a></li>
                 <li><a href="/ar_aging"><span class="icon">◈</span> Créances</a></li>
                 <li><a href="/cashflow"><span class="icon">◆</span> Cash Flow</a></li>
                 <li><a href="/branch_benchmark"><span class="icon">▣</span> Benchmark</a></li>
@@ -249,6 +251,7 @@
                 <li><a href="/insurance"><span class="icon">◆</span> Assurances</a></li>
                 <li><a href="/branches"><span class="icon">▣</span> Succursales</a></li>
                 <li><a href="/notifications_center_view"><span class="icon">◎</span> Notifications</a></li>
+                <li><a href="/db_health"><span class="icon">♡</span> Santé BD</a></li>
                 <li><a href="/audit_trail"><span class="icon">◆</span> Audit</a></li>
                 <li><a href="/recycle_bin"><span class="icon">♻</span> Corbeille</a></li>
             </ul>
@@ -464,7 +467,7 @@
         <span class="loading-text">Chargement...</span>
     </div>
 
-    <script src="/static/app.js?v=46" defer></script>
+    <script src="/static/app.js?v={{ asset_hash('app.js') }}" defer></script>
     <!-- PWA Install Banner -->
     <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1A1A2E,#09090b);border-top:1px solid rgba(212,175,55,0.3);padding:14px 20px;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(16px);box-shadow:0 -4px 24px rgba(0,0,0,0.5)">
         <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">

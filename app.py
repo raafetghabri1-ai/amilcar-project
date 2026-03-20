@@ -30,6 +30,10 @@ import os
 import time as time_module
 from datetime import datetime, date, timedelta
 
+# ─── Load .env if present ───
+from dotenv import load_dotenv
+load_dotenv()
+
 app = Flask(__name__)
 
 # ─── Logging ───
@@ -54,10 +58,12 @@ app.secret_key = _get_secret_key()
 csrf.init_app(app)
 
 # ── SocketIO: restrict CORS in production ──
-_cors_origins = os.environ.get('CORS_ORIGINS', '*')
-if _cors_origins != '*':
-    _cors_origins = [o.strip() for o in _cors_origins.split(',')]
-socketio = SocketIO(app, cors_allowed_origins=_cors_origins)
+_cors_origins = os.environ.get('CORS_ORIGINS', '')
+if _cors_origins:
+    _cors_origins = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+else:
+    _cors_origins = []  # same-origin only
+socketio = SocketIO(app, cors_allowed_origins=_cors_origins or None)
 create_tables()
 migrate()  # Apply pending database migrations
 
@@ -80,11 +86,14 @@ def set_security_headers(response):
     if not request.path.startswith('/static/'):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io https://cdn.chart.js; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.socket.io; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
             "img-src 'self' data: blob:; "
             "connect-src 'self' wss: ws:; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
             "frame-ancestors 'self'"
         )
     # Static file caching (CSS, JS, images: 7 days)
@@ -167,6 +176,27 @@ def inject_translations():
     lang = session.get('lang', 'fr')
     return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['fr']), 'current_lang': lang}
 
+# ─── Cache-Busting: file hash-based versioning ───
+import hashlib
+
+_asset_hashes = {}
+
+def asset_hash(filename):
+    """Return a short content hash for a static file (cache-busting)."""
+    if filename in _asset_hashes:
+        return _asset_hashes[filename]
+    filepath = os.path.join(app.static_folder, filename)
+    try:
+        h = hashlib.md5(open(filepath, 'rb').read()).hexdigest()[:8]
+    except OSError:
+        h = '0'
+    _asset_hashes[filename] = h
+    return h
+
+@app.context_processor
+def inject_asset_hash():
+    return {'asset_hash': asset_hash}
+
 # ═══════════════════════════════════════════════════════════════
 # ─── Register Blueprints ──────────────────────────────────────
 # ═══════════════════════════════════════════════════════════════
@@ -202,6 +232,10 @@ app.register_blueprint(portal_bp)
 app.register_blueprint(api_bp)
 
 # ─── Error Handlers ───
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', code=400, message="Requête invalide — jeton CSRF expiré ?"), 400
+
 @app.errorhandler(401)
 def unauthorized(e):
     return render_template('error.html', code=401, message="Accès non autorisé — veuillez vous connecter"), 401
