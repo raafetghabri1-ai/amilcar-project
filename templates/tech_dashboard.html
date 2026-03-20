@@ -22,8 +22,8 @@
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-card">
-            <h2 style="color:#ff6b35">{{ pending }}</h2>
-            <p>EN ATTENTE</p>
+            <h2 style="color:#ff6b35">{{ in_progress }}</h2>
+            <p>EN COURS</p>
         </div>
     </div>
     <div class="col-6 col-md-3">
@@ -31,6 +31,21 @@
             <h2 style="color:var(--text-secondary)">{{ tomorrow_appts|length }}</h2>
             <p>DEMAIN</p>
         </div>
+    </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="card-dark mb-4" style="padding:16px 20px">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span style="font-size:0.8rem;color:var(--text-secondary)">Progression Journée</span>
+        <span style="font-size:0.8rem;color:var(--gold);font-weight:700">{{ progress_pct }}%</span>
+    </div>
+    <div style="background:var(--bg-input);border-radius:8px;height:10px;overflow:hidden">
+        <div style="width:{{ progress_pct }}%;height:100%;background:linear-gradient(90deg,var(--gold),#f5e6a3);border-radius:8px;transition:width 0.8s ease"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-2" style="font-size:0.7rem;color:var(--text-muted)">
+        <span>{{ completed }}/{{ appointments|length }} aujourd'hui</span>
+        <span>Cette semaine : {{ week_done }}/{{ week_total }}</span>
     </div>
 </div>
 
@@ -46,22 +61,29 @@
                     <th>Client</th>
                     <th>Véhicule</th>
                     <th>Service</th>
+                    <th>Durée</th>
                     <th>Statut</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in appointments %}
-                <tr style="{% if a.status == 'completed' %}opacity:0.6{% elif a.status == 'in_progress' %}border-left:3px solid var(--gold){% endif %}">
+                <tr style="{% if a.status == 'completed' %}opacity:0.5{% elif a.status == 'in_progress' %}border-left:3px solid var(--gold){% endif %}">
                     <td><strong>{{ a.time or '—' }}</strong></td>
-                    <td>{{ a.customer_name }}</td>
+                    <td>
+                        {{ a.customer_name }}
+                        {% if a.customer_phone %}
+                        <br><a href="tel:{{ a.customer_phone }}" style="color:var(--gold);font-size:0.72rem;text-decoration:none">📞 {{ a.customer_phone }}</a>
+                        {% endif %}
+                    </td>
                     <td>{{ a.brand }} {{ a.model }}<br><small style="color:var(--text-secondary)">{{ a.plate }}</small></td>
                     <td>{{ a.service }}</td>
+                    <td style="font-size:0.78rem;color:var(--text-muted)">{{ a.estimated_duration or 60 }} min</td>
                     <td>
                         {% if a.status == 'completed' %}
-                            <span class="badge bg-success">Terminé</span>
+                            <span class="badge bg-success">✅ Terminé</span>
                         {% elif a.status == 'in_progress' %}
-                            <span class="badge" style="background:var(--gold);color:#000">En cours</span>
+                            <span class="badge" style="background:var(--gold);color:#000">⚡ En cours</span>
                         {% elif a.status == 'confirmed' %}
                             <span class="badge bg-info">Confirmé</span>
                         {% else %}
@@ -69,11 +91,17 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if a.status != 'completed' %}
+                        <div class="d-flex gap-1 flex-wrap">
+                        {% if a.status not in ('completed', 'in_progress') %}
                         <a href="/update_appointment_status/{{ a.id }}?status=in_progress" class="btn" style="border:1px solid var(--gold);color:var(--gold);font-size:0.7rem;padding:3px 10px">▶ Démarrer</a>
+                        {% endif %}
+                        {% if a.status == 'in_progress' %}
                         <a href="/update_appointment_status/{{ a.id }}?status=completed" class="btn" style="border:1px solid var(--green);color:var(--green);font-size:0.7rem;padding:3px 10px">✅ Terminer</a>
                         {% endif %}
+                        {% if a.status != 'completed' %}
                         <a href="/notify_car_ready/{{ a.id }}" class="btn" style="border:1px solid #25D366;color:#25D366;font-size:0.7rem;padding:3px 10px" title="Notifier prêt">📲</a>
+                        {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

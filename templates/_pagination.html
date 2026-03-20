@@ -1,0 +1,24 @@
+{# Reusable pagination component.
+   Usage: {% include '_pagination.html' with context %}
+   Required vars: page, total_pages, base_url (e.g. '/customers')
+   Optional: query_params (extra GET params string, e.g. '&q=test')
+#}
+{% if total_pages is defined and total_pages > 1 %}
+<nav class="d-flex justify-content-center mt-4">
+    <ul class="pagination" style="gap:5px;flex-wrap:wrap">
+        {% if page > 1 %}
+        <li><a href="{{ base_url }}?page={{ page - 1 }}{{ query_params|default('') }}" class="btn btn-page">‹</a></li>
+        {% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+        <li><a href="{{ base_url }}?page={{ p }}{{ query_params|default('') }}" class="btn {% if p == page %}btn-gold{% else %}btn-page{% endif %}">{{ p }}</a></li>
+            {% elif p == page - 3 or p == page + 3 %}
+        <li><span style="color:var(--text-muted);padding:6px">…</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+        <li><a href="{{ base_url }}?page={{ page + 1 }}{{ query_params|default('') }}" class="btn btn-page">›</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

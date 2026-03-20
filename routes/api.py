@@ -1010,3 +1010,152 @@ def knowledge_base():
                           categories=categories, category=category, search=search)
 
 
+# ═══════════════════════════════════════════════════════════════
+# ─── Webhooks (n8n / Zapier / Make) ──────────────────────────
+# ═══════════════════════════════════════════════════════════════
+
+@api_bp.route('/api/webhooks/new_appointment', methods=['POST'])
+@csrf.exempt
+def webhook_new_appointment():
+    """Webhook: create appointment from external automation (n8n, Zapier).
+    Requires X-API-Key header.
+    Body: {customer_phone, service, date, time?, notes?}
+    """
+    auth = check_api_key()
+    if not auth:
+        return jsonify({'error': 'Invalid API key'}), 401
+    data = request.get_json(silent=True) or {}
+    phone = (data.get('customer_phone') or '').strip()
+    service = (data.get('service') or '').strip()
+    appt_date = (data.get('date') or '').strip()
+    if not phone or not service or not appt_date:
+        return jsonify({'error': 'customer_phone, service, date are required'}), 400
+    with get_db() as conn:
+        customer = conn.execute(
+            "SELECT c.id, c.name, car.id as car_id FROM customers c "
+            "JOIN cars car ON car.customer_id=c.id "
+            "WHERE c.phone=? AND c.is_deleted=0 ORDER BY car.id DESC LIMIT 1",
+            (phone,)).fetchone()
+        if not customer:
+            return jsonify({'error': 'Customer not found'}), 404
+        conn.execute(
+            "INSERT INTO appointments (car_id, service, date, time, status, notes, is_deleted) "
+            "VALUES (?, ?, ?, ?, 'pending', ?, 0)",
+            (customer['car_id'], service, appt_date,
+             data.get('time', ''), data.get('notes', '')))
+        conn.commit()
+        appt_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return jsonify({'success': True, 'appointment_id': appt_id,
+                    'customer': customer['name']}), 201
+
+
+@api_bp.route('/api/webhooks/appointment_status', methods=['POST'])
+@csrf.exempt
+def webhook_appointment_status():
+    """Webhook: update appointment status.
+    Requires X-API-Key. Body: {appointment_id, status}
+    """
+    auth = check_api_key()
+    if not auth:
+        return jsonify({'error': 'Invalid API key'}), 401
+    data = request.get_json(silent=True) or {}
+    appt_id = data.get('appointment_id')
+    status = (data.get('status') or '').strip()
+    if not appt_id or status not in ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled'):
+        return jsonify({'error': 'Valid appointment_id and status required'}), 400
+    with get_db() as conn:
+        appt = conn.execute("SELECT id FROM appointments WHERE id=? AND is_deleted=0", (appt_id,)).fetchone()
+        if not appt:
+            return jsonify({'error': 'Appointment not found'}), 404
+        conn.execute("UPDATE appointments SET status=? WHERE id=?", (status, appt_id))
+        conn.commit()
+    return jsonify({'success': True, 'appointment_id': appt_id, 'status': status})
+
+
+@api_bp.route('/api/webhooks/today_summary', methods=['GET'])
+@csrf.exempt
+def webhook_today_summary():
+    """Webhook: get today's summary for n8n daily digest.
+    Requires X-API-Key.
+    """
+    auth = check_api_key()
+    if not auth:
+        return jsonify({'error': 'Invalid API key'}), 401
+    today = date.today().isoformat()
+    with get_db() as conn:
+        appts = conn.execute(
+            "SELECT COUNT(*) as total, "
+            "SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed, "
+            "SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending, "
+            "SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as in_progress "
+            "FROM appointments WHERE date=? AND is_deleted=0", (today,)).fetchone()
+        revenue = conn.execute(
+            "SELECT COALESCE(SUM(i.amount), 0) FROM invoices i "
+            "JOIN appointments a ON i.appointment_id=a.id "
+            "WHERE a.date=? AND i.status IN ('paid','partial') AND COALESCE(i.is_deleted,0)=0",
+            (today,)).fetchone()[0]
+        unpaid = conn.execute(
+            "SELECT COUNT(*) FROM invoices WHERE status='unpaid' AND COALESCE(is_deleted,0)=0").fetchone()[0]
+    return jsonify({
+        'date': today,
+        'appointments': {
+            'total': appts['total'], 'completed': appts['completed'],
+            'pending': appts['pending'], 'in_progress': appts['in_progress']
+        },
+        'revenue_today': revenue,
+        'unpaid_invoices': unpaid
+    })
+
+
+@api_bp.route('/api/webhooks/new_customer', methods=['POST'])
+@csrf.exempt
+def webhook_new_customer():
+    """Webhook: create customer + car from external automation.
+    Requires X-API-Key.
+    Body: {name, phone, email?, brand, model, plate, year?, color?}
+    """
+    auth = check_api_key()
+    if not auth:
+        return jsonify({'error': 'Invalid API key'}), 401
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    brand = (data.get('brand') or '').strip()
+    model = (data.get('model') or '').strip()
+    plate = (data.get('plate') or '').strip()
+    if not name or not phone or not brand or not model or not plate:
+        return jsonify({'error': 'name, phone, brand, model, plate are required'}), 400
+    with get_db() as conn:
+        existing = conn.execute("SELECT id FROM customers WHERE phone=? AND is_deleted=0", (phone,)).fetchone()
+        if existing:
+            return jsonify({'error': 'Customer with this phone already exists', 'customer_id': existing['id']}), 409
+        conn.execute(
+            "INSERT INTO customers (name, phone, email, is_deleted) VALUES (?, ?, ?, 0)",
+            (name, phone, data.get('email', '')))
+        cust_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute(
+            "INSERT INTO cars (customer_id, brand, model, plate, year, color, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
+            (cust_id, brand, model, plate, data.get('year', ''), data.get('color', '')))
+        conn.commit()
+    return jsonify({'success': True, 'customer_id': cust_id}), 201
+
+
+@api_bp.route('/api/webhooks/events', methods=['GET'])
+@csrf.exempt
+def webhook_events():
+    """Webhook: stream recent activity for n8n polling trigger.
+    Requires X-API-Key. Query: ?since=ISO_DATETIME&limit=50
+    """
+    auth = check_api_key()
+    if not auth:
+        return jsonify({'error': 'Invalid API key'}), 401
+    since = request.args.get('since', (date.today()).isoformat())
+    limit = min(int(request.args.get('limit', 50)), 200)
+    with get_db() as conn:
+        events = conn.execute(
+            "SELECT id, action, entity_type, entity_id, new_value, created_at, ip_address, username "
+            "FROM audit_log WHERE created_at >= ? ORDER BY id DESC LIMIT ?",
+            (since, limit)).fetchall()
+    return jsonify({'events': [dict(e) for e in events], 'count': len(events)})
+
+

@@ -468,6 +468,48 @@
     </div>
 
     <script src="/static/app.js?v={{ asset_hash('app.js') }}" defer></script>
+    <script>
+    /* ═══ Sidebar Instant Filter ═══ */
+    (function(){
+        var input = document.getElementById('searchInput');
+        if (!input) return;
+        var sections = document.querySelectorAll('.sidebar-section');
+        var form = input.closest('form');
+        var debounceTimer;
+        input.addEventListener('input', function(){
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function(){
+                var q = input.value.trim().toLowerCase();
+                if (q.length < 2) {
+                    sections.forEach(function(s){ s.style.display=''; s.querySelectorAll('li').forEach(function(li){li.style.display=''}); });
+                    return;
+                }
+                sections.forEach(function(sec){
+                    var items = sec.querySelectorAll('.sidebar-links li');
+                    var anyVisible = false;
+                    items.forEach(function(li){
+                        var text = li.textContent.toLowerCase();
+                        var href = (li.querySelector('a')||{}).href||'';
+                        if (text.indexOf(q) > -1 || href.toLowerCase().indexOf(q) > -1) {
+                            li.style.display = '';
+                            anyVisible = true;
+                        } else {
+                            li.style.display = 'none';
+                        }
+                    });
+                    sec.style.display = anyVisible ? '' : 'none';
+                    if (anyVisible) {
+                        var ul = sec.querySelector('.sidebar-links');
+                        if (ul) ul.style.display = 'block';
+                    }
+                });
+            }, 150);
+        });
+        if (form) form.addEventListener('submit', function(e){
+            if (input.value.trim().length < 2) e.preventDefault();
+        });
+    })();
+    </script>
     <!-- PWA Install Banner -->
     <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:10000;background:linear-gradient(135deg,#1A1A2E,#09090b);border-top:1px solid rgba(212,175,55,0.3);padding:14px 20px;align-items:center;justify-content:space-between;gap:12px;backdrop-filter:blur(16px);box-shadow:0 -4px 24px rgba(0,0,0,0.5)">
         <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">

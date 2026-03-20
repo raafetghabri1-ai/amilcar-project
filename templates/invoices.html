@@ -117,13 +117,7 @@
     </table>
     </div>
     </form>
-    {% if total_pages > 1 %}
-    <nav class="d-flex justify-content-center mt-4" style="gap:6px">
-        {% for p in range(1, total_pages + 1) %}
-        <a href="/invoices?status={{ status_filter }}&page={{ p }}" class="btn-page {% if p == page %}active{% endif %}">{{ p }}</a>
-        {% endfor %}
-    </nav>
-    {% endif %}
+    {% set base_url = '/invoices' %}{% set query_params = '&status=' ~ status_filter %}{% include '_pagination.html' %}
 {% endblock %}
 {% block scripts %}
 <script>

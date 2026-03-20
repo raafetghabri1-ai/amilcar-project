@@ -54,7 +54,9 @@ def _technician_dashboard():
     with get_db() as conn:
         my_appts = conn.execute("""
             SELECT a.id, a.date, a.time, a.service, a.status,
-                   c.name as customer_name, car.brand, car.model, car.plate
+                   a.estimated_duration, a.actual_start, a.actual_end,
+                   c.name as customer_name, c.phone as customer_phone,
+                   car.brand, car.model, car.plate
             FROM appointments a
             JOIN cars car ON a.car_id=car.id
             JOIN customers c ON car.customer_id=c.id
@@ -64,6 +66,7 @@ def _technician_dashboard():
         """, (today_str, str(user_id), username)).fetchall()
         completed_today = sum(1 for a in my_appts if a['status'] == 'completed')
         pending_today = sum(1 for a in my_appts if a['status'] in ('pending', 'confirmed', 'in_progress'))
+        in_progress_today = sum(1 for a in my_appts if a['status'] == 'in_progress')
         tomorrow_str = str(date.today() + timedelta(days=1))
         tomorrow_appts = conn.execute("""
             SELECT a.id, a.time, a.service, c.name as customer_name, car.brand, car.model
@@ -73,9 +76,23 @@ def _technician_dashboard():
             AND (a.assigned_to=? OR a.assigned_to=? OR a.assigned_to IS NULL)
             ORDER BY a.time
         """, (tomorrow_str, str(user_id), username)).fetchall()
+        # Weekly stats
+        week_start = (date.today() - timedelta(days=date.today().weekday())).isoformat()
+        week_stats = conn.execute("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as done
+            FROM appointments
+            WHERE date >= ? AND is_deleted=0
+            AND (assigned_to=? OR assigned_to=?)
+        """, (week_start, str(user_id), username)).fetchone()
+    total = len(my_appts)
+    progress_pct = int(completed_today / total * 100) if total > 0 else 0
     return render_template('tech_dashboard.html',
         appointments=my_appts, completed=completed_today, pending=pending_today,
-        tomorrow_appts=tomorrow_appts, today=today_str, username=username)
+        in_progress=in_progress_today, progress_pct=progress_pct,
+        tomorrow_appts=tomorrow_appts, today=today_str, username=username,
+        week_total=week_stats['total'] if week_stats else 0,
+        week_done=week_stats['done'] if week_stats else 0)
 
 
 

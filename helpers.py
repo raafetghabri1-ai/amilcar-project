@@ -421,6 +421,37 @@ def check_api_rate_limit():
         _api_rate[ip] = (1, now)
     return False
 
+
+# ─── Reusable Rate Limit Decorator ───
+_route_rate = {}
+
+def rate_limit(max_calls=10, window=60):
+    """Decorator: per-IP rate limiting for any route.
+    Usage: @rate_limit(max_calls=5, window=300)
+    """
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            from flask import jsonify as _json, abort
+            key = f"{request.remote_addr}:{f.__name__}"
+            now = time_module.time()
+            if key in _route_rate:
+                count, start = _route_rate[key]
+                if now - start > window:
+                    _route_rate[key] = (1, now)
+                elif count >= max_calls:
+                    if request.is_json or request.path.startswith('/api/'):
+                        return _json({'error': 'Rate limit exceeded'}), 429
+                    flash('Trop de requêtes — veuillez patienter', 'error')
+                    return redirect(request.referrer or '/')
+                else:
+                    _route_rate[key] = (count + 1, start)
+            else:
+                _route_rate[key] = (1, now)
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
 def invalidate_cache(*prefixes):
     """Invalidate cache entries. Call after modifying settings/services."""
     if not prefixes:
