@@ -370,6 +370,7 @@ def espace_client_accueil():
 @client_required
 def espace_client_vehicules():
     client_id = session['client_id']
+    today_str = date.today().isoformat()
     with get_db() as conn:
         cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
         car_data = []
@@ -378,9 +379,46 @@ def espace_client_vehicules():
                 FROM appointments WHERE car_id=? ORDER BY date DESC LIMIT 5""", (car['id'],)).fetchall()
             treatments = conn.execute("""SELECT treatment_type, applied_date, warranty_expiry
                 FROM treatments WHERE car_id=? ORDER BY applied_date DESC LIMIT 3""", (car['id'],)).fetchall()
-            car_data.append({'car': car, 'appointments': appts, 'treatments': treatments})
+            # Next scheduled maintenance
+            next_maint = conn.execute("""SELECT date, service FROM appointments
+                WHERE car_id=? AND date>=? AND status IN ('pending','confirmed')
+                ORDER BY date ASC LIMIT 1""", (car['id'], today_str)).fetchone()
+            car_data.append({
+                'car': car, 'appointments': appts, 'treatments': treatments,
+                'next_maintenance': next_maint
+            })
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_vehicules.html", car_data=car_data, shop=shop)
+
+
+
+@portal_bp.route("/espace-client/vehicules/ajouter", methods=["POST"])
+@client_required
+def espace_client_add_car():
+    client_id = session['client_id']
+    vehicle_type = request.form.get("vehicle_type", "voiture").strip()
+    brand = request.form.get("brand", "").strip()
+    model = request.form.get("model", "").strip()
+    plate = request.form.get("plate", "").strip().upper()
+    year = request.form.get("year", "").strip()
+    if not brand or not model or not plate:
+        flash("Veuillez remplir tous les champs obligatoires", "danger")
+        return redirect("/espace-client/vehicules")
+    if len(plate) < 3:
+        flash("Immatriculation invalide", "danger")
+        return redirect("/espace-client/vehicules")
+    with get_db() as conn:
+        # Check duplicate plate for this customer
+        existing = conn.execute("SELECT id FROM cars WHERE plate=? AND customer_id=?", (plate, client_id)).fetchone()
+        if existing:
+            flash("Ce véhicule est déjà enregistré", "danger")
+            return redirect("/espace-client/vehicules")
+        conn.execute(
+            "INSERT INTO cars (customer_id, brand, model, plate, vehicle_type, year) VALUES (?,?,?,?,?,?)",
+            (client_id, brand, model, plate, vehicle_type, year or None))
+        conn.commit()
+    flash(f"Véhicule {brand} {model} ajouté avec succès !", "success")
+    return redirect("/espace-client/vehicules")
 
 
 
@@ -444,7 +482,8 @@ def espace_client_factures():
         car_ids = [c['id'] for c in conn.execute("SELECT id FROM cars WHERE customer_id=?", (client_id,)).fetchall()]
         if car_ids:
             placeholders = ','.join('?' * len(car_ids))
-            invoices = conn.execute(f"""SELECT i.*, a.date as appt_date, a.service, ca.brand, ca.model, ca.plate
+            invoices = conn.execute(f"""SELECT i.*, a.date as appt_date, a.service, ca.brand, ca.model, ca.plate,
+                COALESCE(i.payment_method, '') as payment_method
                 FROM invoices i
                 JOIN appointments a ON i.appointment_id=a.id
                 LEFT JOIN cars ca ON a.car_id=ca.id
@@ -453,6 +492,47 @@ def espace_client_factures():
             invoices = []
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_factures.html", invoices=invoices, shop=shop)
+
+
+
+@portal_bp.route("/espace-client/facture/<int:invoice_id>/pdf")
+@client_required
+def espace_client_invoice_pdf(invoice_id):
+    """Download invoice as PDF — client must own the vehicle."""
+    from xhtml2pdf import pisa
+    import base64
+    client_id = session['client_id']
+    with get_db() as conn:
+        # Verify this invoice belongs to the client
+        inv = conn.execute(
+            "SELECT i.id, i.appointment_id, i.amount, i.status, a.date, a.service, "
+            "cu.name, cu.phone, ca.brand, ca.model, ca.plate, COALESCE(i.paid_amount, 0), i.payment_method, "
+            "COALESCE(i.discount_type, ''), COALESCE(i.discount_value, 0) "
+            "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
+            "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE i.id = ? AND cu.id = ?", (invoice_id, client_id)).fetchone()
+        if not inv:
+            flash("Facture non trouvée", "danger")
+            return redirect("/espace-client/factures")
+        settings = get_all_settings()
+    now = datetime.now().strftime('%d/%m/%Y %H:%M')
+    html = render_template("print_invoice.html", inv=inv, settings=settings, now=now)
+    logo_path = os.path.join(os.path.abspath('static'), 'logo.png')
+    if os.path.exists(logo_path):
+        with open(logo_path, 'rb') as lf:
+            logo_b64 = base64.b64encode(lf.read()).decode()
+        html = html.replace('/static/logo.png', f'data:image/png;base64,{logo_b64}')
+    try:
+        pdf_buffer = io.BytesIO()
+        pisa.CreatePDF(io.StringIO(html), dest=pdf_buffer)
+        pdf_buffer.seek(0)
+    except Exception:
+        flash("Erreur de génération PDF", "danger")
+        return redirect("/espace-client/factures")
+    response = make_response(pdf_buffer.read())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=facture_{invoice_id}.pdf'
+    return response
 
 
 

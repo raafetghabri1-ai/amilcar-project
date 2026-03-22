@@ -74,9 +74,15 @@
         {% if inv.service %}
         <div style="color:var(--muted);font-size:.72rem;margin-top:4px">{{ inv.service }}</div>
         {% endif %}
+        {% if inv.payment_method %}
+        <div style="color:var(--muted);font-size:.68rem;margin-top:4px">💳 {{ inv.payment_method }}</div>
+        {% endif %}
         <div class="inv-footer">
             <span style="color:var(--muted);font-size:.72rem">Total</span>
             <span class="inv-total">{{ '{:,.0f}'.format(inv.amount or 0) }} DT</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+            <a href="/espace-client/facture/{{ inv.id }}/pdf" style="flex:1;display:block;text-align:center;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--gold);text-decoration:none;font-size:.75rem;font-weight:600">📥 Télécharger PDF</a>
         </div>
     </div>
     {% else %}

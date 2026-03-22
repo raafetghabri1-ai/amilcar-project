@@ -4,7 +4,14 @@
     <div class="empty-state">
         <p style="font-size:3rem;margin-bottom:16px">✓</p>
         <h2 class="page-title">Demande Envoyée</h2>
-        <p class="page-subtitle">Nous examinerons vos photos et vous contacterons rapidement.</p>
+        {% if quote_id %}
+        <p style="background:var(--bg-alt);border:1px solid var(--gold);border-radius:12px;padding:12px 20px;display:inline-block;margin:12px 0">
+            <span style="color:var(--text-dim);font-size:.8rem">Référence :</span><br>
+            <strong style="color:var(--gold);font-size:1.3rem;letter-spacing:2px">#{{ quote_id }}</strong>
+        </p>
+        {% endif %}
+        <p class="page-subtitle">Nous examinerons votre demande et vous contacterons dans les 24h.</p>
+        <p style="color:var(--text-dim);font-size:.8rem">Conservez votre numéro de référence pour le suivi.</p>
         <a href="/" class="btn-gold mt-3">Retour à l'Accueil</a>
     </div>
 {% endblock %}

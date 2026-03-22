@@ -265,10 +265,11 @@ def request_quote():
                 f.save(os.path.join(UPLOAD_FOLDER, fname))
                 saved.append(fname)
         with get_db() as conn:
-            conn.execute("INSERT INTO quotes (name, phone, service, photos) VALUES (?,?,?,?)",
+            cursor = conn.execute("INSERT INTO quotes (name, phone, service, photos) VALUES (?,?,?,?)",
                 (name, phone, service, ",".join(saved)))
+            quote_id = cursor.lastrowid
             conn.commit()
-        return render_template("quote_success.html")
+        return render_template("quote_success.html", quote_id=quote_id)
     return render_template("request_quote.html", services=get_services())
 
 

@@ -245,3 +245,111 @@ def test_booking_phone_validation(client, clean_otp):
         'preferred_date': '2026-04-01', 'services': 'Test'
     }, follow_redirects=True)
     assert b'invalide' in r.data
+
+
+# ═══════════════════════════════════════
+# Phase 9 UX: Quote, Invoices, Vehicles, Phone Pattern
+# ═══════════════════════════════════════
+
+def test_quote_form_has_services_dropdown(client):
+    """Quote page should have a services dropdown, not text input."""
+    r = client.get('/request_quote')
+    assert b'<select name="service"' in r.data
+
+
+def test_quote_form_has_photo_preview(client):
+    """Quote page should have photo preview functionality."""
+    r = client.get('/request_quote')
+    assert b'photoPreview' in r.data
+
+
+def test_quote_success_shows_reference(client):
+    """Quote submission should show a reference number."""
+    r = client.get('/request_quote')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    r = client.post('/request_quote', data={
+        'name': 'TestRef', 'phone': '22334455', 'service': 'Test',
+        'csrf_token': token
+    }, follow_redirects=True)
+    page = r.data.decode()
+    assert '#' in page and 'rence' in page
+
+
+def test_phone_pattern_on_login(client):
+    """Client login should have phone pattern validation."""
+    r = client.get('/espace-client')
+    assert b'pattern=' in r.data
+
+
+def test_phone_pattern_on_booking(client):
+    """Booking form should have phone pattern validation."""
+    r = client.get('/booking_online')
+    assert b'{8,20}' in r.data
+
+
+@pytest.fixture
+def logged_client(client, clean_otp):
+    """Client logged in as customer."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if cust:
+                cid = cust['id']
+            else:
+                cid = 1
+    with client.session_transaction() as sess:
+        sess['client_id'] = cid
+        sess['client_name'] = 'TestOTP'
+        sess['client_phone'] = '55667788'
+    return client
+
+
+def test_vehicules_has_add_button(logged_client):
+    """Vehicles page should have add vehicle button and modal."""
+    r = logged_client.get('/espace-client/vehicules')
+    assert b'addCarModal' in r.data
+    assert b'vehicules/ajouter' in r.data
+
+
+def test_add_vehicle(logged_client):
+    """Client should be able to add a vehicle."""
+    r = logged_client.get('/espace-client/vehicules')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    r = logged_client.post('/espace-client/vehicules/ajouter', data={
+        'vehicle_type': 'voiture', 'brand': 'Audi', 'model': 'A4',
+        'plate': 'TESTADD1', 'year': '2023', 'csrf_token': token
+    }, follow_redirects=True)
+    assert 'succ' in r.data.decode().lower()
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute("DELETE FROM cars WHERE plate='TESTADD1'")
+            conn.commit()
+
+
+def test_add_duplicate_vehicle_rejected(logged_client):
+    """Adding a vehicle with same plate should be rejected."""
+    r = logged_client.get('/espace-client/vehicules')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    logged_client.post('/espace-client/vehicules/ajouter', data={
+        'vehicle_type': 'voiture', 'brand': 'Test', 'model': 'Dup',
+        'plate': 'DUPTEST', 'year': '2024', 'csrf_token': token
+    })
+    r = logged_client.get('/espace-client/vehicules')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    r = logged_client.post('/espace-client/vehicules/ajouter', data={
+        'vehicle_type': 'voiture', 'brand': 'Test', 'model': 'Dup2',
+        'plate': 'DUPTEST', 'year': '2024', 'csrf_token': token
+    }, follow_redirects=True)
+    assert 'enregistr' in r.data.decode().lower()
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute("DELETE FROM cars WHERE plate='DUPTEST'")
+            conn.commit()
+
+
+def test_invoice_pdf_route_exists(logged_client):
+    """Invoice PDF route should be accessible (not 404)."""
+    r = logged_client.get('/espace-client/facture/999/pdf', follow_redirects=True)
+    assert r.status_code != 404

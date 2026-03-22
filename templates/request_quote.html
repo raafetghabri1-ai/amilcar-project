@@ -2,25 +2,53 @@
 {% block title %} - Demander un Devis{% endblock %}
 {% block content %}
     <p class="page-title">Demander un Devis</p>
-    <form method="POST" enctype="multipart/form-data" style="max-width:600px;animation:fadeInUp 0.5s ease">
+    <form method="POST" enctype="multipart/form-data" style="max-width:600px;animation:fadeInUp 0.5s ease" id="quoteForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="mb-3">
-            <label class="form-label">Nom complet</label>
-            <input type="text" name="name" class="form-control" required>
+            <label class="form-label">Nom complet *</label>
+            <input type="text" name="name" class="form-control" required minlength="2">
         </div>
         <div class="mb-3">
-            <label class="form-label">Téléphone</label>
-            <input type="tel" name="phone" class="form-control" required>
+            <label class="form-label">Téléphone *</label>
+            <input type="tel" name="phone" class="form-control" required pattern="[0-9+\s\-]{8,20}" inputmode="tel" placeholder="XX XXX XXX" title="Numéro de téléphone (min 8 chiffres)">
         </div>
         <div class="mb-3">
-            <label class="form-label">Service souhaité</label>
-            <input type="text" name="service" class="form-control" required>
+            <label class="form-label">Service souhaité *</label>
+            <select name="service" class="form-control" required>
+                <option value="">-- Choisir un service --</option>
+                {% for s in services %}
+                <option value="{{ s.name }}">{{ s.name }}{% if s.price %} — {{ s.price }} DT{% endif %}</option>
+                {% endfor %}
+                <option value="Autre">Autre (précisez dans les notes)</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Notes supplémentaires</label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="Décrivez votre besoin..."></textarea>
         </div>
         <div class="mb-3">
             <label class="form-label">Photos</label>
-            <input type="file" name="photos" class="form-control" multiple accept="image/*">
-            <small style="color:var(--text-dim)">Plusieurs fichiers acceptés</small>
+            <input type="file" name="photos" class="form-control" multiple accept="image/*" id="photoInput">
+            <small style="color:var(--text-dim)">Max 5 photos — JPG, PNG (5 Mo chacune)</small>
+            <div id="photoPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
         </div>
         <button type="submit" class="btn-gold w-100" style="padding:12px">Envoyer la Demande</button>
     </form>
+    <script>
+    document.getElementById('photoInput').addEventListener('change', function(){
+        const preview = document.getElementById('photoPreview');
+        preview.innerHTML = '';
+        Array.from(this.files).forEach(f => {
+            if(!f.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const div = document.createElement('div');
+                div.style.cssText = 'position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border)';
+                div.innerHTML = '<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:cover">';
+                preview.appendChild(div);
+            };
+            reader.readAsDataURL(f);
+        });
+    });
+    </script>
 {% endblock %}

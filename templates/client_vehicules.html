@@ -43,6 +43,16 @@
 </div>
 
 <div class="container-c">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:10px 16px;border-radius:10px;font-size:.8rem;margin-bottom:12px;text-align:center;background:{{ 'rgba(34,197,94,.15);color:var(--green)' if cat=='success' else 'rgba(239,68,68,.1);color:var(--red)' }}">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <!-- Add Vehicle Button -->
+    <div style="text-align:right;margin-bottom:12px">
+        <button onclick="document.getElementById('addCarModal').style.display='flex'" style="background:var(--gold);color:#000;border:none;border-radius:10px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer">+ Ajouter un véhicule</button>
+    </div>
+
     {% for item in car_data %}
     {% set c = item.car %}
     <div class="car-card">
@@ -85,14 +95,61 @@
             {% endfor %}
         </div>
         {% endif %}
+
+        {% if item.next_maintenance %}
+        <div class="car-section">
+            <h6>🔔 Prochain entretien</h6>
+            <div style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;font-size:.8rem">
+                <strong style="color:var(--gold)">{{ item.next_maintenance.service }}</strong>
+                <div style="color:var(--muted);font-size:.7rem;margin-top:2px">📅 {{ item.next_maintenance.date }}</div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div style="text-align:center;padding:60px 20px">
         <div style="font-size:4rem;margin-bottom:16px">🚗</div>
         <p style="color:var(--muted)">Aucun véhicule enregistré</p>
-        <p style="color:var(--muted);font-size:.75rem">Contactez-nous pour ajouter votre véhicule</p>
+        <p style="color:var(--muted);font-size:.75rem">Ajoutez votre premier véhicule ci-dessus</p>
     </div>
     {% endfor %}
+</div>
+
+<!-- Add Vehicle Modal -->
+<div id="addCarModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:400px;width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h5 style="color:var(--gold);margin:0;font-size:1rem">🚗 Ajouter un véhicule</h5>
+            <button onclick="document.getElementById('addCarModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>
+        </div>
+        <form method="POST" action="/espace-client/vehicules/ajouter">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom:12px">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Type *</label>
+                <select name="vehicle_type" required style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                    <option value="voiture">🚗 Voiture</option>
+                    <option value="moto">🏍️ Moto</option>
+                </select>
+            </div>
+            <div style="margin-bottom:12px">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Marque *</label>
+                <input type="text" name="brand" required placeholder="Ex: BMW, Mercedes..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+            </div>
+            <div style="margin-bottom:12px">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Modèle *</label>
+                <input type="text" name="model" required placeholder="Ex: Série 3, Classe C..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+            </div>
+            <div style="margin-bottom:12px">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Immatriculation *</label>
+                <input type="text" name="plate" required placeholder="XXX TU XXXX" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem;text-transform:uppercase">
+            </div>
+            <div style="margin-bottom:16px">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Année</label>
+                <input type="number" name="year" min="1990" max="2027" placeholder="2024" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+            </div>
+            <button type="submit" style="width:100%;background:var(--gold);color:#000;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:.9rem;cursor:pointer">Ajouter</button>
+        </form>
+    </div>
 </div>
 
 <div class="nav-bottom">

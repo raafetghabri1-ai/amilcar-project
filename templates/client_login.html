@@ -51,7 +51,7 @@
         <p class="sub">Connectez-vous avec votre numéro de téléphone</p>
         <form method="POST" action="/espace-client/connexion">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="tel" name="phone" class="form-input" placeholder="Votre numéro de téléphone" required inputmode="tel" autocomplete="tel">
+            <input type="tel" name="phone" class="form-input" placeholder="XX XXX XXX" required inputmode="tel" autocomplete="tel" pattern="[0-9+\s\-]{8,20}" title="Numéro de téléphone (min 8 chiffres)">
             <button type="submit" class="btn-gold">Se connecter</button>
         </form>
     </div>
