@@ -198,10 +198,13 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS time_tracking (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            username TEXT NOT NULL,
-            action TEXT NOT NULL,
+            username TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL DEFAULT '',
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             date TEXT NOT NULL,
+            clock_in TEXT DEFAULT '',
+            clock_out TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
@@ -1209,6 +1212,10 @@ def create_tables():
         ("ALTER TABLE quotes ADD COLUMN deleted_at TEXT DEFAULT ''", None),
         # Phase 5: Password reset tokens
         ("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''", None),
+        # Phase 8: time_tracking columns
+        ("ALTER TABLE time_tracking ADD COLUMN clock_in TEXT DEFAULT ''", None),
+        ("ALTER TABLE time_tracking ADD COLUMN clock_out TEXT DEFAULT ''", None),
+        ("ALTER TABLE time_tracking ADD COLUMN notes TEXT DEFAULT ''", None),
     ]
     import logging
     _mig_log = logging.getLogger('amilcar.migrations')
