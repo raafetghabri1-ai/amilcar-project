@@ -32,7 +32,12 @@
 </div>
 
 <div class="container" style="max-width:800px;margin-top:30px;margin-bottom:60px">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }}" style="border-radius:var(--radius);font-size:.9rem">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
     <form method="POST" action="/booking_online/submit" id="bookingForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <!-- Client Info -->
         <div class="booking-card">
             <h5 style="color:var(--gold);margin-bottom:16px">👤 Vos informations</h5>

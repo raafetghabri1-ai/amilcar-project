@@ -5,7 +5,7 @@ Routes: 32
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, permission_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, csrf, cache
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, check_booking_rate_limit, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, csrf, cache
 from helpers_validation import Validator
 from helpers_logging import get_logger
 from database.db import get_db
@@ -701,25 +701,38 @@ def booking_online():
 
 
 @appointments_bp.route("/booking_online/submit", methods=["POST"])
-@csrf.exempt
 def booking_online_submit():
-    name = request.form.get("name", "").strip()
+    if check_booking_rate_limit():
+        flash("Trop de demandes. Réessayez dans quelques minutes.", "danger")
+        return redirect("/booking_online")
+    name = request.form.get("customer_name", request.form.get("name", "")).strip()
     phone = request.form.get("phone", "").strip()
     vehicle_type = request.form.get("vehicle_type", "voiture")
     brand = request.form.get("brand", "").strip()
     model = request.form.get("model", "").strip()
     plate = request.form.get("plate", "").strip()
-    service = request.form.get("service", "")
+    # Services can be checkboxes (multiple) or pack (single)
+    services_list = request.form.getlist("services")
+    pack = request.form.get("pack", "").strip()
+    service = pack if pack else ", ".join(services_list) if services_list else request.form.get("service", "")
     preferred_date = request.form.get("preferred_date", "")
     preferred_time = request.form.get("preferred_time", "")
-    notes = request.form.get("notes", "")
-    if name and phone and service and preferred_date:
-        with get_db() as conn:
-            conn.execute("""INSERT INTO online_bookings (customer_name, phone, vehicle_type, brand, model, plate,
-                service, preferred_date, preferred_time, notes, status)
-                VALUES (?,?,?,?,?,?,?,?,?,?,'pending')""",
-                (name, phone, vehicle_type, brand, model, plate, service, preferred_date, preferred_time, notes))
-            conn.commit()
+    notes = request.form.get("notes", "")[:500]
+    if not name or not phone or not service or not preferred_date:
+        flash("Veuillez remplir tous les champs obligatoires", "danger")
+        return redirect("/booking_online")
+    # Phone validation (basic)
+    import re
+    phone_clean = re.sub(r'[^\d+]', '', phone)
+    if len(phone_clean) < 8:
+        flash("Numéro de téléphone invalide", "danger")
+        return redirect("/booking_online")
+    with get_db() as conn:
+        conn.execute("""INSERT INTO online_bookings (customer_name, phone, vehicle_type, brand, model, plate,
+            service, preferred_date, preferred_time, notes, status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,'pending')""",
+            (name, phone_clean, vehicle_type, brand, model, plate, service, preferred_date, preferred_time, notes))
+        conn.commit()
     return render_template("booking_success.html", name=name)
 
 

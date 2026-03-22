@@ -1,5 +1,7 @@
 """Test security: auth, rate limiting, CSRF, headers, health check."""
 import gzip
+import pytest
+from app import app as flask_app
 
 
 def _decode(resp):
@@ -122,3 +124,124 @@ def test_post_routes_protected(client):
     for path in routes:
         resp = client.post(path, data={'name': 'test'}, follow_redirects=False)
         assert resp.status_code in (302, 403, 401), f"{path} POST not protected"
+
+
+# ═══════════════════════════════════════
+# Phase 9: OTP Login, CSRF, Rate Limiting
+# ═══════════════════════════════════════
+import re as _re
+from database.db import get_db as _get_db
+
+
+@pytest.fixture
+def clean_otp():
+    """Clean OTP and login attempts tables."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute("DELETE FROM client_otp")
+            conn.execute("DELETE FROM client_login_attempts")
+            conn.execute("INSERT OR IGNORE INTO customers (name, phone) VALUES ('TestOTP', '55667788')")
+            conn.commit()
+    yield
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute("DELETE FROM client_otp WHERE phone='55667788'")
+            conn.execute("DELETE FROM client_login_attempts WHERE phone='55667788'")
+            conn.commit()
+
+
+def test_client_otp_table_exists():
+    """client_otp table should exist."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            assert 'client_otp' in tables
+
+
+def test_client_login_attempts_table_exists():
+    """client_login_attempts table should exist."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            assert 'client_login_attempts' in tables
+
+
+def test_espace_client_login_page(client):
+    """Login page should load with CSRF token."""
+    r = client.get('/espace-client')
+    assert r.status_code == 200
+    assert b'csrf_token' in r.data
+
+
+def test_login_unknown_phone(client, clean_otp):
+    """Unknown phone should redirect back with error."""
+    r = client.post('/espace-client/connexion', data={'phone': '00000000'}, follow_redirects=True)
+    assert 'non trouv' in r.data.decode().lower()
+
+
+def test_login_generates_otp(client, clean_otp):
+    """Known phone should generate OTP and redirect to verify page."""
+    r = client.post('/espace-client/connexion', data={'phone': '55667788'}, follow_redirects=True)
+    page = r.data.decode()
+    assert 'otp-inputs' in page or 'rification' in page
+
+
+def test_otp_stored_hashed(client, clean_otp):
+    """OTP should be stored as SHA256 hash."""
+    r = client.post('/espace-client/connexion', data={'phone': '55667788'}, follow_redirects=True)
+    with flask_app.app_context():
+        with _get_db() as conn:
+            record = conn.execute("SELECT otp_code FROM client_otp WHERE phone='55667788'").fetchone()
+            assert record is not None
+            assert len(record['otp_code']) == 64  # SHA256 hex
+
+
+def test_wrong_otp_rejected(client, clean_otp):
+    """Wrong OTP should be rejected."""
+    client.post('/espace-client/connexion', data={'phone': '55667788'})
+    r = client.post('/espace-client/verify-otp', data={'otp': '0000'}, follow_redirects=True)
+    page = r.data.decode().lower()
+    assert 'incorrect' in page or 'expir' in page
+
+
+def test_correct_otp_logs_in(client, clean_otp):
+    """Correct OTP should log the customer in."""
+    r = client.post('/espace-client/connexion', data={'phone': '55667788'}, follow_redirects=True)
+    otp_match = _re.search(r'Code de v.*?:\s*(\d{4})', r.data.decode())
+    otp = otp_match.group(1)
+    r = client.post('/espace-client/verify-otp', data={'otp': otp}, follow_redirects=False)
+    assert r.status_code == 302
+    assert '/espace-client/accueil' in r.headers.get('Location', '')
+
+
+def test_resend_otp_works(client, clean_otp):
+    """Resend OTP should generate a new code."""
+    client.post('/espace-client/connexion', data={'phone': '55667788'})
+    r = client.post('/espace-client/resend-otp', follow_redirects=True)
+    assert _re.search(r'Nouveau code.*?:\s*\d{4}', r.data.decode())
+
+
+def test_rate_limit_blocks_after_5(client, clean_otp):
+    """Should block login after 5 failed OTP attempts."""
+    for _ in range(5):
+        client.post('/espace-client/connexion', data={'phone': '55667788'})
+        client.post('/espace-client/verify-otp', data={'otp': '0000'})
+    r = client.post('/espace-client/connexion', data={'phone': '55667788'}, follow_redirects=True)
+    assert 'Trop de tentatives' in r.data.decode()
+
+
+def test_booking_has_csrf_token(client):
+    """Booking online form should contain CSRF token."""
+    r = client.get('/booking_online')
+    assert b'csrf_token' in r.data
+
+
+def test_booking_phone_validation(client, clean_otp):
+    """Booking should reject short phone numbers."""
+    r = client.post('/booking_online/submit', data={
+        'customer_name': 'Test', 'phone': '123',
+        'preferred_date': '2026-04-01', 'services': 'Test'
+    }, follow_redirects=True)
+    assert b'invalide' in r.data

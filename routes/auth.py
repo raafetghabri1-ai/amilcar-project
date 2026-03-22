@@ -265,14 +265,41 @@ def customer_logout():
 
 @auth_bp.route("/client_app/login", methods=["POST"])
 def client_app_login():
+    import re as _re
+    import secrets, hashlib
+    from datetime import timedelta
     phone = request.form.get("phone", "").strip()
+    phone = _re.sub(r'[^\d+]', '', phone)
+    if not phone:
+        flash("Veuillez entrer votre numéro", "danger")
+        return redirect("/client_app")
+    ip = request.remote_addr
+    # Rate limiting
+    with get_db() as conn:
+        cutoff = (datetime.now() - timedelta(seconds=900)).strftime('%Y-%m-%d %H:%M:%S')
+        attempts = conn.execute(
+            "SELECT COUNT(*) FROM client_login_attempts WHERE (phone=? OR ip_address=?) AND attempted_at>? AND success=0",
+            (phone, ip, cutoff)).fetchone()[0]
+        if attempts >= 5:
+            flash("Trop de tentatives. Réessayez dans 15 minutes.", "danger")
+            return redirect("/client_app")
     with get_db() as conn:
         customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
         if not customer:
+            conn.execute("INSERT INTO client_login_attempts (phone, ip_address, success) VALUES (?,?,0)", (phone, ip))
+            conn.commit()
             flash("Numéro non trouvé", "danger")
             return redirect("/client_app")
-        session['client_id'] = customer['id']
-        session['client_name'] = customer['name']
-    return redirect("/client_app/dashboard")
+        # Generate OTP
+        otp = f"{secrets.randbelow(10000):04d}"
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+        expires = (datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute("DELETE FROM client_otp WHERE phone=?", (phone,))
+        conn.execute("INSERT INTO client_otp (phone, otp_code, ip_address, expires_at) VALUES (?,?,?,?)", (phone, otp_hash, ip, expires))
+        conn.commit()
+    session['otp_phone'] = phone
+    session['otp_redirect'] = '/client_app/dashboard'
+    flash(f"Code de vérification: {otp}", "info")
+    return redirect("/espace-client/verify-otp")
 
 

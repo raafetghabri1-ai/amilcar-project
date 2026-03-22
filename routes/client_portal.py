@@ -10,9 +10,44 @@ from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
-import os, re, uuid, io
+import os, re, uuid, io, secrets, hashlib
 import time as time_module
 import sqlite3
+
+# ─── Client Login Rate Limiting ───
+CLIENT_LOGIN_MAX_ATTEMPTS = 5
+CLIENT_LOGIN_LOCKOUT_SECONDS = 900  # 15 minutes
+
+def _check_client_rate_limit(phone, ip):
+    """Returns (is_blocked, remaining_seconds). Checks DB-based rate limiting."""
+    with get_db() as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM client_login_attempts WHERE (phone=? OR ip_address=?) AND attempted_at > datetime('now', ? || ' seconds') AND success=0",
+            (phone, ip, str(-CLIENT_LOGIN_LOCKOUT_SECONDS))
+        ).fetchone()[0]
+        if count >= CLIENT_LOGIN_MAX_ATTEMPTS:
+            return True, CLIENT_LOGIN_LOCKOUT_SECONDS
+    return False, 0
+
+def _record_login_attempt(phone, ip, success=False):
+    """Record a client login attempt."""
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO client_login_attempts (phone, ip_address, attempted_at, success) VALUES (?,?,datetime('now'),?)",
+            (phone, ip, 1 if success else 0)
+        )
+        conn.commit()
+        # Cleanup old entries (older than 24h)
+        conn.execute("DELETE FROM client_login_attempts WHERE attempted_at < datetime('now', '-1 day')")
+        conn.commit()
+
+def _generate_otp():
+    """Generate a secure 4-digit OTP."""
+    return f"{secrets.randbelow(10000):04d}"
+
+def _hash_otp(otp):
+    """Hash OTP for secure storage."""
+    return hashlib.sha256(otp.encode()).hexdigest()
 
 portal_bp = Blueprint("portal_bp", __name__)
 
@@ -183,15 +218,108 @@ def espace_client_login():
     if not phone:
         flash("Veuillez entrer votre numéro", "danger")
         return redirect("/espace-client")
+    # Normalize phone
+    phone = re.sub(r'[^\d+]', '', phone)
+    ip = request.remote_addr
+    # Rate limiting check
+    blocked, remaining = _check_client_rate_limit(phone, ip)
+    if blocked:
+        mins = remaining // 60 + 1
+        flash(f"Trop de tentatives. Réessayez dans {mins} minutes.", "danger")
+        return redirect("/espace-client")
     with get_db() as conn:
         customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
         if not customer:
+            _record_login_attempt(phone, ip, success=False)
             flash("Numéro non trouvé. Contactez-nous pour créer votre compte.", "danger")
             return redirect("/espace-client")
-        session['client_id'] = customer['id']
-        session['client_name'] = customer['name']
-        session['client_phone'] = customer['phone']
-    return redirect("/espace-client/accueil")
+        # Generate OTP
+        otp = _generate_otp()
+        otp_hash = _hash_otp(otp)
+        expires = (datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+        # Clear old OTPs for this phone
+        conn.execute("DELETE FROM client_otp WHERE phone=?", (phone,))
+        conn.execute(
+            "INSERT INTO client_otp (phone, otp_code, ip_address, expires_at) VALUES (?,?,?,?)",
+            (phone, otp_hash, ip, expires)
+        )
+        conn.commit()
+    # Store phone in session for OTP verification
+    session['otp_phone'] = phone
+    session['otp_customer_name'] = customer['name']
+    # In production, send OTP via SMS/WhatsApp. For now, flash it.
+    # TODO: Integrate with CallMeBot WhatsApp API or SMS gateway
+    flash(f"Code de vérification envoyé: {otp}", "info")
+    return redirect("/espace-client/verify-otp")
+
+
+@portal_bp.route("/espace-client/verify-otp", methods=["GET", "POST"])
+def espace_client_verify_otp():
+    phone = session.get('otp_phone')
+    if not phone:
+        return redirect("/espace-client")
+    with get_db() as conn:
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    if request.method == "POST":
+        otp_input = request.form.get("otp", "").strip()
+        ip = request.remote_addr
+        if not otp_input or len(otp_input) != 4:
+            flash("Veuillez entrer un code à 4 chiffres", "danger")
+            return render_template("client_otp.html", shop=shop, phone=phone)
+        otp_hash = _hash_otp(otp_input)
+        with get_db() as conn:
+            record = conn.execute(
+                "SELECT * FROM client_otp WHERE phone=? AND otp_code=? AND verified=0 AND expires_at>?",
+                (phone, otp_hash, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            ).fetchone()
+            if not record:
+                _record_login_attempt(phone, ip, success=False)
+                flash("Code incorrect ou expiré", "danger")
+                return render_template("client_otp.html", shop=shop, phone=phone)
+            # OTP valid — mark verified and log in
+            conn.execute("UPDATE client_otp SET verified=1 WHERE id=?", (record['id'],))
+            conn.commit()
+            _record_login_attempt(phone, ip, success=True)
+            customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
+            if not customer:
+                flash("Erreur client", "danger")
+                return redirect("/espace-client")
+            session.pop('otp_phone', None)
+            session.pop('otp_customer_name', None)
+            session['client_id'] = customer['id']
+            session['client_name'] = customer['name']
+            session['client_phone'] = customer['phone']
+        redirect_to = session.pop('otp_redirect', '/espace-client/accueil')
+        return redirect(redirect_to)
+    return render_template("client_otp.html", shop=shop, phone=phone)
+
+
+@portal_bp.route("/espace-client/resend-otp", methods=["POST"])
+def espace_client_resend_otp():
+    phone = session.get('otp_phone')
+    if not phone:
+        return redirect("/espace-client")
+    ip = request.remote_addr
+    blocked, remaining = _check_client_rate_limit(phone, ip)
+    if blocked:
+        mins = remaining // 60 + 1
+        flash(f"Trop de tentatives. Réessayez dans {mins} minutes.", "danger")
+        return redirect("/espace-client/verify-otp")
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE phone=?", (phone,)).fetchone()
+        if not customer:
+            return redirect("/espace-client")
+        otp = _generate_otp()
+        otp_hash = _hash_otp(otp)
+        expires = (datetime.now() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+        conn.execute("DELETE FROM client_otp WHERE phone=?", (phone,))
+        conn.execute(
+            "INSERT INTO client_otp (phone, otp_code, ip_address, expires_at) VALUES (?,?,?,?)",
+            (phone, otp_hash, ip, expires)
+        )
+        conn.commit()
+    flash(f"Nouveau code envoyé: {otp}", "info")
+    return redirect("/espace-client/verify-otp")
 
 
 

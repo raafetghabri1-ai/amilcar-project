@@ -2056,6 +2056,28 @@ def create_tables():
     cursor.execute('''CREATE VIRTUAL TABLE IF NOT EXISTS fts_cars
         USING fts5(brand, model, plate, content='cars', content_rowid='id')''')
 
+    # Client OTP for secure login
+    cursor.execute('''CREATE TABLE IF NOT EXISTS client_otp (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone TEXT NOT NULL,
+        otp_code TEXT NOT NULL,
+        ip_address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        verified INTEGER DEFAULT 0
+    )''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_client_otp_phone ON client_otp(phone, verified)")
+
+    # Client login attempts for rate limiting
+    cursor.execute('''CREATE TABLE IF NOT EXISTS client_login_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone TEXT NOT NULL,
+        ip_address TEXT NOT NULL,
+        attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        success INTEGER DEFAULT 0
+    )''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_client_login_ip ON client_login_attempts(ip_address, attempted_at)")
+
     # Push Notification Subscriptions
     cursor.execute('''CREATE TABLE IF NOT EXISTS push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
