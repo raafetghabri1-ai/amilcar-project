@@ -2090,6 +2090,19 @@ def create_tables():
     )''')
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)")
 
+    # Client notifications (in-app)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS client_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        appointment_id INTEGER DEFAULT 0,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (customer_id) REFERENCES customers(id)
+    )''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_client_notif_cust ON client_notifications(customer_id, is_read)")
+
     # Rebuild FTS indexes from source tables
     _rebuild_fts(cursor)
 

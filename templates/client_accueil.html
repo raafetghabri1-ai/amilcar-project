@@ -57,6 +57,16 @@
 </div>
 
 <div class="container-c">
+    {% if notif_count and notif_count > 0 %}
+    <a href="/espace-client/notifications" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--gold);border-radius:12px;padding:12px 16px;margin-bottom:12px;text-decoration:none;color:var(--text)">
+        <span style="font-size:1.3rem">🔔</span>
+        <div>
+            <div style="font-weight:600;font-size:.85rem;color:var(--gold)">{{ notif_count }} notification{{ 's' if notif_count > 1 }}</div>
+            <div style="font-size:.7rem;color:var(--muted)">Appuyez pour voir</div>
+        </div>
+    </a>
+    {% endif %}
+
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
     <div class="flash-msg">{{ msg }}</div>

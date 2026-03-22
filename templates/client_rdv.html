@@ -33,6 +33,17 @@
         .btn-new{display:block;background:var(--gold);color:#000;text-align:center;padding:14px;border-radius:12px;font-weight:700;text-decoration:none;font-size:.9rem;margin-bottom:16px}
         .progress-track{display:flex;gap:4px;margin-top:8px}
         .progress-track .step{height:3px;border-radius:2px;flex:1}
+        .star-rating{display:flex;gap:2px;cursor:pointer;font-size:1.4rem;direction:rtl;justify-content:flex-end}
+        .star-rating input{display:none}
+        .star-rating label{color:var(--border);transition:color .15s}
+        .star-rating label:hover,.star-rating label:hover~label,.star-rating input:checked~label{color:var(--gold)}
+        .rate-form{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px}
+        .rate-btn{background:var(--gold);color:#000;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:.78rem;cursor:pointer;margin-top:8px}
+        .rated-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(212,175,55,.12);color:var(--gold);padding:4px 10px;border-radius:8px;font-size:.72rem;margin-top:8px}
+        .paging{display:flex;justify-content:center;gap:6px;margin:20px 0}
+        .paging a,.paging span{display:inline-block;padding:8px 14px;border-radius:10px;font-size:.78rem;font-weight:600;text-decoration:none;color:var(--text)}
+        .paging a{background:var(--bg2);border:1px solid var(--border)}
+        .paging .cur{background:var(--gold);color:#000}
         .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
         .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
         .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
@@ -82,6 +93,26 @@
         </div>
         {% endif %}
     </a>
+    {% if a.status in ('Terminé','completed','done') %}
+        {% if a.id in rated_ids %}
+        <div class="rated-badge">⭐ Déjà noté — Merci !</div>
+        {% else %}
+        <div class="rate-form">
+            <form method="POST" action="/espace-client/noter/{{ a.id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div style="font-size:.78rem;font-weight:600;margin-bottom:8px">Notez ce service :</div>
+                <div class="star-rating">
+                    {% for i in range(5, 0, -1) %}
+                    <input type="radio" name="rating" id="star{{ a.id }}_{{ i }}" value="{{ i }}" {% if i == 5 %}required{% endif %}>
+                    <label for="star{{ a.id }}_{{ i }}">★</label>
+                    {% endfor %}
+                </div>
+                <textarea name="comment" placeholder="Un commentaire (optionnel)..." style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:.78rem;resize:none;margin-top:8px" rows="2" maxlength="500"></textarea>
+                <button type="submit" class="rate-btn">Envoyer ⭐</button>
+            </form>
+        </div>
+        {% endif %}
+    {% endif %}
     {% else %}
     <div style="text-align:center;padding:50px 20px">
         <div style="font-size:3rem;margin-bottom:12px">📅</div>
@@ -89,14 +120,26 @@
         <a href="/espace-client/reserver" style="color:var(--gold);font-size:.85rem">Réserver maintenant →</a>
     </div>
     {% endfor %}
+
+    {% if total_pages is defined and total_pages > 1 %}
+    <div class="paging">
+        {% if page > 1 %}<a href="?page={{ page - 1 }}">‹</a>{% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                {% if p == page %}<span class="cur">{{ p }}</span>{% else %}<a href="?page={{ p }}">{{ p }}</a>{% endif %}
+            {% elif p == page - 3 or p == page + 3 %}<span style="color:var(--muted)">…</span>{% endif %}
+        {% endfor %}
+        {% if page < total_pages %}<a href="?page={{ page + 1 }}">›</a>{% endif %}
+    </div>
+    {% endif %}
 </div>
 
 <div class="nav-bottom">
     <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
     <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver"><span class="ico">📅</span>Réserver</a>
+    <a href="/espace-client/reserver" class="active"><span class="ico">📅</span>Réserver</a>
     <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite" class="active"><span class="ico">🎁</span>Fidélité</a>
+    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
 </div>
 </body>
 </html>

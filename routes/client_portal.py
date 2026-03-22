@@ -5,7 +5,7 @@ Routes: 16
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, check_booking_rate_limit, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, build_wa_url, check_booking_rate_limit, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE, paginate_query
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -167,38 +167,17 @@ def client_portal_book(token):
 
 @portal_bp.route("/client_app")
 def client_app():
-    token = request.args.get("token", "")
-    with get_db() as conn:
-        shop = conn.execute("SELECT key, value FROM settings").fetchall()
-        shop = {s['key']: s['value'] for s in shop}
-    return render_template("client_app.html", shop=shop, token=token)
+    """Legacy client app — redirect to new espace-client."""
+    return redirect("/espace-client", code=301)
 
 
 
 @portal_bp.route("/client_app/dashboard")
 def client_app_dashboard():
-    client_id = session.get('client_id')
-    if not client_id:
-        return redirect("/client_app")
-    with get_db() as conn:
-        customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
-        appointments = conn.execute("""SELECT a.*, ca.brand, ca.model, ca.plate
-            FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
-            WHERE a.customer_id=? ORDER BY a.date DESC LIMIT 10""", (client_id,)).fetchall()
-        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
-        wallet = conn.execute("""SELECT * FROM wallet_transactions WHERE customer_id=?
-            ORDER BY created_at DESC LIMIT 10""", (client_id,)).fetchall()
-        treatments = conn.execute("""SELECT t.*, ca.brand, ca.model FROM treatments t
-            LEFT JOIN cars ca ON t.car_id=ca.id WHERE t.customer_id=?
-            ORDER BY t.applied_date DESC LIMIT 5""", (client_id,)).fetchall()
-        balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
-        loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
-        points = customer['loyalty_points_total'] or 0 if customer['loyalty_points_total'] else 0
-        shop = conn.execute("SELECT key, value FROM settings").fetchall()
-        shop = {s['key']: s['value'] for s in shop}
-    return render_template("client_app_dashboard.html", customer=customer, appointments=appointments,
-        cars=cars, wallet=wallet, treatments=treatments, balance=balance,
-        loyalty=loyalty, points=points, shop=shop)
+    """Legacy client app dashboard — redirect to new espace-client."""
+    if session.get('client_id'):
+        return redirect("/espace-client/accueil", code=301)
+    return redirect("/espace-client", code=301)
 
 
 
@@ -359,10 +338,12 @@ def espace_client_accueil():
         balance = customer['wallet_balance'] or 0 if customer['wallet_balance'] else 0
         points = customer['loyalty_points_total'] or 0 if customer['loyalty_points_total'] else 0
         loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
+        notif_count = conn.execute("SELECT COUNT(*) FROM client_notifications WHERE customer_id=? AND is_read=0", (client_id,)).fetchone()[0]
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_accueil.html", customer=customer, cars=cars,
         appointments=appointments, active_count=active_count, completed_count=completed_count,
-        balance=balance, points=points, loyalty=loyalty, invoices_unpaid=invoices_unpaid, shop=shop)
+        balance=balance, points=points, loyalty=loyalty, invoices_unpaid=invoices_unpaid,
+        notif_count=notif_count, shop=shop)
 
 
 
@@ -426,17 +407,28 @@ def espace_client_add_car():
 @client_required
 def espace_client_rdv():
     client_id = session['client_id']
+    page = safe_page(request.args.get('page', 1))
     with get_db() as conn:
         car_ids = [c['id'] for c in conn.execute("SELECT id FROM cars WHERE customer_id=?", (client_id,)).fetchall()]
         if car_ids:
             placeholders = ','.join('?' * len(car_ids))
-            appointments = conn.execute(f"""SELECT a.*, ca.brand, ca.model, ca.plate
+            query = f"""SELECT a.*, ca.brand, ca.model, ca.plate
                 FROM appointments a LEFT JOIN cars ca ON a.car_id=ca.id
-                WHERE a.car_id IN ({placeholders}) ORDER BY a.date DESC""", car_ids).fetchall()
+                WHERE a.car_id IN ({placeholders}) ORDER BY a.date DESC"""
+            appointments, total, total_pages, page = paginate_query(conn, query, tuple(car_ids), page, 10)
+            # Check which completed appointments are already rated
+            rated_ids = set()
+            completed_ids = [a['id'] for a in appointments if a['status'] in ('Terminé', 'completed', 'done')]
+            if completed_ids:
+                ph = ','.join('?' * len(completed_ids))
+                rated_rows = conn.execute(f"SELECT appointment_id FROM ratings WHERE appointment_id IN ({ph})", completed_ids).fetchall()
+                rated_ids = {r['appointment_id'] for r in rated_rows}
         else:
-            appointments = []
+            appointments, total, total_pages = [], 0, 1
+            rated_ids = set()
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
-    return render_template("client_rdv.html", appointments=appointments, shop=shop)
+    return render_template("client_rdv.html", appointments=appointments, shop=shop,
+        page=page, total_pages=total_pages, total=total, rated_ids=rated_ids)
 
 
 
@@ -478,20 +470,23 @@ def espace_client_reserver():
 @client_required
 def espace_client_factures():
     client_id = session['client_id']
+    page = safe_page(request.args.get('page', 1))
     with get_db() as conn:
         car_ids = [c['id'] for c in conn.execute("SELECT id FROM cars WHERE customer_id=?", (client_id,)).fetchall()]
         if car_ids:
             placeholders = ','.join('?' * len(car_ids))
-            invoices = conn.execute(f"""SELECT i.*, a.date as appt_date, a.service, ca.brand, ca.model, ca.plate,
+            query = f"""SELECT i.*, a.date as appt_date, a.service, ca.brand, ca.model, ca.plate,
                 COALESCE(i.payment_method, '') as payment_method
                 FROM invoices i
                 JOIN appointments a ON i.appointment_id=a.id
                 LEFT JOIN cars ca ON a.car_id=ca.id
-                WHERE a.car_id IN ({placeholders}) ORDER BY i.created_at DESC""", car_ids).fetchall()
+                WHERE a.car_id IN ({placeholders}) ORDER BY i.created_at DESC"""
+            invoices, total, total_pages, page = paginate_query(conn, query, tuple(car_ids), page, 10)
         else:
-            invoices = []
+            invoices, total, total_pages = [], 0, 1
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
-    return render_template("client_factures.html", invoices=invoices, shop=shop)
+    return render_template("client_factures.html", invoices=invoices, shop=shop,
+        page=page, total_pages=total_pages, total=total)
 
 
 
@@ -571,6 +566,161 @@ def espace_client_suivi(appointment_id):
             ORDER BY photo_type, uploaded_at""", (appointment_id,)).fetchall()
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
     return render_template("client_suivi.html", appt=appt, photos=photos, shop=shop)
+
+
+# ─── Client Rating ───
+@portal_bp.route("/espace-client/noter/<int:appointment_id>", methods=["POST"])
+@client_required
+def espace_client_noter(appointment_id):
+    """Submit a rating for a completed appointment."""
+    client_id = session['client_id']
+    rating = request.form.get("rating", 0, type=int)
+    comment = request.form.get("comment", "").strip()[:500]
+    if rating < 1 or rating > 5:
+        flash("Note invalide", "danger")
+        return redirect("/espace-client/rendez-vous")
+    with get_db() as conn:
+        # Verify appointment belongs to client and is completed
+        appt = conn.execute("""SELECT a.id, a.status FROM appointments a
+            JOIN cars ca ON a.car_id=ca.id
+            WHERE a.id=? AND ca.customer_id=?""", (appointment_id, client_id)).fetchone()
+        if not appt or appt['status'] not in ('Terminé', 'completed', 'done'):
+            flash("Rendez-vous non trouvé ou non terminé", "danger")
+            return redirect("/espace-client/rendez-vous")
+        # Check if already rated
+        existing = conn.execute("SELECT id FROM ratings WHERE appointment_id=?", (appointment_id,)).fetchone()
+        if existing:
+            flash("Vous avez déjà noté ce rendez-vous", "info")
+            return redirect("/espace-client/rendez-vous")
+        conn.execute("INSERT INTO ratings (appointment_id, customer_id, rating, comment) VALUES (?,?,?,?)",
+            (appointment_id, client_id, rating, comment))
+        conn.commit()
+    flash("Merci pour votre avis ! ⭐", "success")
+    return redirect("/espace-client/rendez-vous")
+
+
+# ─── Client Notifications ───
+@portal_bp.route("/espace-client/notifications")
+@client_required
+def espace_client_notifications():
+    client_id = session['client_id']
+    with get_db() as conn:
+        notifs = conn.execute("""SELECT * FROM client_notifications
+            WHERE customer_id=? ORDER BY created_at DESC LIMIT 30""", (client_id,)).fetchall()
+        # Mark all as read
+        conn.execute("UPDATE client_notifications SET is_read=1 WHERE customer_id=? AND is_read=0", (client_id,))
+        conn.commit()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+    return render_template("client_notifications.html", notifs=notifs, shop=shop)
+
+
+# ─── Online Payment ───
+@portal_bp.route("/espace-client/payer/<int:invoice_id>", methods=["GET", "POST"])
+@client_required
+def espace_client_payer(invoice_id):
+    """Initiate payment for an unpaid invoice."""
+    client_id = session['client_id']
+    with get_db() as conn:
+        inv = conn.execute("""SELECT i.id, i.amount, i.status, i.paid_amount, a.service, a.date,
+            ca.brand, ca.model, ca.plate, cu.name, cu.phone
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id
+            WHERE i.id=? AND cu.id=?""", (invoice_id, client_id)).fetchone()
+        if not inv:
+            flash("Facture non trouvée", "danger")
+            return redirect("/espace-client/factures")
+        if inv['status'] == 'paid':
+            flash("Cette facture est déjà payée", "info")
+            return redirect("/espace-client/factures")
+        remaining = (inv['amount'] or 0) - (inv['paid_amount'] or 0)
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+        flouci_key = shop.get('flouci_app_token', '')
+        flouci_secret = shop.get('flouci_app_secret', '')
+    if request.method == "POST":
+        if not flouci_key or not flouci_secret:
+            flash("Le paiement en ligne n'est pas encore configuré. Contactez-nous.", "danger")
+            return redirect(f"/espace-client/payer/{invoice_id}")
+        # Initiate Flouci payment
+        import urllib.request, json as json_mod
+        payload = json_mod.dumps({
+            "app_token": flouci_key,
+            "app_secret": flouci_secret,
+            "amount": int(remaining * 1000),  # Flouci uses millimes
+            "accept_url": request.host_url.rstrip('/') + f"/espace-client/paiement-ok/{invoice_id}",
+            "cancel_url": request.host_url.rstrip('/') + f"/espace-client/payer/{invoice_id}",
+            "decline_url": request.host_url.rstrip('/') + f"/espace-client/payer/{invoice_id}",
+            "session_timeout_secs": 1200,
+        }).encode()
+        req = urllib.request.Request(
+            "https://developers.flouci.com/api/generate_payment",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result = json_mod.loads(resp.read())
+            if result.get("result", {}).get("success"):
+                payment_id = result["result"].get("payment_id", "")
+                pay_url = result["result"].get("link", "")
+                if pay_url:
+                    # Store payment_id in session for verification
+                    session[f'flouci_pay_{invoice_id}'] = payment_id
+                    return redirect(pay_url)
+            flash("Erreur de paiement. Réessayez.", "danger")
+        except Exception:
+            flash("Service de paiement indisponible. Réessayez plus tard.", "danger")
+        return redirect(f"/espace-client/payer/{invoice_id}")
+    return render_template("client_payer.html", inv=inv, remaining=remaining, shop=shop,
+        payment_enabled=bool(flouci_key and flouci_secret))
+
+
+@portal_bp.route("/espace-client/paiement-ok/<int:invoice_id>")
+@client_required
+def espace_client_payment_success(invoice_id):
+    """Flouci payment success callback — verify and record payment."""
+    client_id = session['client_id']
+    payment_id = request.args.get("payment_id", "") or session.pop(f'flouci_pay_{invoice_id}', '')
+    if not payment_id:
+        flash("Paiement non vérifié", "danger")
+        return redirect("/espace-client/factures")
+    with get_db() as conn:
+        inv = conn.execute("""SELECT i.id, i.amount, i.paid_amount, cu.id as cust_id
+            FROM invoices i JOIN appointments a ON i.appointment_id=a.id
+            JOIN cars ca ON a.car_id=ca.id JOIN customers cu ON ca.customer_id=cu.id
+            WHERE i.id=? AND cu.id=?""", (invoice_id, client_id)).fetchone()
+        if not inv:
+            flash("Facture non trouvée", "danger")
+            return redirect("/espace-client/factures")
+        # Verify with Flouci API
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+        flouci_key = shop.get('flouci_app_token', '')
+        flouci_secret = shop.get('flouci_app_secret', '')
+        verified = False
+        if flouci_key and payment_id:
+            import urllib.request, json as json_mod
+            try:
+                req = urllib.request.Request(
+                    f"https://developers.flouci.com/api/verify_payment/{payment_id}",
+                    headers={"apppublic": flouci_key, "appsecret": flouci_secret},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    result = json_mod.loads(resp.read())
+                if result.get("result", {}).get("status") == "SUCCESS":
+                    verified = True
+            except Exception:
+                pass
+        if verified:
+            remaining = (inv['amount'] or 0) - (inv['paid_amount'] or 0)
+            new_paid = (inv['paid_amount'] or 0) + remaining
+            new_status = 'paid' if new_paid >= (inv['amount'] or 0) else 'partial'
+            conn.execute("UPDATE invoices SET paid_amount=?, status=?, payment_method='Flouci' WHERE id=?",
+                (new_paid, new_status, invoice_id))
+            conn.commit()
+            flash("Paiement effectué avec succès ! ✅", "success")
+        else:
+            flash("Paiement en cours de vérification. Contactez-nous si nécessaire.", "info")
+    return redirect("/espace-client/factures")
 
 
 # ─── Public Appointment Tracking (no login required) ───

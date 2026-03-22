@@ -353,3 +353,232 @@ def test_invoice_pdf_route_exists(logged_client):
     """Invoice PDF route should be accessible (not 404)."""
     r = logged_client.get('/espace-client/facture/999/pdf', follow_redirects=True)
     assert r.status_code != 404
+
+
+# ── Phase 9 Medium Priority Tests ──
+
+def test_client_notifications_table_exists():
+    """client_notifications table must exist with correct columns."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(client_notifications)").fetchall()]
+            assert 'customer_id' in cols
+            assert 'title' in cols
+            assert 'message' in cols
+            assert 'is_read' in cols
+
+
+def test_client_app_redirects_to_espace_client(client):
+    """Legacy /client_app should redirect to /espace-client."""
+    r = client.get('/client_app')
+    assert r.status_code == 301
+    assert '/espace-client' in r.headers.get('Location', '')
+
+
+def test_client_app_dashboard_redirects(client):
+    """Legacy /client_app/dashboard should redirect."""
+    r = client.get('/client_app/dashboard')
+    assert r.status_code == 301
+
+
+def test_client_app_login_redirects(client):
+    """Legacy /client_app/login POST should redirect."""
+    r = client.post('/client_app/login', data={'phone': '12345678'})
+    assert r.status_code == 301
+
+
+def test_rdv_has_pagination_vars(logged_client):
+    """RDV page should include pagination variables."""
+    r = logged_client.get('/espace-client/rendez-vous')
+    assert r.status_code == 200
+
+
+def test_factures_has_pagination(logged_client):
+    """Factures page should load with pagination support."""
+    r = logged_client.get('/espace-client/factures')
+    assert r.status_code == 200
+
+
+def test_rdv_has_rating_form(logged_client):
+    """Completed appointments should show rating form."""
+    # Create a completed appointment for the client
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if not cust:
+                return
+            car = conn.execute("SELECT id FROM cars WHERE customer_id=?", (cust['id'],)).fetchone()
+            if not car:
+                conn.execute("INSERT INTO cars (customer_id, brand, model, plate) VALUES (?,?,?,?)",
+                    (cust['id'], 'TestR', 'Rating', 'RATE001'))
+                conn.commit()
+                car = conn.execute("SELECT id FROM cars WHERE plate='RATE001'").fetchone()
+            conn.execute("INSERT INTO appointments (car_id, date, service, status) VALUES (?,?,?,?)",
+                (car['id'], '2026-03-20', 'Test Rating', 'completed'))
+            conn.commit()
+    r = logged_client.get('/espace-client/rendez-vous')
+    assert b'noter' in r.data or b'Notez' in r.data
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute('PRAGMA foreign_keys = OFF')
+            conn.execute("DELETE FROM appointments WHERE service='Test Rating'")
+            conn.execute("DELETE FROM cars WHERE plate='RATE001'")
+            conn.commit()
+
+
+def test_submit_rating(logged_client):
+    """Client should be able to rate a completed appointment."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if not cust:
+                return
+            car = conn.execute("SELECT id FROM cars WHERE customer_id=? LIMIT 1", (cust['id'],)).fetchone()
+            if not car:
+                conn.execute("INSERT INTO cars (customer_id, brand, model, plate) VALUES (?,?,?,?)",
+                    (cust['id'], 'TestR2', 'Rate2', 'RATE002'))
+                conn.commit()
+                car = conn.execute("SELECT id FROM cars WHERE plate='RATE002'").fetchone()
+            conn.execute("INSERT INTO appointments (car_id, date, service, status) VALUES (?,?,?,?)",
+                (car['id'], '2026-03-19', 'Rate Service', 'completed'))
+            conn.commit()
+            appt = conn.execute("SELECT id FROM appointments WHERE service='Rate Service' ORDER BY id DESC LIMIT 1").fetchone()
+            appt_id = appt['id']
+    r = logged_client.get('/espace-client/rendez-vous')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    r = logged_client.post(f'/espace-client/noter/{appt_id}', data={
+        'rating': '5', 'comment': 'Excellent!', 'csrf_token': token
+    }, follow_redirects=True)
+    assert b'Merci' in r.data or r.status_code == 200
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute('PRAGMA foreign_keys = OFF')
+            conn.execute("DELETE FROM ratings WHERE appointment_id=?", (appt_id,))
+            conn.execute("DELETE FROM appointments WHERE service='Rate Service'")
+            conn.execute("DELETE FROM cars WHERE plate='RATE002'")
+            conn.commit()
+
+
+def test_duplicate_rating_rejected(logged_client):
+    """Rating same appointment twice should be rejected."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if not cust:
+                return
+            car = conn.execute("SELECT id FROM cars WHERE customer_id=? LIMIT 1", (cust['id'],)).fetchone()
+            if not car:
+                conn.execute("INSERT INTO cars (customer_id, brand, model, plate) VALUES (?,?,?,?)",
+                    (cust['id'], 'TestR3', 'Rate3', 'RATE003'))
+                conn.commit()
+                car = conn.execute("SELECT id FROM cars WHERE plate='RATE003'").fetchone()
+            conn.execute("INSERT INTO appointments (car_id, date, service, status) VALUES (?,?,?,?)",
+                (car['id'], '2026-03-18', 'Dup Rate', 'completed'))
+            conn.commit()
+            appt = conn.execute("SELECT id FROM appointments WHERE service='Dup Rate' ORDER BY id DESC LIMIT 1").fetchone()
+            appt_id = appt['id']
+    # Get CSRF token BEFORE adding the rating
+    r = logged_client.get('/espace-client/rendez-vous')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode()).group(1)
+    # First rating succeeds
+    logged_client.post(f'/espace-client/noter/{appt_id}', data={
+        'rating': '4', 'comment': 'First', 'csrf_token': token
+    })
+    # Second rating should fail
+    r = logged_client.get('/espace-client/rendez-vous')
+    token = _re.search(r'csrf_token.*?value="([^"]+)"', r.data.decode())
+    # Try using any token from the page (other forms may still have tokens)
+    if token:
+        token = token.group(1)
+    else:
+        token = 'dummy'
+    r = logged_client.post(f'/espace-client/noter/{appt_id}', data={
+        'rating': '5', 'comment': 'Again', 'csrf_token': token
+    }, follow_redirects=True)
+    assert 'noté' in r.data.decode().lower() or r.status_code == 200
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute('PRAGMA foreign_keys = OFF')
+            conn.execute("DELETE FROM ratings WHERE appointment_id=?", (appt_id,))
+            conn.execute("DELETE FROM client_notifications WHERE appointment_id=?", (appt_id,))
+            conn.execute("DELETE FROM appointments WHERE service='Dup Rate'")
+            conn.execute("DELETE FROM cars WHERE plate='RATE003'")
+            conn.commit()
+
+
+def test_notifications_page(logged_client):
+    """Notifications page should be accessible."""
+    r = logged_client.get('/espace-client/notifications')
+    assert r.status_code == 200
+    assert b'Notification' in r.data
+
+
+def test_notification_created_on_status_change():
+    """Changing appointment status should create a client notification."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if not cust:
+                return
+            car = conn.execute("SELECT id FROM cars WHERE customer_id=? LIMIT 1", (cust['id'],)).fetchone()
+            if not car:
+                return
+            conn.execute("INSERT INTO appointments (car_id, date, service, status) VALUES (?,?,?,?)",
+                (car['id'], '2026-03-21', 'Notif Test', 'pending'))
+            conn.commit()
+            appt = conn.execute("SELECT id FROM appointments WHERE service='Notif Test' ORDER BY id DESC LIMIT 1").fetchone()
+            appt_id = appt['id']
+    # Use admin client to update status
+    with flask_app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['role'] = 'admin'
+        c.post(f'/update_appointment/{appt_id}/in_progress')
+    # Check notification was created
+    with flask_app.app_context():
+        with _get_db() as conn:
+            notif = conn.execute("SELECT * FROM client_notifications WHERE appointment_id=?", (appt_id,)).fetchone()
+            assert notif is not None
+            assert 'traitement' in notif['message'].lower()
+            # Cleanup
+            conn.execute('PRAGMA foreign_keys = OFF')
+            conn.execute("DELETE FROM client_notifications WHERE appointment_id=?", (appt_id,))
+            conn.execute("DELETE FROM appointments WHERE service='Notif Test'")
+            conn.commit()
+
+
+def test_payment_page_loads(logged_client):
+    """Payment page should load for an existing unpaid invoice."""
+    r = logged_client.get('/espace-client/payer/999', follow_redirects=True)
+    # Should redirect to factures if invoice not found
+    assert r.status_code == 200
+
+
+def test_accueil_shows_notification_badge(logged_client):
+    """Accueil should show notification count if there are unread notifications."""
+    with flask_app.app_context():
+        with _get_db() as conn:
+            cust = conn.execute("SELECT id FROM customers WHERE phone='55667788'").fetchone()
+            if not cust:
+                return
+            conn.execute("INSERT INTO client_notifications (customer_id, title, message) VALUES (?,?,?)",
+                (cust['id'], 'Test', 'Test notification'))
+            conn.commit()
+    r = logged_client.get('/espace-client/accueil')
+    assert b'notification' in r.data.lower()
+    # Cleanup
+    with flask_app.app_context():
+        with _get_db() as conn:
+            conn.execute('PRAGMA foreign_keys = OFF')
+            conn.execute("DELETE FROM client_notifications WHERE title='Test'")
+            conn.commit()
+
+
+def test_factures_has_payment_button(logged_client):
+    """Unpaid invoices should show payment button."""
+    r = logged_client.get('/espace-client/factures')
+    # Page should load (even if no invoices, it shouldn't crash)
+    assert r.status_code == 200

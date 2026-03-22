@@ -170,11 +170,31 @@ def update_appointment(appointment_id, status):
                         (link[1], link[0]))
         conn.commit()
         
+        # In-app notification for client
+        appt_data = conn.execute("""SELECT a.date, a.service, c.id as customer_id, c.name, c.phone, car.brand, car.model
+            FROM appointments a JOIN cars car ON a.car_id=car.id 
+            JOIN customers c ON car.customer_id=c.id WHERE a.id=?""", (appointment_id,)).fetchone()
+        if appt_data:
+            notif_titles = {
+                'in_progress': '🔧 Véhicule en cours de traitement',
+                'completed': '✅ Véhicule prêt !',
+                'cancelled': 'ℹ️ Rendez-vous annulé',
+            }
+            notif_msgs = {
+                'in_progress': f"Votre {appt_data['brand']} {appt_data['model']} est en cours de traitement ({appt_data['service']}).",
+                'completed': f"Votre {appt_data['brand']} {appt_data['model']} est prêt ! Passez le récupérer.",
+                'cancelled': f"Votre rendez-vous du {appt_data['date']} a été annulé.",
+            }
+            if status in notif_titles:
+                try:
+                    conn.execute("INSERT INTO client_notifications (customer_id, appointment_id, title, message) VALUES (?,?,?,?)",
+                        (appt_data['customer_id'], appointment_id, notif_titles[status], notif_msgs[status]))
+                    conn.commit()
+                except Exception:
+                    pass
+
         # Auto WhatsApp notification on status change
         if status in STATUS_MESSAGES:
-            appt_data = conn.execute("""SELECT a.date, a.service, c.name, c.phone, car.brand, car.model
-                FROM appointments a JOIN cars car ON a.car_id=car.id 
-                JOIN customers c ON car.customer_id=c.id WHERE a.id=?""", (appointment_id,)).fetchone()
             if appt_data and appt_data['phone']:
                 shop_name = get_setting('shop_name', 'AMILCAR')
                 msg = STATUS_MESSAGES[status].format(

@@ -35,6 +35,10 @@
         .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
         .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
         .nav-bottom a.active{color:var(--gold)}
+        .paging{display:flex;justify-content:center;gap:6px;margin:20px 0}
+        .paging a,.paging span{display:inline-block;padding:8px 14px;border-radius:10px;font-size:.78rem;font-weight:600;text-decoration:none;color:var(--text)}
+        .paging a{background:var(--bg2);border:1px solid var(--border)}
+        .paging .cur{background:var(--gold);color:#000}
     </style>
 </head>
 <body>
@@ -83,6 +87,9 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
             <a href="/espace-client/facture/{{ inv.id }}/pdf" style="flex:1;display:block;text-align:center;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--gold);text-decoration:none;font-size:.75rem;font-weight:600">📥 Télécharger PDF</a>
+            {% if inv.status in ('unpaid','partial') %}
+            <a href="/espace-client/payer/{{ inv.id }}" style="flex:1;display:block;text-align:center;padding:8px;background:var(--gold);border-radius:10px;color:#000;text-decoration:none;font-size:.75rem;font-weight:700">💳 Payer en ligne</a>
+            {% endif %}
         </div>
     </div>
     {% else %}
@@ -91,6 +98,18 @@
         <p style="color:var(--muted)">Aucune facture</p>
     </div>
     {% endfor %}
+
+    {% if total_pages is defined and total_pages > 1 %}
+    <div class="paging">
+        {% if page > 1 %}<a href="?page={{ page - 1 }}">‹</a>{% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                {% if p == page %}<span class="cur">{{ p }}</span>{% else %}<a href="?page={{ p }}">{{ p }}</a>{% endif %}
+            {% elif p == page - 3 or p == page + 3 %}<span style="color:var(--muted)">…</span>{% endif %}
+        {% endfor %}
+        {% if page < total_pages %}<a href="?page={{ page + 1 }}">›</a>{% endif %}
+    </div>
+    {% endif %}
 </div>
 
 <div class="nav-bottom">
