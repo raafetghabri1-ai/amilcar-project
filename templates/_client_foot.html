@@ -1,0 +1,59 @@
+{# ── Client Portal: Settings Bar + Bottom Nav + PWA + Scripts ── #}
+{% set lang = session.get('client_lang', 'fr') %}
+{% set theme = session.get('client_theme', 'dark') %}
+{% set is_ar = (lang == 'ar') %}
+
+<!-- Settings Bar -->
+<div class="settings-bar">
+    <a href="/espace-client/set-lang/{{ 'fr' if is_ar else 'ar' }}">{{ '🇫🇷 Français' if is_ar else '🇹🇳 عربي' }}</a>
+    <button onclick="toggleTheme()">{{ '☀️' if theme == 'dark' else '🌙' }}</button>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="nav-bottom">
+    <a href="/espace-client/accueil" {% if active_nav=='accueil' %}class="active"{% endif %}><span class="ico">🏠</span>{{ 'الرئيسية' if is_ar else 'Accueil' }}</a>
+    <a href="/espace-client/vehicules" {% if active_nav=='vehicules' %}class="active"{% endif %}><span class="ico">🚗</span>{{ 'سياراتي' if is_ar else 'Véhicules' }}</a>
+    <a href="/espace-client/reserver" {% if active_nav=='reserver' %}class="active"{% endif %}><span class="ico">📅</span>{{ 'حجز' if is_ar else 'Réserver' }}</a>
+    <a href="/espace-client/factures" {% if active_nav=='factures' %}class="active"{% endif %}><span class="ico">📄</span>{{ 'فواتير' if is_ar else 'Factures' }}</a>
+    <a href="/espace-client/fidelite" {% if active_nav=='fidelite' %}class="active"{% endif %}><span class="ico">🎁</span>{{ 'ولاء' if is_ar else 'Fidélité' }}</a>
+</div>
+
+<!-- PWA Install Banner (shown inside container-c via JS) -->
+<div id="pwa-install" style="display:none">
+    <span style="font-size:1.5rem">📱</span>
+    <div style="flex:1">
+        <div class="pwa-txt">{{ 'تثبيت التطبيق' if is_ar else 'Installer l\'appli' }}</div>
+        <div class="pwa-sub">{{ 'أضف AMILCAR إلى شاشتك الرئيسية' if is_ar else 'Ajoutez AMILCAR à votre écran d\'accueil' }}</div>
+    </div>
+    <button class="pwa-btn" id="pwa-install-btn">{{ 'تثبيت' if is_ar else 'Installer' }}</button>
+</div>
+
+<script>
+/* ── Theme Toggle ── */
+function toggleTheme(){
+    fetch('/espace-client/set-theme/'+(document.documentElement.dataset.theme==='dark'?'light':'dark'),{method:'POST',headers:{'X-CSRFToken':document.querySelector('meta[name=csrf]')?.content||''}}).then(()=>location.reload());
+}
+
+/* ── Service Worker Registration ── */
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});
+}
+
+/* ── PWA Install Prompt ── */
+let _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();
+    _deferredPrompt=e;
+    var b=document.getElementById('pwa-install');
+    if(b) b.classList.add('show');
+});
+var ib=document.getElementById('pwa-install-btn');
+if(ib) ib.addEventListener('click',function(){
+    if(_deferredPrompt){
+        _deferredPrompt.prompt();
+        _deferredPrompt.userChoice.then(function(){_deferredPrompt=null;document.getElementById('pwa-install').classList.remove('show')});
+    }
+});
+</script>
+</body>
+</html>

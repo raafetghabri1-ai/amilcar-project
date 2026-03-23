@@ -1,87 +1,61 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Payer</title>
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--radius:16px}
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px}
-        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
-        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
-        .container-c{max-width:500px;margin:0 auto;padding:16px}
         .pay-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px}
         .pay-amount{font-size:2.2rem;font-weight:800;color:var(--gold);margin:16px 0 4px}
         .pay-label{font-size:.72rem;color:var(--muted)}
         .pay-detail{background:var(--bg3);border-radius:12px;padding:14px;margin-top:16px;text-align:left}
+        [dir="rtl"] .pay-detail{text-align:right}
         .pay-row{display:flex;justify-content:space-between;padding:6px 0;font-size:.8rem}
         .pay-row .k{color:var(--muted)}
         .btn-pay{display:block;width:100%;background:var(--gold);color:#000;text-align:center;padding:16px;border-radius:var(--radius);font-weight:700;text-decoration:none;font-size:1rem;border:none;cursor:pointer;letter-spacing:.5px;margin-top:16px}
         .btn-pay:disabled{opacity:.5;cursor:not-allowed}
-        .flash-msg{background:var(--bg3);border-left:3px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.78rem}
-        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
-        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
-        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
-        .nav-bottom a.active{color:var(--gold)}
     </style>
 </head>
 <body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
 <div class="top-bar">
     <a href="/espace-client/factures">←</a>
-    <h2>💳 Paiement</h2>
+    <h2>💳 {{ 'الدفع' if is_ar else 'Paiement' }}</h2>
     <span style="width:20px"></span>
 </div>
 
 <div class="container-c">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
-    <div class="flash-msg">{{ msg }}</div>
+    <div class="flash-msg" style="border-left-color:var(--red)">{{ msg }}</div>
     {% endfor %}{% endif %}{% endwith %}
 
     <div class="pay-card">
-        <div style="font-size:.85rem;font-weight:600">Facture #{{ inv.id }}</div>
+        <div style="font-size:.85rem;font-weight:600">{{ 'فاتورة' if is_ar else 'Facture' }} #{{ inv.id }}</div>
         <div class="pay-amount">{{ '{:,.0f}'.format(remaining) }} DT</div>
-        <div class="pay-label">Montant à payer</div>
+        <div class="pay-label">{{ 'المبلغ المطلوب' if is_ar else 'Montant à payer' }}</div>
 
         <div class="pay-detail">
-            <div class="pay-row"><span class="k">Service</span><span>{{ inv.service or '—' }}</span></div>
-            <div class="pay-row"><span class="k">Date</span><span>{{ inv.date or '—' }}</span></div>
-            <div class="pay-row"><span class="k">Véhicule</span><span>{{ inv.brand }} {{ inv.model }} — {{ inv.plate }}</span></div>
-            <div class="pay-row"><span class="k">Total facture</span><span>{{ '{:,.0f}'.format(inv.amount or 0) }} DT</span></div>
+            <div class="pay-row"><span class="k">{{ 'الخدمة' if is_ar else 'Service' }}</span><span>{{ inv.service or '—' }}</span></div>
+            <div class="pay-row"><span class="k">{{ 'التاريخ' if is_ar else 'Date' }}</span><span>{{ inv.date or '—' }}</span></div>
+            <div class="pay-row"><span class="k">{{ 'السيارة' if is_ar else 'Véhicule' }}</span><span>{{ inv.brand }} {{ inv.model }} — {{ inv.plate }}</span></div>
+            <div class="pay-row"><span class="k">{{ 'إجمالي الفاتورة' if is_ar else 'Total facture' }}</span><span>{{ '{:,.0f}'.format(inv.amount or 0) }} DT</span></div>
             {% if inv.paid_amount %}
-            <div class="pay-row"><span class="k">Déjà payé</span><span style="color:var(--green)">{{ '{:,.0f}'.format(inv.paid_amount) }} DT</span></div>
+            <div class="pay-row"><span class="k">{{ 'المدفوع' if is_ar else 'Déjà payé' }}</span><span style="color:var(--green)">{{ '{:,.0f}'.format(inv.paid_amount) }} DT</span></div>
             {% endif %}
         </div>
 
         {% if payment_enabled %}
         <form method="POST" action="/espace-client/payer/{{ inv.id }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn-pay">💳 Payer {{ '{:,.0f}'.format(remaining) }} DT avec Flouci</button>
+            <button type="submit" class="btn-pay">💳 {{ 'دفع' if is_ar else 'Payer' }} {{ '{:,.0f}'.format(remaining) }} DT {{ 'عبر Flouci' if is_ar else 'avec Flouci' }}</button>
         </form>
-        <div style="margin-top:10px;font-size:.65rem;color:var(--muted)">🔒 Paiement sécurisé via Flouci</div>
+        <div style="margin-top:10px;font-size:.65rem;color:var(--muted)">🔒 {{ 'دفع آمن عبر Flouci' if is_ar else 'Paiement sécurisé via Flouci' }}</div>
         {% else %}
         <div style="margin-top:20px;background:var(--bg3);border-radius:12px;padding:16px">
-            <div style="font-size:.85rem;font-weight:600;margin-bottom:8px">💳 Paiement en ligne bientôt disponible</div>
-            <div style="font-size:.75rem;color:var(--muted)">En attendant, vous pouvez régler sur place ou par virement bancaire.</div>
+            <div style="font-size:.85rem;font-weight:600;margin-bottom:8px">💳 {{ 'الدفع عبر الإنترنت قريباً' if is_ar else 'Paiement en ligne bientôt disponible' }}</div>
+            <div style="font-size:.75rem;color:var(--muted)">{{ 'في الوقت الحالي، يمكنك الدفع في المحل أو عبر التحويل البنكي.' if is_ar else 'En attendant, vous pouvez régler sur place ou par virement bancaire.' }}</div>
         </div>
         {% endif %}
     </div>
 
-    <a href="/espace-client/factures" style="display:block;text-align:center;color:var(--gold);font-size:.82rem;text-decoration:none">← Retour aux factures</a>
+    <a href="/espace-client/factures" style="display:block;text-align:center;color:var(--gold);font-size:.82rem;text-decoration:none">← {{ 'العودة للفواتير' if is_ar else 'Retour aux factures' }}</a>
 </div>
 
-<div class="nav-bottom">
-    <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
-    <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver"><span class="ico">📅</span>Réserver</a>
-    <a href="/espace-client/factures" class="active"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
-</div>
-</body>
-</html>
+{% set active_nav = 'factures' %}
+{% include '_client_foot.html' %}

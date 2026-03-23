@@ -1,21 +1,5 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Réserver</title>
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--radius:16px}
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px}
-        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
-        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
-        .container-c{max-width:500px;margin:0 auto;padding:16px}
         .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px 20px}
         .form-card h5{color:var(--gold);font-size:1rem;font-weight:700;margin-bottom:20px;text-align:center}
         .form-group{margin-bottom:18px}
@@ -26,22 +10,18 @@
         .form-group textarea{resize:vertical;min-height:80px}
         .btn-submit{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:16px;font-size:1rem;cursor:pointer;margin-top:24px;letter-spacing:1px}
         .btn-submit:hover{background:#e5c040}
-        .flash-msg{background:var(--bg3);border-left:3px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.78rem}
         .flash-danger{border-left-color:#ef4444}
         .service-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
         .service-option{background:var(--bg3);border:2px solid var(--border);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;font-size:.78rem}
         .service-option:hover,.service-option.selected{border-color:var(--gold);background:rgba(212,175,55,.08)}
         .service-option .price{color:var(--gold);font-weight:700;font-size:.7rem;margin-top:4px}
-        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
-        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
-        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
-        .nav-bottom a.active{color:var(--gold)}
     </style>
 </head>
 <body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
 <div class="top-bar">
     <a href="/espace-client/accueil">←</a>
-    <h2>📅 Réserver</h2>
+    <h2>📅 {{ 'حجز' if is_ar else 'Réserver' }}</h2>
     <span style="width:20px"></span>
 </div>
 
@@ -52,14 +32,14 @@
     {% endfor %}{% endif %}{% endwith %}
 
     <div class="form-card">
-        <h5>✨ Nouveau rendez-vous</h5>
+        <h5>✨ {{ 'موعد جديد' if is_ar else 'Nouveau rendez-vous' }}</h5>
         <form method="POST" action="/espace-client/reserver">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
-                <label>🚗 Véhicule</label>
+                <label>🚗 {{ 'السيارة' if is_ar else 'Véhicule' }}</label>
                 <select name="car_id" required>
-                    <option value="">— Sélectionner un véhicule —</option>
+                    <option value="">— {{ 'اختر سيارة' if is_ar else 'Sélectionner un véhicule' }} —</option>
                     {% for c in cars %}
                     <option value="{{ c.id }}">{{ c.brand }} {{ c.model }} ({{ c.plate }})</option>
                     {% endfor %}
@@ -67,9 +47,9 @@
             </div>
 
             <div class="form-group">
-                <label>🔧 Service souhaité</label>
+                <label>🔧 {{ 'الخدمة المطلوبة' if is_ar else 'Service souhaité' }}</label>
                 <select name="service_type" id="serviceSelect" required>
-                    <option value="">— Choisir un service —</option>
+                    <option value="">— {{ 'اختر خدمة' if is_ar else 'Choisir un service' }} —</option>
                     {% for s in services %}
                     <option value="{{ s.name }}" data-price="{{ s.price }}">{{ s.name }} — {{ s.price }} DT</option>
                     {% endfor %}
@@ -77,14 +57,14 @@
             </div>
 
             <div class="form-group">
-                <label>📅 Date souhaitée</label>
+                <label>📅 {{ 'التاريخ المطلوب' if is_ar else 'Date souhaitée' }}</label>
                 <input type="date" name="date" required min="{{ now().strftime('%Y-%m-%d') if now is defined else '' }}">
             </div>
 
             <div class="form-group">
-                <label>🕐 Heure préférée</label>
+                <label>🕐 {{ 'الوقت المفضل' if is_ar else 'Heure préférée' }}</label>
                 <select name="time">
-                    <option value="">— Pas de préférence —</option>
+                    <option value="">— {{ 'بدون تفضيل' if is_ar else 'Pas de préférence' }} —</option>
                     <option value="08:00">08:00</option>
                     <option value="08:30">08:30</option>
                     <option value="09:00">09:00</option>
@@ -105,25 +85,18 @@
             </div>
 
             <div class="form-group">
-                <label>📝 Notes (optionnel)</label>
-                <textarea name="notes" placeholder="Décrivez votre besoin..." maxlength="500"></textarea>
+                <label>📝 {{ 'ملاحظات (اختياري)' if is_ar else 'Notes (optionnel)' }}</label>
+                <textarea name="notes" placeholder="{{ 'اوصف حاجتك...' if is_ar else 'Décrivez votre besoin...' }}" maxlength="500"></textarea>
             </div>
 
-            <button type="submit" class="btn-submit">Demander un rendez-vous</button>
+            <button type="submit" class="btn-submit">{{ 'طلب موعد' if is_ar else 'Demander un rendez-vous' }}</button>
         </form>
     </div>
 
     <div style="text-align:center;margin-top:16px;padding:12px">
-        <small style="color:var(--muted);font-size:.7rem">Vous recevrez une confirmation par téléphone</small>
+        <small style="color:var(--muted);font-size:.7rem">{{ 'ستتلقى تأكيداً عبر الهاتف' if is_ar else 'Vous recevrez une confirmation par téléphone' }}</small>
     </div>
 </div>
 
-<div class="nav-bottom">
-    <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
-    <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver" class="active"><span class="ico">📅</span>Réserver</a>
-    <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
-</div>
-</body>
-</html>
+{% set active_nav = 'reserver' %}
+{% include '_client_foot.html' %}

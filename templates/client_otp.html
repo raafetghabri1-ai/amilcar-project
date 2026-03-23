@@ -1,18 +1,5 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Vérification</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--radius:16px}
-        *{box-sizing:border-box}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;min-height:100vh;-webkit-font-smoothing:antialiased}
         .client-header{background:linear-gradient(135deg,#0a0a0a 0%,#1a1a1a 100%);padding:40px 24px 30px;text-align:center;border-bottom:1px solid var(--gold);position:relative}
         .client-header h1{color:var(--gold);font-size:1.6rem;font-weight:800;letter-spacing:4px;margin:0}
         .client-header p{color:var(--muted);font-size:.7rem;letter-spacing:2px;margin:4px 0 0}
@@ -25,7 +12,6 @@
         .otp-inputs{display:flex;gap:12px;justify-content:center;margin-bottom:20px}
         .otp-inputs input{width:56px;height:64px;background:var(--bg3);border:2px solid var(--border);color:var(--gold);font-size:1.8rem;font-weight:700;text-align:center;border-radius:12px;outline:none;transition:border .2s}
         .otp-inputs input:focus{border-color:var(--gold)}
-        .otp-hidden{position:absolute;opacity:0;width:0;height:0}
         .btn-gold{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:16px;font-size:1rem;cursor:pointer;transition:all .2s;letter-spacing:1px}
         .btn-gold:hover{background:#e5c040;transform:translateY(-1px)}
         .btn-gold:disabled{opacity:.5;transform:none}
@@ -35,16 +21,23 @@
         .resend-section .resend-btn:hover{background:var(--gold);color:#000}
         .back-link{display:inline-block;margin-top:20px;color:var(--muted);font-size:.8rem;text-decoration:none;transition:color .2s}
         .back-link:hover{color:var(--gold)}
-        .flash-msg{border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.8rem;text-align:center}
         .flash-msg.info{background:rgba(59,130,246,.15);border:1px solid var(--blue);color:var(--blue)}
-        .flash-msg.danger{background:rgba(239,68,68,.1);border:1px solid var(--red);color:var(--red)}
-        .flash-msg.success{background:rgba(34,197,94,.1);border:1px solid var(--green);color:var(--green)}
+        .flash-msg.danger{background:rgba(239,68,68,.1);border:1px solid var(--red);color:var(--red);border-left:none}
+        .flash-msg.success{background:rgba(34,197,94,.1);border:1px solid var(--green);color:var(--green);border-left:none}
         .footer-text{text-align:center;margin-top:60px;padding-bottom:30px;color:var(--muted);font-size:.6rem;letter-spacing:1px}
         @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
         .shake{animation:shake .3s}
     </style>
 </head>
-<body>
+<body style="padding-bottom:0">
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
+
+<!-- Settings Bar -->
+<div class="settings-bar" style="justify-content:center">
+    <a href="/espace-client/set-lang/{{ 'fr' if is_ar else 'ar' }}">{{ '🇫🇷 Français' if is_ar else '🇹🇳 عربي' }}</a>
+    <button onclick="toggleTheme()">{{ '☀️' if session.get('client_theme','dark') == 'dark' else '🌙' }}</button>
+</div>
+
 <div class="client-header">
     <h1>AMILCAR</h1>
     <p>{{ shop.get('shop_tagline', 'WHERE CARS BECOME ART') }}</p>
@@ -53,13 +46,13 @@
 <div class="otp-box">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
-    <div class="flash-msg {{ cat }}">{{ msg }}</div>
+    <div class="flash-msg {{ cat }}" style="border-radius:10px;padding:10px 16px;text-align:center;border-left:none">{{ msg }}</div>
     {% endfor %}{% endif %}{% endwith %}
 
     <div class="otp-card">
         <div class="emoji">🔐</div>
-        <h3>Vérification</h3>
-        <p class="sub">Entrez le code à 4 chiffres envoyé au</p>
+        <h3>{{ 'التحقق' if is_ar else 'Vérification' }}</h3>
+        <p class="sub">{{ 'أدخل الرمز المكون من 4 أرقام المرسل إلى' if is_ar else 'Entrez le code à 4 chiffres envoyé au' }}</p>
         <div class="phone-display">{{ phone[-4:] if phone|length > 4 else phone }} ***</div>
 
         <form method="POST" action="/espace-client/verify-otp" id="otpForm">
@@ -71,24 +64,31 @@
                 <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" data-index="2">
                 <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" data-index="3">
             </div>
-            <button type="submit" class="btn-gold" id="verifyBtn" disabled>Vérifier</button>
+            <button type="submit" class="btn-gold" id="verifyBtn" disabled>{{ 'تحقق' if is_ar else 'Vérifier' }}</button>
         </form>
 
         <div class="resend-section">
-            <span class="timer" id="timerText">Renvoyer dans <strong id="countdown">60</strong>s</span>
+            <span class="timer" id="timerText">{{ 'إعادة الإرسال خلال' if is_ar else 'Renvoyer dans' }} <strong id="countdown">60</strong>{{ 'ث' if is_ar else 's' }}</span>
             <form method="POST" action="/espace-client/resend-otp" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="resend-btn" id="resendBtn">🔄 Renvoyer le code</button>
+                <button type="submit" class="resend-btn" id="resendBtn">🔄 {{ 'إعادة إرسال الرمز' if is_ar else 'Renvoyer le code' }}</button>
             </form>
         </div>
 
-        <a href="/espace-client" class="back-link">← Changer de numéro</a>
+        <a href="/espace-client" class="back-link">← {{ 'تغيير الرقم' if is_ar else 'Changer de numéro' }}</a>
     </div>
 </div>
 
-<div class="footer-text">© AMILCAR Auto Care — Tous droits réservés</div>
+<div class="footer-text">© AMILCAR Auto Care — {{ 'جميع الحقوق محفوظة' if is_ar else 'Tous droits réservés' }}</div>
 
 <script>
+/* Theme Toggle */
+function toggleTheme(){
+    fetch('/espace-client/set-theme/'+(document.documentElement.dataset.theme==='dark'?'light':'dark'),{method:'POST',headers:{'X-CSRFToken':document.querySelector('meta[name=csrf]')?.content||''}}).then(()=>location.reload());
+}
+/* SW */
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});}
+
 (function(){
     const inputs = document.querySelectorAll('.otp-inputs input');
     const hidden = document.getElementById('otpHidden');
@@ -126,7 +126,6 @@
     });
     inputs[0].focus();
 
-    // Countdown timer for resend
     let sec = 60;
     const timerText = document.getElementById('timerText');
     const countdown = document.getElementById('countdown');

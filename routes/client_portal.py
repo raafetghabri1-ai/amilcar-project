@@ -723,6 +723,59 @@ def espace_client_payment_success(invoice_id):
     return redirect("/espace-client/factures")
 
 
+# ─── Client Language & Theme ───
+@portal_bp.route("/espace-client/set-lang/<lang>")
+def espace_client_set_lang(lang):
+    if lang in ('fr', 'ar'):
+        session['client_lang'] = lang
+    return redirect(request.referrer or '/espace-client/accueil')
+
+
+@portal_bp.route("/espace-client/set-theme/<theme>", methods=["POST"])
+def espace_client_set_theme(theme):
+    if theme in ('dark', 'light'):
+        session['client_theme'] = theme
+    return '', 204
+
+
+@portal_bp.route("/client-manifest.json")
+def client_manifest():
+    settings = get_all_settings()
+    shop_name = settings.get('shop_name', 'AMILCAR')
+    m = {
+        "name": f"{shop_name} — Mon Espace",
+        "short_name": shop_name,
+        "description": "Espace client AMILCAR — rendez-vous, véhicules, factures, fidélité",
+        "start_url": "/espace-client/accueil",
+        "scope": "/espace-client",
+        "display": "standalone",
+        "background_color": "#0a0a0a",
+        "theme_color": "#D4AF37",
+        "orientation": "portrait-primary",
+        "categories": ["auto", "lifestyle"],
+        "lang": "fr",
+        "icons": [
+            {"src": "/static/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png"},
+            {"src": "/static/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png"},
+            {"src": "/static/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png"},
+            {"src": "/static/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any"},
+            {"src": "/static/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png"},
+            {"src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png"},
+            {"src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ],
+        "shortcuts": [
+            {"name": "Accueil", "url": "/espace-client/accueil", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Réserver", "url": "/espace-client/reserver", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Factures", "url": "/espace-client/factures", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]},
+            {"name": "Véhicules", "url": "/espace-client/vehicules", "icons": [{"src": "/static/icons/icon-96x96.png", "sizes": "96x96"}]}
+        ]
+    }
+    response = make_response(jsonify(m))
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
+
+
 # ─── Public Appointment Tracking (no login required) ───
 @portal_bp.route("/suivi")
 def public_tracking():

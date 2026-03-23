@@ -1,21 +1,5 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Mes Véhicules</title>
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--radius:16px}
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px}
-        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
-        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
-        .container-c{max-width:500px;margin:0 auto;padding:16px}
         .car-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
         .car-card .car-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
         .car-card .car-name{font-size:1.1rem;font-weight:700;color:var(--text)}
@@ -25,20 +9,14 @@
         .car-section h6{color:var(--gold);font-size:.75rem;font-weight:600;margin-bottom:8px;letter-spacing:.5px}
         .mini-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(42,42,42,.5);font-size:.78rem}
         .mini-item:last-child{border:none}
-        .badge-s{display:inline-block;padding:2px 8px;border-radius:8px;font-size:.55rem;font-weight:700}
-        .badge-done{background:rgba(34,197,94,.15);color:var(--green)}
-        .badge-pending{background:rgba(212,175,55,.15);color:var(--gold)}
         .empty-msg{color:var(--muted);font-size:.75rem;text-align:center;padding:8px}
-        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
-        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
-        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
-        .nav-bottom a.active{color:var(--gold)}
     </style>
 </head>
 <body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
 <div class="top-bar">
     <a href="/espace-client/accueil">←</a>
-    <h2>🚗 Mes Véhicules</h2>
+    <h2>🚗 {{ 'سياراتي' if is_ar else 'Mes Véhicules' }}</h2>
     <span style="width:20px"></span>
 </div>
 
@@ -48,9 +26,8 @@
     <div style="padding:10px 16px;border-radius:10px;font-size:.8rem;margin-bottom:12px;text-align:center;background:{{ 'rgba(34,197,94,.15);color:var(--green)' if cat=='success' else 'rgba(239,68,68,.1);color:var(--red)' }}">{{ msg }}</div>
     {% endfor %}{% endif %}{% endwith %}
 
-    <!-- Add Vehicle Button -->
     <div style="text-align:right;margin-bottom:12px">
-        <button onclick="document.getElementById('addCarModal').style.display='flex'" style="background:var(--gold);color:#000;border:none;border-radius:10px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer">+ Ajouter un véhicule</button>
+        <button onclick="document.getElementById('addCarModal').style.display='flex'" style="background:var(--gold);color:#000;border:none;border-radius:10px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer">+ {{ 'إضافة سيارة' if is_ar else 'Ajouter un véhicule' }}</button>
     </div>
 
     {% for item in car_data %}
@@ -66,7 +43,7 @@
 
         {% if item.appointments %}
         <div class="car-section">
-            <h6>📅 Dernières visites</h6>
+            <h6>📅 {{ 'آخر الزيارات' if is_ar else 'Dernières visites' }}</h6>
             {% for a in item.appointments %}
             <div class="mini-item">
                 <div>
@@ -84,7 +61,7 @@
 
         {% if item.treatments %}
         <div class="car-section">
-            <h6>🛡️ Traitements actifs</h6>
+            <h6>🛡️ {{ 'العلاجات النشطة' if is_ar else 'Traitements actifs' }}</h6>
             {% for t in item.treatments %}
             <div class="mini-item">
                 <span>{{ t.treatment_type }}</span>
@@ -98,7 +75,7 @@
 
         {% if item.next_maintenance %}
         <div class="car-section">
-            <h6>🔔 Prochain entretien</h6>
+            <h6>🔔 {{ 'الصيانة القادمة' if is_ar else 'Prochain entretien' }}</h6>
             <div style="background:rgba(212,175,55,.1);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;font-size:.8rem">
                 <strong style="color:var(--gold)">{{ item.next_maintenance.service }}</strong>
                 <div style="color:var(--muted);font-size:.7rem;margin-top:2px">📅 {{ item.next_maintenance.date }}</div>
@@ -109,8 +86,8 @@
     {% else %}
     <div style="text-align:center;padding:60px 20px">
         <div style="font-size:4rem;margin-bottom:16px">🚗</div>
-        <p style="color:var(--muted)">Aucun véhicule enregistré</p>
-        <p style="color:var(--muted);font-size:.75rem">Ajoutez votre premier véhicule ci-dessus</p>
+        <p style="color:var(--muted)">{{ 'لا توجد سيارات مسجلة' if is_ar else 'Aucun véhicule enregistré' }}</p>
+        <p style="color:var(--muted);font-size:.75rem">{{ 'أضف سيارتك الأولى أعلاه' if is_ar else 'Ajoutez votre premier véhicule ci-dessus' }}</p>
     </div>
     {% endfor %}
 </div>
@@ -119,45 +96,38 @@
 <div id="addCarModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:400px;width:100%">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <h5 style="color:var(--gold);margin:0;font-size:1rem">🚗 Ajouter un véhicule</h5>
+            <h5 style="color:var(--gold);margin:0;font-size:1rem">🚗 {{ 'إضافة سيارة' if is_ar else 'Ajouter un véhicule' }}</h5>
             <button onclick="document.getElementById('addCarModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>
         </div>
         <form method="POST" action="/espace-client/vehicules/ajouter">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:12px">
-                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Type *</label>
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'النوع' if is_ar else 'Type' }} *</label>
                 <select name="vehicle_type" required style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
-                    <option value="voiture">🚗 Voiture</option>
-                    <option value="moto">🏍️ Moto</option>
+                    <option value="voiture">🚗 {{ 'سيارة' if is_ar else 'Voiture' }}</option>
+                    <option value="moto">🏍️ {{ 'دراجة' if is_ar else 'Moto' }}</option>
                 </select>
             </div>
             <div style="margin-bottom:12px">
-                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Marque *</label>
-                <input type="text" name="brand" required placeholder="Ex: BMW, Mercedes..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'العلامة' if is_ar else 'Marque' }} *</label>
+                <input type="text" name="brand" required placeholder="{{ 'مثال: BMW, Mercedes...' if is_ar else 'Ex: BMW, Mercedes...' }}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
             <div style="margin-bottom:12px">
-                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Modèle *</label>
-                <input type="text" name="model" required placeholder="Ex: Série 3, Classe C..." style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'الموديل' if is_ar else 'Modèle' }} *</label>
+                <input type="text" name="model" required placeholder="{{ 'مثال: الفئة 3...' if is_ar else 'Ex: Série 3, Classe C...' }}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
             <div style="margin-bottom:12px">
-                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Immatriculation *</label>
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'رقم التسجيل' if is_ar else 'Immatriculation' }} *</label>
                 <input type="text" name="plate" required placeholder="XXX TU XXXX" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem;text-transform:uppercase">
             </div>
             <div style="margin-bottom:16px">
-                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">Année</label>
+                <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'السنة' if is_ar else 'Année' }}</label>
                 <input type="number" name="year" min="1990" max="2027" placeholder="2024" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
-            <button type="submit" style="width:100%;background:var(--gold);color:#000;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:.9rem;cursor:pointer">Ajouter</button>
+            <button type="submit" style="width:100%;background:var(--gold);color:#000;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:.9rem;cursor:pointer">{{ 'إضافة' if is_ar else 'Ajouter' }}</button>
         </form>
     </div>
 </div>
 
-<div class="nav-bottom">
-    <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
-    <a href="/espace-client/vehicules" class="active"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver"><span class="ico">📅</span>Réserver</a>
-    <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
-</div>
-</body>
-</html>
+{% set active_nav = 'vehicules' %}
+{% include '_client_foot.html' %}

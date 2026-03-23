@@ -1,21 +1,5 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Fidélité</title>
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--radius:16px}
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px}
-        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
-        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
-        .container-c{max-width:500px;margin:0 auto;padding:16px}
         .loyalty-hero{background:linear-gradient(135deg,#1a1505 0%,#0d0d0d 100%);border:1px solid rgba(212,175,55,.4);border-radius:var(--radius);padding:30px 20px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}
         .loyalty-hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(212,175,55,.05),transparent,rgba(212,175,55,.05),transparent);animation:shimmer 8s linear infinite}
         @keyframes shimmer{to{transform:rotate(360deg)}}
@@ -27,24 +11,19 @@
         .wallet-card{background:var(--bg2);border:1px solid var(--green);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:16px}
         .wallet-card .amount{color:var(--green);font-size:2rem;font-weight:800}
         .wallet-card .lbl{color:var(--muted);font-size:.72rem}
-        .card-c{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px}
-        .card-c h6{color:var(--gold);font-size:.85rem;font-weight:700;margin-bottom:12px}
         .item-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.8rem}
         .item-row:last-child{border-bottom:none}
         .tier-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
         .tier-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;font-size:.7rem;color:var(--muted)}
         .tier-box .emoji{font-size:1.5rem;display:block;margin-bottom:4px}
         .tier-box.current{border-color:var(--gold);background:rgba(212,175,55,.05)}
-        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
-        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
-        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
-        .nav-bottom a.active{color:var(--gold)}
     </style>
 </head>
 <body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
 <div class="top-bar">
     <a href="/espace-client/accueil">←</a>
-    <h2>🎁 Fidélité & Récompenses</h2>
+    <h2>🎁 {{ 'الولاء والمكافآت' if is_ar else 'Fidélité & Récompenses' }}</h2>
     <span style="width:20px"></span>
 </div>
 
@@ -55,7 +34,7 @@
             {{ '🥉 BRONZE' if loyalty=='bronze' else '🥈 ARGENT' if loyalty=='silver' else '🥇 OR' if loyalty=='gold' else '💎 PLATINE' }}
         </div>
         <div class="pts">{{ '{:,}'.format(points) }}</div>
-        <div class="pts-label">points de fidélité</div>
+        <div class="pts-label">{{ 'نقاط الولاء' if is_ar else 'points de fidélité' }}</div>
         <div class="tier-progress">
             <div class="bar" style="background:var(--gold)"></div>
             <div class="bar" style="background:{{ 'var(--gold)' if loyalty in ('silver','gold','platinum') else 'var(--border)' }}"></div>
@@ -67,7 +46,7 @@
     <!-- Wallet -->
     {% if balance > 0 %}
     <div class="wallet-card">
-        <div class="lbl">💳 Mon Portefeuille</div>
+        <div class="lbl">💳 {{ 'محفظتي' if is_ar else 'Mon Portefeuille' }}</div>
         <div class="amount">{{ '{:,.0f}'.format(balance) }} DT</div>
     </div>
     {% endif %}
@@ -75,23 +54,23 @@
     <!-- Tiers -->
     <div class="tier-info">
         <div class="tier-box {{ 'current' if loyalty=='bronze' }}">
-            <span class="emoji">🥉</span>Bronze<br><strong>0+ pts</strong>
+            <span class="emoji">🥉</span>{{ 'برونز' if is_ar else 'Bronze' }}<br><strong>0+ pts</strong>
         </div>
         <div class="tier-box {{ 'current' if loyalty=='silver' }}">
-            <span class="emoji">🥈</span>Argent<br><strong>500+ pts</strong>
+            <span class="emoji">🥈</span>{{ 'فضي' if is_ar else 'Argent' }}<br><strong>500+ pts</strong>
         </div>
         <div class="tier-box {{ 'current' if loyalty=='gold' }}">
-            <span class="emoji">🥇</span>Or<br><strong>1000+ pts</strong>
+            <span class="emoji">🥇</span>{{ 'ذهبي' if is_ar else 'Or' }}<br><strong>1000+ pts</strong>
         </div>
         <div class="tier-box {{ 'current' if loyalty=='platinum' }}">
-            <span class="emoji">💎</span>Platine<br><strong>2000+ pts</strong>
+            <span class="emoji">💎</span>{{ 'بلاتين' if is_ar else 'Platine' }}<br><strong>2000+ pts</strong>
         </div>
     </div>
 
     <!-- Treatments -->
     {% if treatments %}
     <div class="card-c">
-        <h6>🛡️ Mes traitements actifs</h6>
+        <h6>🛡️ {{ 'علاجاتي النشطة' if is_ar else 'Mes traitements actifs' }}</h6>
         {% for t in treatments %}
         <div class="item-row">
             <div>
@@ -109,7 +88,7 @@
     <!-- Wallet History -->
     {% if wallet %}
     <div class="card-c">
-        <h6>💳 Historique transactions</h6>
+        <h6>💳 {{ 'سجل المعاملات' if is_ar else 'Historique transactions' }}</h6>
         {% for w in wallet %}
         <div class="item-row">
             <div>
@@ -125,12 +104,5 @@
     {% endif %}
 </div>
 
-<div class="nav-bottom">
-    <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
-    <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver"><span class="ico">📅</span>Réserver</a>
-    <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite" class="active"><span class="ico">🎁</span>Fidélité</a>
-</div>
-</body>
-</html>
+{% set active_nav = 'fidelite' %}
+{% include '_client_foot.html' %}

@@ -1,85 +1,49 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AMILCAR — Mes Rendez-vous</title>
-    <meta name="theme-color" content="#0a0a0a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% include '_client_head.html' %}
     <style>
-        :root{--gold:#D4AF37;--bg:#0a0a0a;--bg2:#141414;--bg3:#1e1e1e;--text:#f0f0f0;--muted:#888;--border:#2a2a2a;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--orange:#f59e0b;--radius:16px}
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:90px}
-        .top-bar{background:var(--bg2);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-        .top-bar h2{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0}
-        .top-bar a{color:var(--muted);text-decoration:none;font-size:1.2rem}
-        .container-c{max-width:500px;margin:0 auto;padding:16px}
         .rdv-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s}
         .rdv-card:hover{border-color:var(--gold)}
         .rdv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
         .rdv-service{font-size:.9rem;font-weight:700}
         .rdv-car{font-size:.72rem;color:var(--muted);margin-top:2px}
         .rdv-date{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.75rem;margin-top:6px}
-        .badge-s{display:inline-block;padding:3px 10px;border-radius:8px;font-size:.6rem;font-weight:700;letter-spacing:.5px}
-        .badge-pending{background:rgba(212,175,55,.15);color:var(--gold)}
-        .badge-confirmed{background:rgba(59,130,246,.15);color:var(--blue)}
-        .badge-progress{background:rgba(245,158,11,.15);color:var(--orange)}
-        .badge-done{background:rgba(34,197,94,.15);color:var(--green)}
-        .badge-cancelled{background:rgba(239,68,68,.15);color:var(--red)}
         .rdv-price{color:var(--gold);font-weight:700;font-size:.85rem}
         .rdv-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
         .btn-new{display:block;background:var(--gold);color:#000;text-align:center;padding:14px;border-radius:12px;font-weight:700;text-decoration:none;font-size:.9rem;margin-bottom:16px}
         .progress-track{display:flex;gap:4px;margin-top:8px}
         .progress-track .step{height:3px;border-radius:2px;flex:1}
-        .star-rating{display:flex;gap:2px;cursor:pointer;font-size:1.4rem;direction:rtl;justify-content:flex-end}
-        .star-rating input{display:none}
-        .star-rating label{color:var(--border);transition:color .15s}
-        .star-rating label:hover,.star-rating label:hover~label,.star-rating input:checked~label{color:var(--gold)}
-        .rate-form{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px}
-        .rate-btn{background:var(--gold);color:#000;border:none;padding:8px 20px;border-radius:8px;font-weight:700;font-size:.78rem;cursor:pointer;margin-top:8px}
-        .rated-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(212,175,55,.12);color:var(--gold);padding:4px 10px;border-radius:8px;font-size:.72rem;margin-top:8px}
-        .paging{display:flex;justify-content:center;gap:6px;margin:20px 0}
-        .paging a,.paging span{display:inline-block;padding:8px 14px;border-radius:10px;font-size:.78rem;font-weight:600;text-decoration:none;color:var(--text)}
-        .paging a{background:var(--bg2);border:1px solid var(--border)}
-        .paging .cur{background:var(--gold);color:#000}
-        .nav-bottom{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 12px;z-index:100}
-        .nav-bottom a{color:var(--muted);text-decoration:none;text-align:center;font-size:.55rem;padding:4px 8px}
-        .nav-bottom a .ico{font-size:1.2rem;display:block;margin-bottom:2px}
-        .nav-bottom a.active{color:var(--gold)}
     </style>
 </head>
 <body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
 <div class="top-bar">
     <a href="/espace-client/accueil">←</a>
-    <h2>📅 Mes Rendez-vous</h2>
+    <h2>📅 {{ 'مواعيدي' if is_ar else 'Mes Rendez-vous' }}</h2>
     <span style="width:20px"></span>
 </div>
 
 <div class="container-c">
-    <a href="/espace-client/reserver" class="btn-new">+ Nouveau rendez-vous</a>
+    <a href="/espace-client/reserver" class="btn-new">+ {{ 'موعد جديد' if is_ar else 'Nouveau rendez-vous' }}</a>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
-    <div style="background:var(--bg3);border-left:3px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.78rem">{{ msg }}</div>
+    <div class="flash-msg">{{ msg }}</div>
     {% endfor %}{% endif %}{% endwith %}
 
     {% for a in appointments %}
     {% set status_class = 'badge-pending' if a.status=='pending' else 'badge-confirmed' if a.status=='confirmed' else 'badge-progress' if a.status=='in_progress' else 'badge-done' if a.status in ('Terminé','completed','done') else 'badge-cancelled' %}
-    {% set status_text = 'En attente' if a.status=='pending' else 'Confirmé' if a.status=='confirmed' else 'En cours' if a.status=='in_progress' else 'Terminé' if a.status in ('Terminé','completed','done') else 'Annulé' if a.status=='cancelled' else a.status %}
+    {% set status_text_fr = 'En attente' if a.status=='pending' else 'Confirmé' if a.status=='confirmed' else 'En cours' if a.status=='in_progress' else 'Terminé' if a.status in ('Terminé','completed','done') else 'Annulé' if a.status=='cancelled' else a.status %}
+    {% set status_text_ar = 'في الانتظار' if a.status=='pending' else 'مؤكد' if a.status=='confirmed' else 'جاري' if a.status=='in_progress' else 'مكتمل' if a.status in ('Terminé','completed','done') else 'ملغى' if a.status=='cancelled' else a.status %}
     <a href="/espace-client/suivi/{{ a.id }}" class="rdv-card">
         <div class="rdv-top">
             <div>
                 <div class="rdv-service">{{ a.service_type or 'Service' }}</div>
                 <div class="rdv-car">{{ a.brand }} {{ a.model }} • {{ a.plate }}</div>
             </div>
-            <span class="badge-s {{ status_class }}">{{ status_text }}</span>
+            <span class="badge-s {{ status_class }}">{{ status_text_ar if is_ar else status_text_fr }}</span>
         </div>
         <div class="rdv-date">
-            📅 {{ a.date }}{% if a.time %} à {{ a.time }}{% endif %}
+            📅 {{ a.date }}{% if a.time %} {{ 'الساعة' if is_ar else 'à' }} {{ a.time }}{% endif %}
         </div>
-        <!-- Progress Track -->
         <div class="progress-track">
             <div class="step" style="background:var(--gold)"></div>
             <div class="step" style="background:{{ 'var(--blue)' if a.status in ('confirmed','in_progress','Terminé','completed','done') else 'var(--border)' }}"></div>
@@ -88,27 +52,27 @@
         </div>
         {% if a.total_price %}
         <div class="rdv-footer">
-            <span style="color:var(--muted);font-size:.72rem">Total</span>
+            <span style="color:var(--muted);font-size:.72rem">{{ 'المجموع' if is_ar else 'Total' }}</span>
             <span class="rdv-price">{{ a.total_price }} DT</span>
         </div>
         {% endif %}
     </a>
     {% if a.status in ('Terminé','completed','done') %}
         {% if a.id in rated_ids %}
-        <div class="rated-badge">⭐ Déjà noté — Merci !</div>
+        <div class="rated-badge">⭐ {{ 'تم التقييم — شكراً !' if is_ar else 'Déjà noté — Merci !' }}</div>
         {% else %}
         <div class="rate-form">
             <form method="POST" action="/espace-client/noter/{{ a.id }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div style="font-size:.78rem;font-weight:600;margin-bottom:8px">Notez ce service :</div>
+                <div style="font-size:.78rem;font-weight:600;margin-bottom:8px">{{ 'قيّم هذه الخدمة :' if is_ar else 'Notez ce service :' }}</div>
                 <div class="star-rating">
                     {% for i in range(5, 0, -1) %}
                     <input type="radio" name="rating" id="star{{ a.id }}_{{ i }}" value="{{ i }}" {% if i == 5 %}required{% endif %}>
                     <label for="star{{ a.id }}_{{ i }}">★</label>
                     {% endfor %}
                 </div>
-                <textarea name="comment" placeholder="Un commentaire (optionnel)..." style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:.78rem;resize:none;margin-top:8px" rows="2" maxlength="500"></textarea>
-                <button type="submit" class="rate-btn">Envoyer ⭐</button>
+                <textarea name="comment" placeholder="{{ 'تعليق (اختياري)...' if is_ar else 'Un commentaire (optionnel)...' }}" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:.78rem;resize:none;margin-top:8px" rows="2" maxlength="500"></textarea>
+                <button type="submit" class="rate-btn">{{ 'إرسال ⭐' if is_ar else 'Envoyer ⭐' }}</button>
             </form>
         </div>
         {% endif %}
@@ -116,8 +80,8 @@
     {% else %}
     <div style="text-align:center;padding:50px 20px">
         <div style="font-size:3rem;margin-bottom:12px">📅</div>
-        <p style="color:var(--muted)">Aucun rendez-vous</p>
-        <a href="/espace-client/reserver" style="color:var(--gold);font-size:.85rem">Réserver maintenant →</a>
+        <p style="color:var(--muted)">{{ 'لا توجد مواعيد' if is_ar else 'Aucun rendez-vous' }}</p>
+        <a href="/espace-client/reserver" style="color:var(--gold);font-size:.85rem">{{ 'احجز الآن ←' if is_ar else 'Réserver maintenant →' }}</a>
     </div>
     {% endfor %}
 
@@ -134,12 +98,5 @@
     {% endif %}
 </div>
 
-<div class="nav-bottom">
-    <a href="/espace-client/accueil"><span class="ico">🏠</span>Accueil</a>
-    <a href="/espace-client/vehicules"><span class="ico">🚗</span>Véhicules</a>
-    <a href="/espace-client/reserver" class="active"><span class="ico">📅</span>Réserver</a>
-    <a href="/espace-client/factures"><span class="ico">📄</span>Factures</a>
-    <a href="/espace-client/fidelite"><span class="ico">🎁</span>Fidélité</a>
-</div>
-</body>
-</html>
+{% set active_nav = 'reserver' %}
+{% include '_client_foot.html' %}
