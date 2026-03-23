@@ -1,10 +1,10 @@
 {% include '_client_head.html' %}
     <style>
         .summary-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-        .summary-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+        .summary-box{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:12px;padding:14px;text-align:center}
         .summary-box .amount{font-size:1.3rem;font-weight:800}
         .summary-box .lbl{font-size:.6rem;color:var(--muted);margin-top:2px}
-        .inv-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+        .inv-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:16px;margin-bottom:12px;transition:border-color .2s}
         .inv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
         .inv-num{font-size:.9rem;font-weight:700}
         .inv-date{font-size:.7rem;color:var(--muted);margin-top:2px}
@@ -59,7 +59,7 @@
             <span class="inv-total">{{ '{:,.0f}'.format(inv.amount or 0) }} DT</span>
         </div>
         <div style="display:flex;gap:8px;margin-top:10px">
-            <a href="/espace-client/facture/{{ inv.id }}/pdf" style="flex:1;display:block;text-align:center;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--gold);text-decoration:none;font-size:.75rem;font-weight:600">📥 {{ 'تحميل PDF' if is_ar else 'Télécharger PDF' }}</a>
+            <a href="/espace-client/facture/{{ inv.id }}/pdf" style="flex:1;display:block;text-align:center;padding:8px;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);border-radius:10px;color:var(--gold);text-decoration:none;font-size:.75rem;font-weight:600">📥 {{ 'تحميل PDF' if is_ar else 'Télécharger PDF' }}</a>
             {% if inv.status in ('unpaid','partial') %}
             <a href="/espace-client/payer/{{ inv.id }}" style="flex:1;display:block;text-align:center;padding:8px;background:var(--gold);border-radius:10px;color:#000;text-decoration:none;font-size:.75rem;font-weight:700">💳 {{ 'دفع' if is_ar else 'Payer en ligne' }}</a>
             {% endif %}

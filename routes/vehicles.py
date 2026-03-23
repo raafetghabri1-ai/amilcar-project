@@ -5,7 +5,9 @@ Routes: 21
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, log_audit, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers_validation import Validator
+from helpers_logging import get_logger
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -552,5 +554,70 @@ def vehicle_full_history(car_id):
     return render_template("vehicle_full_history.html", car=car, appointments=appointments,
         treatments=treatments, gallery=gallery, conditions=conditions, subscriptions=subscriptions,
         product_costs=product_costs, total_revenue=total_revenue, total_visits=total_visits)
+
+
+# ─── Car Edit/Delete (moved from main.py) ───
+@vehicles_bp.route("/edit_car/<int:car_id>", methods=["GET", "POST"])
+@login_required
+def edit_car(car_id):
+    with get_db() as conn:
+        if request.method == "POST":
+            v = Validator()
+            brand = v.string(request.form.get("brand"), 'brand', 'Marque', min_len=1, max_len=50)
+            model = v.string(request.form.get("model"), 'model', 'Modèle', min_len=1, max_len=50)
+            plate = v.string(request.form.get("plate"), 'plate', 'Immatriculation', min_len=1, max_len=20)
+            year = request.form.get("year", "").strip()
+            color = request.form.get("color", "").strip()
+            if not v.ok:
+                flash(v.first_error(), 'error')
+                car = conn.execute("SELECT * FROM cars WHERE id = ?", (car_id,)).fetchone()
+                return render_template("edit_car.html", car=car)
+            conn.execute("UPDATE cars SET brand = ?, model = ?, plate = ?, year = ?, color = ? WHERE id = ?",
+                (brand, model, plate, year, color, car_id))
+            conn.commit()
+            log_activity('Edit Car', f'{brand} {model} ({plate})')
+            customer_id = conn.execute("SELECT customer_id FROM cars WHERE id = ?", (car_id,)).fetchone()[0]
+            return redirect(f"/customer/{customer_id}")
+        car = conn.execute("SELECT * FROM cars WHERE id = ?", (car_id,)).fetchone()
+    return render_template("edit_car.html", car=car)
+
+
+@vehicles_bp.route("/delete_car/<int:car_id>", methods=["POST"])
+@login_required
+def delete_car(car_id):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        car = conn.execute("SELECT customer_id FROM cars WHERE id = ?", (car_id,)).fetchone()
+        if not car:
+            return redirect("/customers")
+        customer_id = car[0]
+        conn.execute("UPDATE invoices SET is_deleted=1, deleted_at=? WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id = ?)", (now, car_id))
+        conn.execute("UPDATE appointments SET is_deleted=1, deleted_at=? WHERE car_id = ?", (now, car_id))
+        conn.execute("UPDATE cars SET is_deleted=1, deleted_at=? WHERE id = ?", (now, car_id))
+        conn.commit()
+    log_activity('Delete Car', f'Car #{car_id} (soft)')
+    log_audit('delete', 'car', car_id)
+    flash('Véhicule supprimé — récupérable depuis la corbeille', 'success')
+    return redirect(f"/customer/{customer_id}")
+
+
+@vehicles_bp.route("/add_car_vehicle", methods=["POST"])
+@login_required
+def add_car_vehicle():
+    """Enhanced car/moto add with vehicle_type"""
+    customer_id = request.form.get("customer_id", 0, type=int)
+    brand = request.form.get("brand", "").strip()
+    model = request.form.get("model", "").strip()
+    plate = request.form.get("plate", "").strip()
+    vehicle_type = request.form.get("vehicle_type", "voiture")
+    color = request.form.get("color", "").strip()
+    year = request.form.get("year", 0, type=int)
+    if customer_id and brand and model and plate:
+        with get_db() as conn:
+            conn.execute("""INSERT INTO cars (customer_id, brand, model, plate, vehicle_type, color, year)
+                VALUES (?,?,?,?,?,?,?)""", (customer_id, brand, model, plate, vehicle_type, color, year))
+            conn.commit()
+        flash("Véhicule ajouté ✅", "success")
+    return redirect(f"/customer/{customer_id}")
 
 

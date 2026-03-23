@@ -1,15 +1,15 @@
 {% include '_client_head.html' %}
     <style>
         .ws-box{max-width:440px;margin:20px auto;padding:0 16px}
-        .ws-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px 22px;margin-bottom:16px}
+        .ws-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:28px 22px;margin-bottom:16px}
         .ws-card h3{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
         .ws-card .desc{color:var(--muted);font-size:.78rem;line-height:1.6;margin-bottom:16px}
-        .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:12px;border:1px solid var(--border)}
+        .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding:12px;background:rgba(30,30,30,0.70);border-radius:12px;border:1px solid rgba(212,175,55,0.10)}
         .step-num{background:var(--gold);color:#000;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
         .step-text{font-size:.78rem;color:var(--text);line-height:1.5}
         .step-text strong{color:var(--gold)}
         .step-text a{color:var(--gold);text-decoration:underline}
-        .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:14px 18px;border-radius:12px;font-size:1.1rem;text-align:center;letter-spacing:3px;outline:none;transition:border .2s;box-sizing:border-box}
+        .form-input{width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:14px 18px;border-radius:12px;font-size:1.1rem;text-align:center;letter-spacing:3px;outline:none;transition:border .2s;box-sizing:border-box}
         .form-input:focus{border-color:var(--gold)}
         .form-input::placeholder{color:var(--muted);letter-spacing:0;font-size:.85rem}
         .btn-gold{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:14px;font-size:.95rem;cursor:pointer;transition:all .2s;margin-top:14px;letter-spacing:1px}
@@ -63,10 +63,10 @@
             <div class="step-text">
                 {% if is_ar %}
                 افتح واتساب على هاتفك وأرسل هذه الرسالة للرقم <strong>+34 644 51 95 23</strong>:<br>
-                <code style="background:var(--bg3);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
+                <code style="background:rgba(30,30,30,0.70);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
                 {% else %}
                 Ouvrez WhatsApp et envoyez ce message au <strong>+34 644 51 95 23</strong> :<br>
-                <code style="background:var(--bg3);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
+                <code style="background:rgba(30,30,30,0.70);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
                 {% endif %}
             </div>
         </div>

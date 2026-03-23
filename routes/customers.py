@@ -5,7 +5,10 @@ Routes: 42
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response, jsonify, session, send_file
 from helpers import login_required, admin_required, client_required, get_db, get_services, get_setting, get_all_settings
-from helpers import allowed_file, safe_page, log_activity, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers import allowed_file, safe_page, log_activity, log_audit, build_wa_url, STATUS_MESSAGES, UPLOAD_FOLDER, MAX_FILE_SIZE, MAX_FILES, PER_PAGE
+from helpers_validation import Validator
+from helpers_logging import get_logger
+
 from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,6 +18,7 @@ import time as time_module
 import sqlite3
 
 customers_bp = Blueprint("customers_bp", __name__)
+_log = get_logger('customers')
 
 LOYALTY_THRESHOLD = 5
 TIER_THRESHOLDS = {'BRONZE': 0, 'ARGENT': 500, 'OR': 1000, 'PLATINE': 2000}
@@ -1217,5 +1221,73 @@ def loyalty_level_update():
         conn.commit()
     flash(f"{updated} niveaux de fidélité mis à jour", "success")
     return redirect("/loyalty_gamified")
+
+
+# ─── Customer Edit/Delete (moved from main.py) ───
+@customers_bp.route("/edit_customer/<int:customer_id>", methods=["GET", "POST"])
+@login_required
+def edit_customer(customer_id):
+    with get_db() as conn:
+        if request.method == "POST":
+            v = Validator()
+            name = v.string(request.form.get("name"), 'name', 'Nom', min_len=2, max_len=100)
+            phone = v.phone(request.form.get("phone"))
+            email = v.email(request.form.get("email"))
+            notes = v.safe_text(request.form.get("notes"), 'notes', 'Notes', max_len=2000)
+            if not v.ok:
+                flash(v.first_error(), 'error')
+                customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+                return render_template("edit_customer.html", customer=customer)
+            if phone:
+                dup = conn.execute("SELECT id, name FROM customers WHERE phone = ? AND id != ?", (phone, customer_id)).fetchone()
+                if dup:
+                    flash(f'Ce numéro est déjà utilisé par le client : {dup[1]}', 'error')
+                    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+                    return render_template("edit_customer.html", customer=customer)
+            conn.execute("UPDATE customers SET name = ?, phone = ?, notes = ?, email = ? WHERE id = ?", (name, phone, notes, email, customer_id))
+            conn.commit()
+            _log.info('Customer %d updated: %s', customer_id, name)
+            flash('Client mis à jour avec succès', 'success')
+            return redirect(f"/customer/{customer_id}")
+        customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+        if not customer:
+            flash('Client introuvable', 'error')
+            return redirect("/customers")
+    return render_template("edit_customer.html", customer=customer)
+
+
+@customers_bp.route("/delete_customer/<int:customer_id>", methods=["POST"])
+@login_required
+def delete_customer(customer_id):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        car_ids = [r[0] for r in conn.execute("SELECT id FROM cars WHERE customer_id = ?", (customer_id,)).fetchall()]
+        if car_ids:
+            placeholders = ','.join('?' * len(car_ids))
+            conn.execute(f"UPDATE invoices SET is_deleted=1, deleted_at=? WHERE appointment_id IN (SELECT id FROM appointments WHERE car_id IN ({placeholders}))", [now] + car_ids)
+            conn.execute(f"UPDATE appointments SET is_deleted=1, deleted_at=? WHERE car_id IN ({placeholders})", [now] + car_ids)
+            conn.execute("UPDATE cars SET is_deleted=1, deleted_at=? WHERE customer_id = ?", (now, customer_id))
+        conn.execute("UPDATE customers SET is_deleted=1, deleted_at=? WHERE id = ?", (now, customer_id))
+        conn.commit()
+    log_activity('Delete Customer', f'Customer #{customer_id} (soft)')
+    log_audit('delete', 'customer', customer_id)
+    flash('Client supprimé — récupérable depuis la corbeille', 'success')
+    return redirect("/customers")
+
+
+@customers_bp.route("/add_communication/<int:customer_id>", methods=["POST"])
+@login_required
+def add_communication(customer_id):
+    comm_type = request.form.get("type", "appel").strip()
+    subject = request.form.get("subject", "").strip()
+    message = request.form.get("message", "").strip()
+    if comm_type not in ('appel', 'sms', 'email', 'whatsapp', 'visite', 'autre'):
+        comm_type = 'autre'
+    with get_db() as conn:
+        conn.execute("INSERT INTO communication_log (customer_id, type, subject, message, sent_by) VALUES (?,?,?,?,?)",
+            (customer_id, comm_type, subject, message, session.get('username', '')))
+        conn.commit()
+    flash("Communication enregistrée", "success")
+    return redirect(f"/communication_log/{customer_id}")
 
 

@@ -1,6 +1,6 @@
 {% include '_client_head.html' %}
     <style>
-        .notif-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+        .notif-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:16px;margin-bottom:10px;transition:border-color .2s}
         .notif-card.unread{border-left:3px solid var(--gold)}
         [dir="rtl"] .notif-card.unread{border-left:none;border-right:3px solid var(--gold)}
         .notif-title{font-size:.88rem;font-weight:700;margin-bottom:4px}

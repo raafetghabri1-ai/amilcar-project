@@ -216,10 +216,17 @@ _booking_rate = {}
 BOOKING_RATE_LIMIT = 5
 BOOKING_RATE_WINDOW = 300
 
+def _purge_stale(store, window, now):
+    if len(store) > 1000:
+        stale = [k for k, (_, t) in store.items() if now - t > window]
+        for k in stale:
+            del store[k]
+
 def check_booking_rate_limit():
     """Returns True if booking rate limit exceeded (5 per 5 min per IP)."""
     ip = request.remote_addr
     now = time_module.time()
+    _purge_stale(_booking_rate, BOOKING_RATE_WINDOW, now)
     if ip in _booking_rate:
         count, window_start = _booking_rate[ip]
         if now - window_start > BOOKING_RATE_WINDOW:
@@ -409,6 +416,7 @@ def check_api_rate_limit():
     """Returns True if rate limit exceeded."""
     ip = request.remote_addr
     now = time_module.time()
+    _purge_stale(_api_rate, API_RATE_WINDOW, now)
     if ip in _api_rate:
         count, window_start = _api_rate[ip]
         if now - window_start > API_RATE_WINDOW:
@@ -435,6 +443,7 @@ def rate_limit(max_calls=10, window=60):
             from flask import jsonify as _json, abort
             key = f"{request.remote_addr}:{f.__name__}"
             now = time_module.time()
+            _purge_stale(_route_rate, window, now)
             if key in _route_rate:
                 count, start = _route_rate[key]
                 if now - start > window:

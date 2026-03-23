@@ -1,6 +1,6 @@
 {% include '_client_head.html' %}
     <style>
-        .rdv-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s}
+        .rdv-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:16px;margin-bottom:12px;text-decoration:none;color:inherit;display:block;transition:border-color .2s}
         .rdv-card:hover{border-color:var(--gold)}
         .rdv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
         .rdv-service{font-size:.9rem;font-weight:700}
@@ -71,7 +71,7 @@
                     <label for="star{{ a.id }}_{{ i }}">★</label>
                     {% endfor %}
                 </div>
-                <textarea name="comment" placeholder="{{ 'تعليق (اختياري)...' if is_ar else 'Un commentaire (optionnel)...' }}" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px;font-size:.78rem;resize:none;margin-top:8px" rows="2" maxlength="500"></textarea>
+                <textarea name="comment" placeholder="{{ 'تعليق (اختياري)...' if is_ar else 'Un commentaire (optionnel)...' }}" style="width:100%;background:rgba(20,20,20,0.70);border:1px solid rgba(212,175,55,0.10);border-radius:8px;color:var(--text);padding:8px;font-size:.78rem;resize:none;margin-top:8px" rows="2" maxlength="500"></textarea>
                 <button type="submit" class="rate-btn">{{ 'إرسال ⭐' if is_ar else 'Envoyer ⭐' }}</button>
             </form>
         </div>

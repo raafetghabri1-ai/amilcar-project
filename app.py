@@ -363,19 +363,18 @@ def _run_daily_backup():
         time_module.sleep(86400)  # 24 hours
         try:
             with app.app_context():
-                db = get_db()
-                auto = db.execute("SELECT value FROM settings WHERE key='auto_backup'").fetchone()
-                if auto and auto[0] == '1':
-                    from routes.settings_admin import _perform_backup, _send_telegram_backup
-                    fname = _perform_backup()
-                    if fname:
-                        _log.info('Auto-backup created: %s', fname)
-                        tg_auto = db.execute("SELECT value FROM settings WHERE key='telegram_auto_backup'").fetchone()
-                        if tg_auto and tg_auto[0] == '1':
-                            backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
-                            _send_telegram_backup(os.path.join(backup_dir, fname), fname)
-                            _log.info('Telegram backup sent: %s', fname)
-                db.close()
+                with get_db() as db:
+                    auto = db.execute("SELECT value FROM settings WHERE key='auto_backup'").fetchone()
+                    if auto and auto[0] == '1':
+                        from routes.settings_admin import _perform_backup, _send_telegram_backup
+                        fname = _perform_backup()
+                        if fname:
+                            _log.info('Auto-backup created: %s', fname)
+                            tg_auto = db.execute("SELECT value FROM settings WHERE key='telegram_auto_backup'").fetchone()
+                            if tg_auto and tg_auto[0] == '1':
+                                backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backups')
+                                _send_telegram_backup(os.path.join(backup_dir, fname), fname)
+                                _log.info('Telegram backup sent: %s', fname)
         except Exception as e:
             _log.error('Auto-backup failed: %s', e)
 
@@ -398,28 +397,26 @@ def _run_appointment_reminders():
 
         try:
             with app.app_context():
-                db = get_db()
-                # Check if reminders are enabled
-                auto_remind = db.execute("SELECT value FROM settings WHERE key='wa_auto_remind'").fetchone()
-                if not auto_remind or auto_remind[0] != '1':
-                    db.close()
-                    continue
-                wa_phone = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_phone'").fetchone()
-                wa_key = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_apikey'").fetchone()
-                if not wa_phone or not wa_phone[0] or not wa_key or not wa_key[0]:
-                    db.close()
-                    continue
-                phone = wa_phone[0].strip()
-                apikey = wa_key[0].strip()
-                shop = db.execute("SELECT value FROM settings WHERE key='shop_name'").fetchone()
-                shop_name = shop[0] if shop and shop[0] else 'AMILCAR'
+                with get_db() as db:
+                    # Check if reminders are enabled
+                    auto_remind = db.execute("SELECT value FROM settings WHERE key='wa_auto_remind'").fetchone()
+                    if not auto_remind or auto_remind[0] != '1':
+                        continue
+                    wa_phone = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_phone'").fetchone()
+                    wa_key = db.execute("SELECT value FROM settings WHERE key='wa_callmebot_apikey'").fetchone()
+                    if not wa_phone or not wa_phone[0] or not wa_key or not wa_key[0]:
+                        continue
+                    phone = wa_phone[0].strip()
+                    apikey = wa_key[0].strip()
+                    shop = db.execute("SELECT value FROM settings WHERE key='shop_name'").fetchone()
+                    shop_name = shop[0] if shop and shop[0] else 'AMILCAR'
 
-                tomorrow = (date.today() + timedelta(days=1)).isoformat()
-                appts = db.execute(
-                    "SELECT a.id, cu.name, a.service, COALESCE(a.time, ''), ca.brand, ca.model "
-                    "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
-                    "JOIN customers cu ON ca.customer_id=cu.id "
-                    "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
+                    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+                    appts = db.execute(
+                        "SELECT a.id, cu.name, a.service, COALESCE(a.time, ''), ca.brand, ca.model "
+                        "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                        "JOIN customers cu ON ca.customer_id=cu.id "
+                        "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
 
                 if appts:
                     msg = f"📋 *Rappel — {len(appts)} RDV demain*\n"
@@ -434,7 +431,6 @@ def _run_appointment_reminders():
                            f"&text={urllib.parse.quote(msg)}"
                            f"&apikey={urllib.parse.quote(apikey)}")
                     urllib.request.urlopen(url, timeout=15)
-                db.close()
         except Exception as e:
             import logging
             logging.getLogger('amilcar.reminders').error('Reminder failed: %s', e)
@@ -459,14 +455,13 @@ def _run_email_reminders():
                     continue
                 shop = get_setting_value('shop_name', 'AMILCAR')
                 tomorrow = (date.today() + timedelta(days=1)).isoformat()
-                db = get_db()
-                appts = db.execute(
-                    "SELECT a.id, a.date, COALESCE(a.time,''), a.service, cu.name, "
-                    "COALESCE(cu.email,''), ca.brand, ca.model, cu.id "
-                    "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
-                    "JOIN customers cu ON ca.customer_id=cu.id "
-                    "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
-                db.close()
+                with get_db() as db:
+                    appts = db.execute(
+                        "SELECT a.id, a.date, COALESCE(a.time,''), a.service, cu.name, "
+                        "COALESCE(cu.email,''), ca.brand, ca.model, cu.id "
+                        "FROM appointments a JOIN cars ca ON a.car_id=ca.id "
+                        "JOIN customers cu ON ca.customer_id=cu.id "
+                        "WHERE a.date=? AND a.status='pending'", (tomorrow,)).fetchall()
                 sent = 0
                 for a in appts:
                     email = a[5]

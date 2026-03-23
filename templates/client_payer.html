@@ -1,9 +1,9 @@
 {% include '_client_head.html' %}
     <style>
-        .pay-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px}
+        .pay-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px}
         .pay-amount{font-size:2.2rem;font-weight:800;color:var(--gold);margin:16px 0 4px}
         .pay-label{font-size:.72rem;color:var(--muted)}
-        .pay-detail{background:var(--bg3);border-radius:12px;padding:14px;margin-top:16px;text-align:left}
+        .pay-detail{background:rgba(30,30,30,0.70);border-radius:12px;padding:14px;margin-top:16px;text-align:left}
         [dir="rtl"] .pay-detail{text-align:right}
         .pay-row{display:flex;justify-content:space-between;padding:6px 0;font-size:.8rem}
         .pay-row .k{color:var(--muted)}
@@ -47,7 +47,7 @@
         </form>
         <div style="margin-top:10px;font-size:.65rem;color:var(--muted)">🔒 {{ 'دفع آمن عبر Flouci' if is_ar else 'Paiement sécurisé via Flouci' }}</div>
         {% else %}
-        <div style="margin-top:20px;background:var(--bg3);border-radius:12px;padding:16px">
+        <div style="margin-top:20px;background:rgba(30,30,30,0.70);border-radius:12px;padding:16px">
             <div style="font-size:.85rem;font-weight:600;margin-bottom:8px">💳 {{ 'الدفع عبر الإنترنت قريباً' if is_ar else 'Paiement en ligne bientôt disponible' }}</div>
             <div style="font-size:.75rem;color:var(--muted)">{{ 'في الوقت الحالي، يمكنك الدفع في المحل أو عبر التحويل البنكي.' if is_ar else 'En attendant, vous pouvez régler sur place ou par virement bancaire.' }}</div>
         </div>

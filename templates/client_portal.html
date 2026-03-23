@@ -6,11 +6,14 @@
     <title>AMILCAR — Espace Client</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root{--bg-dark:#0a0a1a;--bg-card:#12122a;--gold:#D4AF37;--green:#34d399;--red:#ef4444;--text:#e2e2f0;--muted:#9a9ab0;--border:#2a2a4a;--radius:12px}
-        body{background:var(--bg-dark);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
-        .portal-header{background:linear-gradient(135deg,#12122a 0%,#1a1a3e 100%);padding:30px;text-align:center;border-bottom:2px solid var(--gold)}
+        :root{--bg-dark:#09090b;--bg-card:rgba(20,20,20,0.70);--gold:#D4AF37;--green:#34d399;--red:#ef4444;--text:#e2e2f0;--muted:#9a9ab0;--border:rgba(212,175,55,0.10);--radius:12px}
+        body{background:#09090b;background-image:url('/static/uploads/presentation/page_6.jpg');background-size:cover;background-attachment:fixed;background-position:center;color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(9,9,11,0.82);z-index:0}
+        body>*{position:relative;z-index:1}
+        .portal-header{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:30px;text-align:center;border-bottom:2px solid var(--gold)}
         .portal-header h1{color:var(--gold);font-size:1.8rem;font-weight:800;margin-bottom:4px}
-        .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
+        .card{background:var(--bg-card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);transition:border-color .2s}
+        .card:hover{border-color:rgba(212,175,55,0.3)}
         .nav-pills .nav-link{color:var(--muted);border-radius:var(--radius);font-size:.85rem}
         .nav-pills .nav-link.active{background:var(--gold);color:#000;font-weight:600}
         .status-badge{padding:3px 10px;border-radius:var(--radius);font-size:.7rem;font-weight:600}

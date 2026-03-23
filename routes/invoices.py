@@ -1188,4 +1188,203 @@ def quote_whatsapp(quote_id):
     return redirect(wa_url)
 
 
+EXPENSE_CATEGORIES = [
+    'Pièces & Matériaux',
+    'Main-d\'œuvre',
+    'Loyer',
+    'Services publics',
+    'Équipement',
+    'Marketing',
+    'Assurance',
+    'Autre',
+]
+
+
+# ─── Invoice/Expense Edit/Delete + Payments (moved from main.py) ───
+@invoices_bp.route("/edit_invoice/<int:invoice_id>", methods=["GET", "POST"])
+@login_required
+def edit_invoice(invoice_id):
+    with get_db() as conn:
+        if request.method == "POST":
+            amount = request.form.get("amount", "").strip()
+            status = request.form.get("status", "unpaid")
+            payment_method = request.form.get("payment_method", "")
+            discount_type = request.form.get("discount_type", "").strip()
+            discount_value = request.form.get("discount_value", "0").strip()
+            if not amount:
+                flash("Le montant est requis", "error")
+                inv = conn.execute(
+                    "SELECT i.*, a.date, a.service, cu.name "
+                    "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
+                    "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+                    "WHERE i.id = ?", (invoice_id,)).fetchone()
+                return render_template("edit_invoice.html", inv=inv)
+            try:
+                amount_val = float(amount)
+                if amount_val <= 0:
+                    raise ValueError
+            except ValueError:
+                flash("Entrez un montant positif valide", "error")
+                inv = conn.execute(
+                    "SELECT i.*, a.date, a.service, cu.name "
+                    "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
+                    "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+                    "WHERE i.id = ?", (invoice_id,)).fetchone()
+                return render_template("edit_invoice.html", inv=inv)
+            disc_val = 0
+            try:
+                disc_val = float(discount_value) if discount_value else 0
+                if disc_val < 0: disc_val = 0
+                if discount_type == 'percent' and disc_val > 100: disc_val = 100
+                if discount_type == 'fixed' and disc_val >= amount_val: disc_val = amount_val - 0.01
+            except ValueError:
+                disc_val = 0
+            conn.execute("UPDATE invoices SET amount = ?, status = ?, payment_method = ?, discount_type = ?, discount_value = ? WHERE id = ?",
+                (amount_val, status, payment_method, discount_type if discount_type in ('percent','fixed') else '', disc_val, invoice_id))
+            conn.commit()
+            flash("Facture mise à jour avec succès", "success")
+            return redirect("/invoices")
+        inv = conn.execute(
+            "SELECT i.*, a.date, a.service, cu.name "
+            "FROM invoices i JOIN appointments a ON i.appointment_id = a.id "
+            "JOIN cars ca ON a.car_id = ca.id JOIN customers cu ON ca.customer_id = cu.id "
+            "WHERE i.id = ?", (invoice_id,)).fetchone()
+    if not inv:
+        return redirect("/invoices")
+    return render_template("edit_invoice.html", inv=inv)
+
+
+@invoices_bp.route("/delete_invoice/<int:invoice_id>", methods=["POST"])
+@login_required
+def delete_invoice(invoice_id):
+    with get_db() as conn:
+        conn.execute("UPDATE invoices SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), invoice_id))
+        conn.commit()
+    log_audit('delete', 'invoice', invoice_id)
+    log_activity('Delete Invoice', f'Invoice #{invoice_id} (soft)')
+    flash('Facture supprimée — récupérable depuis la corbeille', 'success')
+    return redirect("/invoices")
+
+
+@invoices_bp.route("/delete_quote/<int:quote_id>", methods=["POST"])
+@login_required
+def delete_quote(quote_id):
+    with get_db() as conn:
+        conn.execute("UPDATE quotes SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), quote_id))
+        conn.commit()
+    log_activity('Delete Quote', f'Quote #{quote_id} (soft)')
+    flash('Devis supprimé — récupérable depuis la corbeille', 'success')
+    return redirect("/quotes")
+
+
+@invoices_bp.route("/edit_expense/<int:expense_id>", methods=["GET", "POST"])
+@login_required
+def edit_expense(expense_id):
+    with get_db() as conn:
+        if request.method == "POST":
+            date_val = request.form.get("date", "").strip()
+            category = request.form.get("category", "").strip()
+            description = request.form.get("description", "").strip()
+            amount = request.form.get("amount", "").strip()
+            if not date_val or not category or not amount:
+                flash("La date, la catégorie et le montant sont requis", "error")
+                expense = conn.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+                return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES)
+            try:
+                amount_val = float(amount)
+                if amount_val <= 0:
+                    raise ValueError
+            except ValueError:
+                flash("Entrez un montant positif valide", "error")
+                expense = conn.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+                return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES)
+            conn.execute("UPDATE expenses SET date = ?, category = ?, description = ?, amount = ? WHERE id = ?",
+                (date_val, category, description, amount_val, expense_id))
+            conn.commit()
+            flash("Dépense mise à jour avec succès", "success")
+            return redirect("/expenses")
+        expense = conn.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
+    if not expense:
+        return redirect("/expenses")
+    return render_template("edit_expense.html", expense=expense, categories=EXPENSE_CATEGORIES)
+
+
+@invoices_bp.route("/add_expense", methods=["GET", "POST"])
+@login_required
+def add_expense():
+    if request.method == "POST":
+        v = Validator()
+        date_val = v.date_str(request.form.get("date", ""), 'date', 'Date')
+        category = v.require(request.form.get("category", ""), 'category', 'Catégorie')
+        description = v.safe_text(request.form.get("description", ""), 'description', 'Description')
+        amount_val = v.amount(request.form.get("amount", ""), 'amount', 'Montant')
+        if not v.ok:
+            flash(v.first_error(), "error")
+            return render_template("add_expense.html", categories=EXPENSE_CATEGORIES)
+        if amount_val <= 0:
+            flash("Entrez un montant positif valide", "error")
+            return render_template("add_expense.html", categories=EXPENSE_CATEGORIES)
+        with get_db() as conn:
+            conn.execute("INSERT INTO expenses (date, category, description, amount) VALUES (?,?,?,?)",
+                (date_val, category, description, amount_val))
+            conn.commit()
+        flash("Dépense ajoutée avec succès", "success")
+        return redirect("/expenses")
+    return render_template("add_expense.html", categories=EXPENSE_CATEGORIES)
+
+
+@invoices_bp.route("/delete_expense/<int:expense_id>", methods=["POST"])
+@login_required
+def delete_expense(expense_id):
+    with get_db() as conn:
+        conn.execute("UPDATE expenses SET is_deleted=1, deleted_at=? WHERE id = ?", (datetime.now().isoformat(), expense_id))
+        conn.commit()
+    flash('Dépense supprimée — récupérable depuis la corbeille', 'success')
+    return redirect("/expenses")
+
+
+@invoices_bp.route("/payments/<int:invoice_id>")
+@login_required
+def invoice_payments(invoice_id):
+    with get_db() as conn:
+        invoice = conn.execute("SELECT * FROM invoices WHERE id=?", (invoice_id,)).fetchone()
+        if not invoice:
+            flash("Facture introuvable", "danger")
+            return redirect("/invoices")
+        payments = conn.execute("SELECT * FROM payments WHERE invoice_id=? ORDER BY paid_at DESC", (invoice_id,)).fetchall()
+        total_paid = sum(p[2] for p in payments)
+        remaining = invoice[2] - total_paid
+    return render_template("payments.html", invoice=invoice, payments=payments,
+                          total_paid=total_paid, remaining=remaining)
+
+
+@invoices_bp.route("/payments/<int:invoice_id>/add", methods=["POST"])
+@login_required
+def add_payment(invoice_id):
+    amount = float(request.form.get('amount', 0))
+    method = request.form.get('method', 'cash')
+    reference = request.form.get('reference', '')
+    notes = request.form.get('notes', '')
+    with get_db() as conn:
+        invoice = conn.execute("SELECT * FROM invoices WHERE id=?", (invoice_id,)).fetchone()
+        if not invoice:
+            flash("Facture introuvable", "danger")
+            return redirect("/invoices")
+        conn.execute("INSERT INTO payments (invoice_id, amount, method, reference, notes) VALUES (?,?,?,?,?)",
+                    (invoice_id, amount, method, reference, notes))
+        total_paid = conn.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id=?", (invoice_id,)).fetchone()[0]
+        remaining = invoice[2] - total_paid
+        if remaining <= 0:
+            conn.execute("UPDATE invoices SET status='Payée', paid_amount=? WHERE id=?", (total_paid, invoice_id))
+        else:
+            conn.execute("UPDATE invoices SET status='partial', paid_amount=? WHERE id=?", (total_paid, invoice_id))
+        try:
+            conn.execute("UPDATE invoices SET total_paid=?, remaining=? WHERE id=?", (total_paid, max(0, remaining), invoice_id))
+        except (ValueError, TypeError, AttributeError):
+            pass
+        conn.commit()
+    flash(f"Paiement de {amount:.2f} DH enregistré", "success")
+    return redirect(f"/payments/{invoice_id}")
+
+
 

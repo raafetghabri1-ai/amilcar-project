@@ -4,17 +4,18 @@
 <style>
     .tech-page .sidebar, .tech-page .topbar { display: none !important; }
     .tech-page .main-content { margin-left: 0 !important; padding: 12px !important; }
-    .tech-stat { text-align:center;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px 8px }
+    .tech-stat { text-align:center;background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:14px 8px;transition:border-color .2s }
+    .tech-stat:hover { border-color:rgba(212,175,55,0.3) }
     .tech-stat .num { font-size:1.8rem;font-weight:800;line-height:1 }
     .tech-stat small { color:var(--text-muted);font-size:.7rem }
-    .work-card { background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius);padding:14px;margin-bottom:12px;transition:all .2s }
+    .work-card { background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:14px;margin-bottom:12px;transition:all .2s }
     .work-card:active { transform:scale(.98) }
     .status-pill { padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;display:inline-block }
     .work-actions { display:flex;gap:6px;margin-top:10px }
     .work-actions button, .work-actions a { flex:1;text-align:center;padding:8px;border-radius:var(--radius);font-size:.75rem;font-weight:700;border:none;cursor:pointer;text-decoration:none }
-    .note-input { width:100%;padding:6px 10px;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--bg-hover);color:var(--text-primary);font-size:.8rem;resize:none;margin-top:6px }
+    .note-input { width:100%;padding:6px 10px;border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);background:rgba(30,30,30,0.70);color:var(--text-primary);font-size:.8rem;resize:none;margin-top:6px }
     .tab-bar { display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch }
-    .tab-bar button { flex-shrink:0;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border-color);background:transparent;color:var(--text-muted);font-size:.8rem;cursor:pointer }
+    .tab-bar button { flex-shrink:0;padding:8px 16px;border-radius:var(--radius);border:1px solid rgba(212,175,55,0.10);background:transparent;color:var(--text-muted);font-size:.8rem;cursor:pointer }
     .tab-bar button.active { background:var(--gold);color:#000;border-color:var(--gold);font-weight:700 }
     @media (max-width: 768px) {
         .tech-stat .num { font-size:1.5rem }

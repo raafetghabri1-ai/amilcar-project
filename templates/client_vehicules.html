@@ -1,9 +1,10 @@
 {% include '_client_head.html' %}
     <style>
-        .car-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+        .car-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:20px;margin-bottom:16px;transition:border-color .2s}
         .car-card .car-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
         .car-card .car-name{font-size:1.1rem;font-weight:700;color:var(--text)}
-        .car-card .car-plate{display:inline-block;background:var(--bg3);border:1px solid var(--gold);color:var(--gold);padding:4px 12px;border-radius:8px;font-size:.75rem;font-weight:600;letter-spacing:1px}
+        .car-card:hover{border-color:rgba(212,175,55,0.3)}
+        .car-card .car-plate{display:inline-block;background:rgba(30,30,30,0.70);border:1px solid var(--gold);color:var(--gold);padding:4px 12px;border-radius:8px;font-size:.75rem;font-weight:600;letter-spacing:1px}
         .car-card .car-type{color:var(--muted);font-size:.7rem;margin-top:4px}
         .car-section{margin-bottom:12px}
         .car-section h6{color:var(--gold);font-size:.75rem;font-weight:600;margin-bottom:8px;letter-spacing:.5px}
@@ -94,7 +95,7 @@
 
 <!-- Add Vehicle Modal -->
 <div id="addCarModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center;padding:20px">
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:400px;width:100%">
+    <div style="background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:24px;max-width:400px;width:100%">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
             <h5 style="color:var(--gold);margin:0;font-size:1rem">🚗 {{ 'إضافة سيارة' if is_ar else 'Ajouter un véhicule' }}</h5>
             <button onclick="document.getElementById('addCarModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer">✕</button>
@@ -103,26 +104,26 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:12px">
                 <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'النوع' if is_ar else 'Type' }} *</label>
-                <select name="vehicle_type" required style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <select name="vehicle_type" required style="width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
                     <option value="voiture">🚗 {{ 'سيارة' if is_ar else 'Voiture' }}</option>
                     <option value="moto">🏍️ {{ 'دراجة' if is_ar else 'Moto' }}</option>
                 </select>
             </div>
             <div style="margin-bottom:12px">
                 <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'العلامة' if is_ar else 'Marque' }} *</label>
-                <input type="text" name="brand" required placeholder="{{ 'مثال: BMW, Mercedes...' if is_ar else 'Ex: BMW, Mercedes...' }}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <input type="text" name="brand" required placeholder="{{ 'مثال: BMW, Mercedes...' if is_ar else 'Ex: BMW, Mercedes...' }}" style="width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
             <div style="margin-bottom:12px">
                 <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'الموديل' if is_ar else 'Modèle' }} *</label>
-                <input type="text" name="model" required placeholder="{{ 'مثال: الفئة 3...' if is_ar else 'Ex: Série 3, Classe C...' }}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <input type="text" name="model" required placeholder="{{ 'مثال: الفئة 3...' if is_ar else 'Ex: Série 3, Classe C...' }}" style="width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
             <div style="margin-bottom:12px">
                 <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'رقم التسجيل' if is_ar else 'Immatriculation' }} *</label>
-                <input type="text" name="plate" required placeholder="XXX TU XXXX" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem;text-transform:uppercase">
+                <input type="text" name="plate" required placeholder="XXX TU XXXX" style="width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem;text-transform:uppercase">
             </div>
             <div style="margin-bottom:16px">
                 <label style="color:var(--muted);font-size:.75rem;display:block;margin-bottom:4px">{{ 'السنة' if is_ar else 'Année' }}</label>
-                <input type="number" name="year" min="1990" max="2027" placeholder="2024" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
+                <input type="number" name="year" min="1990" max="2027" placeholder="2024" style="width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:10px 14px;border-radius:10px;font-size:.9rem">
             </div>
             <button type="submit" style="width:100%;background:var(--gold);color:#000;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:.9rem;cursor:pointer">{{ 'إضافة' if is_ar else 'Ajouter' }}</button>
         </form>
