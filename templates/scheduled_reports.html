@@ -41,9 +41,9 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <form method="POST" action="/scheduled_reports/send_now/{{ r[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button class="btn btn-sm btn-primary" style="font-size:0.55rem;padding:2px 6px">📨 Envoyer</button></form>
+                                    <button class="btn btn-sm btn-primary" style="font-size:0.70rem;padding:2px 6px">📨 Envoyer</button></form>
                                 <form method="POST" action="/scheduled_reports/delete/{{ r[0] }}" onsubmit="return confirm('Supprimer ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 6px">🗑</button></form>
+                                    <button class="btn btn-sm btn-outline-danger" style="font-size:0.70rem;padding:2px 6px">🗑</button></form>
                             </div>
                         </td>
                     </tr>

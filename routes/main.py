@@ -194,7 +194,7 @@ def index():
         'week_trend': week_revenue - last_week_revenue,
     }
     return render_template('index.html', stats=stats, pending_appointments=pending_appointments,
-                           tomorrow_appointments=tomorrow_appointments)
+                           tomorrow_appointments=tomorrow_appointments, now=datetime.now())
 
 
 

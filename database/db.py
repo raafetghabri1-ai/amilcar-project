@@ -1216,6 +1216,8 @@ def create_tables():
         ("ALTER TABLE time_tracking ADD COLUMN clock_in TEXT DEFAULT ''", None),
         ("ALTER TABLE time_tracking ADD COLUMN clock_out TEXT DEFAULT ''", None),
         ("ALTER TABLE time_tracking ADD COLUMN notes TEXT DEFAULT ''", None),
+        # WhatsApp CallMeBot OTP
+        ("ALTER TABLE customers ADD COLUMN whatsapp_apikey TEXT DEFAULT ''", None),
     ]
     import logging
     _mig_log = logging.getLogger('amilcar.migrations')

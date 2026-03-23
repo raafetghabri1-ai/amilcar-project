@@ -10,9 +10,10 @@ from database.db import get_db
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
-import os, re, uuid, io, secrets, hashlib
+import os, re, uuid, io, secrets, hashlib, logging
 import time as time_module
 import sqlite3
+import requests as _requests
 
 # ─── Client Login Rate Limiting ───
 CLIENT_LOGIN_MAX_ATTEMPTS = 5
@@ -48,6 +49,30 @@ def _generate_otp():
 def _hash_otp(otp):
     """Hash OTP for secure storage."""
     return hashlib.sha256(otp.encode()).hexdigest()
+
+_wa_log = logging.getLogger('amilcar.whatsapp')
+
+def _send_whatsapp_otp(phone, otp, apikey):
+    """Send OTP via CallMeBot WhatsApp API. Returns True on success."""
+    import urllib.parse
+    # Normalize phone to international format (Tunisia +216)
+    p = phone.strip().replace(' ', '').replace('-', '')
+    if p.startswith('0'):
+        p = '216' + p[1:]
+    elif not p.startswith('+') and not p.startswith('216'):
+        p = '216' + p
+    p = p.replace('+', '')
+    message = f"AMILCAR Auto Care\nCode de vérification: {otp}\nValable 5 minutes."
+    url = f"https://api.callmebot.com/whatsapp.php?phone={p}&text={urllib.parse.quote(message)}&apikey={apikey}"
+    try:
+        resp = _requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            _wa_log.info('WhatsApp OTP sent to %s***', phone[:4])
+            return True
+        _wa_log.warning('CallMeBot returned %s for %s***', resp.status_code, phone[:4])
+    except Exception as e:
+        _wa_log.error('CallMeBot error for %s***: %s', phone[:4], str(e)[:100])
+    return False
 
 portal_bp = Blueprint("portal_bp", __name__)
 
@@ -226,9 +251,17 @@ def espace_client_login():
     # Store phone in session for OTP verification
     session['otp_phone'] = phone
     session['otp_customer_name'] = customer['name']
-    # In production, send OTP via SMS/WhatsApp. For now, flash it.
-    # TODO: Integrate with CallMeBot WhatsApp API or SMS gateway
-    flash(f"Code de vérification envoyé: {otp}", "info")
+    # Send OTP via WhatsApp if apikey configured, else fallback to flash
+    apikey = customer['whatsapp_apikey'] if 'whatsapp_apikey' in customer.keys() else ''
+    if apikey:
+        sent = _send_whatsapp_otp(phone, otp, apikey)
+        if sent:
+            flash("Code envoyé sur WhatsApp ✅", "success")
+        else:
+            flash(f"Échec WhatsApp. Code: {otp}", "info")
+    else:
+        flash(f"Code de vérification: {otp}", "info")
+        flash("💡 Activez WhatsApp pour recevoir le code automatiquement", "info")
     return redirect("/espace-client/verify-otp")
 
 
@@ -297,7 +330,18 @@ def espace_client_resend_otp():
             (phone, otp_hash, ip, expires)
         )
         conn.commit()
-    flash(f"Nouveau code envoyé: {otp}", "info")
+    # Send via WhatsApp if configured
+    with get_db() as conn:
+        cust = conn.execute("SELECT whatsapp_apikey FROM customers WHERE phone=?", (phone,)).fetchone()
+        apikey = cust['whatsapp_apikey'] if cust and cust['whatsapp_apikey'] else ''
+    if apikey:
+        sent = _send_whatsapp_otp(phone, otp, apikey)
+        if sent:
+            flash("Nouveau code envoyé sur WhatsApp ✅", "success")
+        else:
+            flash(f"Échec WhatsApp. Code: {otp}", "info")
+    else:
+        flash(f"Nouveau code: {otp}", "info")
     return redirect("/espace-client/verify-otp")
 
 
@@ -309,6 +353,49 @@ def espace_client_logout():
     session.pop('client_phone', None)
     return redirect("/espace-client")
 
+
+@portal_bp.route("/espace-client/whatsapp-setup")
+@client_required
+def espace_client_whatsapp_setup():
+    client_id = session['client_id']
+    with get_db() as conn:
+        customer = conn.execute("SELECT * FROM customers WHERE id=?", (client_id,)).fetchone()
+        shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+        has_apikey = bool(customer['whatsapp_apikey']) if 'whatsapp_apikey' in customer.keys() else False
+    return render_template("client_whatsapp_setup.html", shop=shop, customer=customer, has_apikey=has_apikey)
+
+
+@portal_bp.route("/espace-client/whatsapp-setup/save", methods=["POST"])
+@client_required
+def espace_client_whatsapp_save():
+    client_id = session['client_id']
+    apikey = request.form.get("apikey", "").strip()
+    # Validate: CallMeBot apikeys are typically 6-digit numbers
+    if not apikey or not re.match(r'^[0-9]{4,10}$', apikey):
+        flash("Clé API invalide. Entrez le numéro reçu de CallMeBot.", "danger")
+        return redirect("/espace-client/whatsapp-setup")
+    # Test the API key with a test message
+    phone = session.get('client_phone', '')
+    test_sent = _send_whatsapp_otp(phone, "TEST", apikey)
+    if not test_sent:
+        flash("Impossible d'envoyer via cette clé API. Vérifiez votre inscription CallMeBot.", "danger")
+        return redirect("/espace-client/whatsapp-setup")
+    with get_db() as conn:
+        conn.execute("UPDATE customers SET whatsapp_apikey=? WHERE id=?", (apikey, client_id))
+        conn.commit()
+    flash("WhatsApp activé avec succès! ✅", "success")
+    return redirect("/espace-client/accueil")
+
+
+@portal_bp.route("/espace-client/whatsapp-setup/remove", methods=["POST"])
+@client_required
+def espace_client_whatsapp_remove():
+    client_id = session['client_id']
+    with get_db() as conn:
+        conn.execute("UPDATE customers SET whatsapp_apikey='' WHERE id=?", (client_id,))
+        conn.commit()
+    flash("WhatsApp désactivé.", "info")
+    return redirect("/espace-client/whatsapp-setup")
 
 
 @portal_bp.route("/espace-client/accueil")
@@ -340,10 +427,11 @@ def espace_client_accueil():
         loyalty = customer['loyalty_level'] or 'bronze' if customer['loyalty_level'] else 'bronze'
         notif_count = conn.execute("SELECT COUNT(*) FROM client_notifications WHERE customer_id=? AND is_read=0", (client_id,)).fetchone()[0]
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
+        has_whatsapp = bool(customer['whatsapp_apikey']) if 'whatsapp_apikey' in customer.keys() else False
     return render_template("client_accueil.html", customer=customer, cars=cars,
         appointments=appointments, active_count=active_count, completed_count=completed_count,
         balance=balance, points=points, loyalty=loyalty, invoices_unpaid=invoices_unpaid,
-        notif_count=notif_count, shop=shop)
+        notif_count=notif_count, shop=shop, has_whatsapp=has_whatsapp)
 
 
 

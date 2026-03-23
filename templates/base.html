@@ -38,36 +38,107 @@
             <div class="sidebar-search-results" id="searchResults"></div>
         </div>
 
-        <ul class="sidebar-links" style="padding:10px 0">
-            <li><a href="/"><span class="icon">⌂</span> {{ t.get('home','Accueil') }}</a></li>
-            <li><a href="/customers"><span class="icon">◉</span> {{ t.get('customers','Clients') }}</a></li>
-            <li><a href="/appointments"><span class="icon">▦</span> {{ t.get('appointments','Rendez-vous') }}</a></li>
-            <li><a href="/invoices"><span class="icon">▤</span> {{ t.get('invoices_title','Factures') }}</a></li>
-            <li><a href="/quotes"><span class="icon">◆</span> {{ t.get('quotes','Devis') }}</a></li>
+        <div class="sidebar-scroll">
+            <!-- Dashboard -->
+            <ul class="sidebar-links">
+                <li><a href="/"><span class="icon">⌂</span> {{ t.get('home','Accueil') }}</a></li>
+            </ul>
+
+            <!-- Daily Operations -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title" onclick="toggleSection(this)">
+                    <span>{{ t.get('daily_operations','GESTION') }}</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <ul class="sidebar-links">
+                    <li><a href="/customers"><span class="icon">◉</span> {{ t.get('customers','Clients') }}</a></li>
+                    <li><a href="/appointments"><span class="icon">▦</span> {{ t.get('appointments','Rendez-vous') }}</a></li>
+                    <li><a href="/invoices"><span class="icon">▤</span> {{ t.get('invoices_title','Factures') }}</a></li>
+                    <li><a href="/quotes"><span class="icon">◆</span> {{ t.get('quotes','Devis') }}</a></li>
+                    <li><a href="/calendar"><span class="icon">📅</span> {{ t.get('calendar','Calendrier') }}</a></li>
+                </ul>
+            </div>
+
             {% if session.get('role') == 'admin' %}
-            <li><a href="/inventory"><span class="icon">📦</span> {{ t.get('inventory','Inventaire') }}</a></li>
-            <li><a href="/suppliers"><span class="icon">🏭</span> {{ t.get('suppliers','Fournisseurs') }}</a></li>
-            <li><a href="/purchase_orders"><span class="icon">📋</span> {{ t.get('purchase_orders','Bons de commande') }}</a></li>
-            <li><a href="/stock_forecast"><span class="icon">📊</span> {{ t.get('stock_forecast','Prévision stock') }}</a></li>
-            <li><a href="/time_tracking"><span class="icon">🕐</span> {{ t.get('time_tracking','Pointage') }}</a></li>
-            <li><a href="/staff_notes"><span class="icon">📝</span> {{ t.get('staff_notes','Notes Staff') }}</a></li>
-            <li><a href="/tech_mobile"><span class="icon">📱</span> {{ t.get('tech_mobile','Vue Technicien') }}</a></li>
-            <li><a href="/employee_targets"><span class="icon">🎯</span> {{ t.get('employee_targets','Objectifs') }}</a></li>
-            <li><a href="/reports"><span class="icon">▧</span> {{ t.get('reports','Rapports') }}</a></li>
-            <li><a href="/settings"><span class="icon">⚙</span> {{ t.get('settings','Paramètres') }}</a></li>
+            <!-- Inventory -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title" onclick="toggleSection(this)">
+                    <span>{{ t.get('stock_section','STOCK & ACHATS') }}</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <ul class="sidebar-links">
+                    <li><a href="/inventory"><span class="icon">📦</span> {{ t.get('inventory','Inventaire') }}</a></li>
+                    <li><a href="/suppliers"><span class="icon">🏭</span> {{ t.get('suppliers','Fournisseurs') }}</a></li>
+                    <li><a href="/purchase_orders"><span class="icon">📋</span> {{ t.get('purchase_orders','Bons de commande') }}</a></li>
+                    <li><a href="/stock_forecast"><span class="icon">📊</span> {{ t.get('stock_forecast','Prévision stock') }}</a></li>
+                </ul>
+            </div>
+
+            <!-- Team -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title" onclick="toggleSection(this)">
+                    <span>{{ t.get('team_section','ÉQUIPE') }}</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <ul class="sidebar-links">
+                    <li><a href="/time_tracking"><span class="icon">🕐</span> {{ t.get('time_tracking','Pointage') }}</a></li>
+                    <li><a href="/staff_notes"><span class="icon">📝</span> {{ t.get('staff_notes','Notes Staff') }}</a></li>
+                    <li><a href="/tech_mobile"><span class="icon">📱</span> {{ t.get('tech_mobile','Vue Technicien') }}</a></li>
+                    <li><a href="/employee_targets"><span class="icon">🎯</span> {{ t.get('employee_targets','Objectifs') }}</a></li>
+                </ul>
+            </div>
+
+            <!-- Marketing -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title" onclick="toggleSection(this)">
+                    <span>{{ t.get('marketing_section','MARKETING') }}</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <ul class="sidebar-links">
+                    <li><a href="/nos-services"><span class="icon">🛠️</span> {{ t.get('our_services','Nos Services') }}</a></li>
+                    <li><a href="/marketing_campaigns"><span class="icon">📢</span> {{ t.get('campaigns','Campagnes') }}</a></li>
+                    <li><a href="/loyalty"><span class="icon">🎁</span> {{ t.get('loyalty','Fidélité') }}</a></li>
+                    <li><a href="/coupons"><span class="icon">🏷️</span> {{ t.get('coupons','Coupons') }}</a></li>
+                    <li><a href="/bulk_message"><span class="icon">📨</span> {{ t.get('messages','Messages') }}</a></li>
+                </ul>
+            </div>
+
+            <!-- Reports & Settings -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title" onclick="toggleSection(this)">
+                    <span>{{ t.get('analytics_section','ANALYTICS') }}</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <ul class="sidebar-links">
+                    <li><a href="/reports"><span class="icon">▧</span> {{ t.get('reports','Rapports') }}</a></li>
+                    <li><a href="/daily"><span class="icon">📈</span> {{ t.get('daily','Journalier') }}</a></li>
+                    <li><a href="/kpi"><span class="icon">🎯</span> {{ t.get('kpi','KPI') }}</a></li>
+                </ul>
+            </div>
+
+            <ul class="sidebar-links" style="margin-top:4px;padding-bottom:10px">
+                <li><a href="/settings"><span class="icon">⚙</span> {{ t.get('settings','Paramètres') }}</a></li>
+            </ul>
             {% endif %}
-        </ul>
+        </div>
 
         <!-- Footer -->
         <div class="sidebar-footer">
-            <span class="sf-user">{{ session.get('username', '')|upper }}</span>
-            {% if session.get('role') == 'admin' %}<span class="sf-role">ADMIN</span>{% endif %}
-            <a href="/change_password" title="Mot de passe">🔑</a>
-            <a onclick="toggleTheme()" style="cursor:pointer" id="themeBtn" title="Thème">🌙</a>
-            <a href="/logout" style="color:var(--red)" title="Déconnexion">⏻</a>
-            <div class="sidebar-lang">
-                <a href="/set_language/fr" class="{{ 'active-lang' if current_lang=='fr' else '' }}" style="color:var(--text-muted)">FR</a>
-                <a href="/set_language/ar" class="{{ 'active-lang' if current_lang=='ar' else '' }}" style="color:var(--text-muted)">ع</a>
+            <div class="sf-user-row">
+                <div class="sf-avatar">{{ session.get('username', 'U')[0]|upper }}</div>
+                <div class="sf-info">
+                    <span class="sf-user">{{ session.get('username', '')|upper }}</span>
+                    {% if session.get('role') == 'admin' %}<span class="sf-role">ADMIN</span>{% endif %}
+                </div>
+            </div>
+            <div class="sf-actions">
+                <a href="/change_password" title="Mot de passe">🔑</a>
+                <a onclick="toggleTheme()" style="cursor:pointer" id="themeBtn" title="Thème">🌙</a>
+                <div class="sidebar-lang">
+                    <a href="/set_language/fr" class="{{ 'active-lang' if current_lang=='fr' else '' }}">FR</a>
+                    <a href="/set_language/ar" class="{{ 'active-lang' if current_lang=='ar' else '' }}">ع</a>
+                </div>
+                <a href="/logout" class="sf-logout" title="Déconnexion">⏻</a>
             </div>
         </div>
     </aside>

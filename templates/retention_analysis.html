@@ -9,37 +9,37 @@
 <div class="row g-3 mb-4">
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;letter-spacing:1px;margin:0">TOTAL CLIENTS</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;letter-spacing:1px;margin:0">TOTAL CLIENTS</p>
             <h4 style="color:var(--gold);margin:3px 0">{{ total }}</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">ACTIFS (30j)</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;margin:0">ACTIFS (30j)</p>
             <h4 style="color:var(--green);margin:3px 0">{{ active_30 }}</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">ACTIFS (90j)</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;margin:0">ACTIFS (90j)</p>
             <h4 style="color:var(--green);margin:3px 0">{{ active_90 }}</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">TAUX RÉTENTION</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;margin:0">TAUX RÉTENTION</p>
             <h4 style="color:{{ '#2d6a4f' if retention_rate >= 50 else '#dc3545' }};margin:3px 0">{{ retention_rate }}%</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">TAUX CHURN</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;margin:0">TAUX CHURN</p>
             <h4 style="color:{{ '#dc3545' if churn_rate > 30 else '#2d6a4f' }};margin:3px 0">{{ churn_rate }}%</h4>
         </div>
     </div>
     <div class="col-md-2 col-4">
         <div class="card p-2 text-center">
-            <p style="color:var(--text-secondary);font-size:0.55rem;margin:0">NOUVEAUX (30j)</p>
+            <p style="color:var(--text-secondary);font-size:0.70rem;margin:0">NOUVEAUX (30j)</p>
             <h4 style="color:var(--gold);margin:3px 0">+{{ new_30 }}</h4>
         </div>
     </div>
@@ -77,7 +77,7 @@
                 <td style="color:#dc3545;font-size:0.75rem">{{ c[5] }}</td>
                 <td style="color:var(--green);font-weight:600">{{ "%.0f"|format(c[6]) }} DH</td>
                 <td>
-                    <a href="https://wa.me/{{ c[2]|replace(' ','')|replace('+','') }}?text=Bonjour+{{ c[1]|urlencode }}!+Nous+vous+attendons+chez+AMILCAR+🚗" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;font-size:0.55rem;padding:2px 6px">📱 WhatsApp</a>
+                    <a href="https://wa.me/{{ c[2]|replace(' ','')|replace('+','') }}?text=Bonjour+{{ c[1]|urlencode }}!+Nous+vous+attendons+chez+AMILCAR+🚗" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;font-size:0.70rem;padding:2px 6px">📱 WhatsApp</a>
                 </td>
             </tr>
             {% endfor %}

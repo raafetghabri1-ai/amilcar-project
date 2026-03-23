@@ -3,12 +3,14 @@
         .top-bar .greet{font-size:.75rem;color:var(--muted)}
         .top-bar .name{font-size:1rem;color:var(--gold);font-weight:700}
         .top-bar .logout{color:var(--muted);text-decoration:none;font-size:.75rem;padding:6px 12px;border:1px solid var(--border);border-radius:8px}
-        .welcome-banner{background:linear-gradient(135deg,rgba(26,21,5,.8) 0%,transparent 100%);border:1px solid rgba(212,175,55,.3);border-radius:var(--radius);padding:24px 20px;margin-bottom:16px;text-align:center}
+        .welcome-banner{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,.2);border-radius:var(--radius);padding:24px 20px;margin-bottom:16px;text-align:center;position:relative;overflow:hidden}
+        .welcome-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
         .welcome-banner .level{display:inline-block;padding:4px 16px;border-radius:20px;font-size:.7rem;font-weight:700;letter-spacing:1px;margin-bottom:8px}
         .welcome-banner .pts{color:var(--gold);font-size:1.8rem;font-weight:800}
         .welcome-banner .pts-label{color:var(--muted);font-size:.7rem}
         .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
-        .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center}
+        .stat-box{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:12px;padding:14px 10px;text-align:center;transition:all .3s}
+        .stat-box:hover{border-color:rgba(212,175,55,0.3);transform:translateY(-2px)}
         .stat-box .num{font-size:1.4rem;font-weight:800}
         .stat-box .lbl{font-size:.6rem;color:var(--muted);margin-top:2px}
         .item-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -133,6 +135,18 @@
 
     <!-- Book Now -->
     <a href="/espace-client/reserver" class="btn-book">✨ {{ 'حجز موعد' if is_ar else 'Réserver un rendez-vous' }}</a>
+    <a href="/nos-services" target="_blank" style="display:block;text-align:center;margin-top:10px;color:var(--gold);font-size:.85rem;text-decoration:none;letter-spacing:.5px">🛠️ {{ 'خدماتنا' if is_ar else 'Découvrir nos services' }}</a>
+
+    <!-- WhatsApp Setup Banner -->
+    {% if not has_whatsapp %}
+    <a href="/espace-client/whatsapp-setup" style="display:flex;align-items:center;gap:12px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.3);border-radius:var(--radius);padding:14px 16px;text-decoration:none;color:var(--text);margin-bottom:12px">
+        <span style="font-size:1.5rem">📱</span>
+        <div>
+            <div style="font-weight:600;font-size:.82rem;color:#25D366">{{ 'فعّل واتساب' if is_ar else 'Activer WhatsApp' }}</div>
+            <div style="font-size:.68rem;color:var(--muted)">{{ 'استقبل رمز الدخول تلقائياً' if is_ar else 'Recevez votre code OTP automatiquement' }}</div>
+        </div>
+    </a>
+    {% endif %}
 </div>
 
 {% set active_nav = 'accueil' %}

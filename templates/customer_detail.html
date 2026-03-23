@@ -5,7 +5,7 @@
         <div class="d-flex align-items-center gap-3">
             <p class="page-title mb-0">{{ customer[1] }}</p>
             {% if clv.tier != '—' %}
-            <span class="{% if clv.tier == 'OR' %}badge-converted{% elif clv.tier == 'ARGENT' %}badge-info{% else %}badge-partial{% endif %}" style="font-size:0.55rem;letter-spacing:1.5px">★ {{ clv.tier }}</span>
+            <span class="{% if clv.tier == 'OR' %}badge-converted{% elif clv.tier == 'ARGENT' %}badge-info{% else %}badge-partial{% endif %}" style="font-size:0.70rem;letter-spacing:1.5px">★ {{ clv.tier }}</span>
             {% endif %}
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -25,19 +25,19 @@
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6">
             <div class="stat-card">
-                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Total Dépensé</p>
+                <p style="color:var(--text-muted);font-size:0.70rem;letter-spacing:2px;margin:0;text-transform:uppercase">Total Dépensé</p>
                 <h2>{{ clv.total_spent|round|int }} DT</h2>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
-                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Visites</p>
+                <p style="color:var(--text-muted);font-size:0.70rem;letter-spacing:2px;margin:0;text-transform:uppercase">Visites</p>
                 <h2>{{ clv.visits }}</h2>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
-                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Note Moyenne</p>
+                <p style="color:var(--text-muted);font-size:0.70rem;letter-spacing:2px;margin:0;text-transform:uppercase">Note Moyenne</p>
                 <p style="margin:8px 0 0">
                     {% for i in range(1, 6) %}
                     <span style="color:{% if i <= clv.avg_rating %}var(--gold){% else %}var(--text-dim){% endif %};font-size:1rem">★</span>
@@ -48,7 +48,7 @@
         </div>
         <div class="col-md-3 col-6">
             <div class="stat-card">
-                <p style="color:var(--text-muted);font-size:0.58rem;letter-spacing:2px;margin:0;text-transform:uppercase">Première Visite</p>
+                <p style="color:var(--text-muted);font-size:0.70rem;letter-spacing:2px;margin:0;text-transform:uppercase">Première Visite</p>
                 <p style="font-size:0.88rem;font-weight:600;margin:8px 0 0">{{ clv.first_visit }}</p>
             </div>
         </div>

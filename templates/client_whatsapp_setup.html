@@ -1,0 +1,115 @@
+{% include '_client_head.html' %}
+    <style>
+        .ws-box{max-width:440px;margin:20px auto;padding:0 16px}
+        .ws-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px 22px;margin-bottom:16px}
+        .ws-card h3{color:var(--gold);font-size:1.1rem;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+        .ws-card .desc{color:var(--muted);font-size:.78rem;line-height:1.6;margin-bottom:16px}
+        .step{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:12px;border:1px solid var(--border)}
+        .step-num{background:var(--gold);color:#000;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .step-text{font-size:.78rem;color:var(--text);line-height:1.5}
+        .step-text strong{color:var(--gold)}
+        .step-text a{color:var(--gold);text-decoration:underline}
+        .form-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:14px 18px;border-radius:12px;font-size:1.1rem;text-align:center;letter-spacing:3px;outline:none;transition:border .2s;box-sizing:border-box}
+        .form-input:focus{border-color:var(--gold)}
+        .form-input::placeholder{color:var(--muted);letter-spacing:0;font-size:.85rem}
+        .btn-gold{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:14px;font-size:.95rem;cursor:pointer;transition:all .2s;margin-top:14px;letter-spacing:1px}
+        .btn-gold:hover{background:#e5c040;transform:translateY(-1px)}
+        .status-active{background:rgba(34,197,94,.12);border:1px solid var(--green);border-radius:12px;padding:16px;text-align:center;margin-bottom:16px}
+        .status-active .icon{font-size:2rem;margin-bottom:6px}
+        .status-active .label{color:var(--green);font-weight:700;font-size:.9rem}
+        .status-active .sub{color:var(--muted);font-size:.72rem;margin-top:4px}
+        .btn-remove{display:block;width:100%;background:none;border:1px solid var(--red);color:var(--red);border-radius:12px;padding:12px;font-size:.82rem;cursor:pointer;transition:all .2s;margin-top:10px}
+        .btn-remove:hover{background:rgba(239,68,68,.15)}
+        .back-link{display:inline-block;margin-top:16px;color:var(--muted);font-size:.8rem;text-decoration:none;transition:color .2s}
+        .back-link:hover{color:var(--gold)}
+    </style>
+</head>
+<body>
+{% set is_ar = session.get('client_lang','fr') == 'ar' %}
+
+<div class="ws-box">
+    <!-- Header -->
+    <div style="text-align:center;padding:20px 0 10px">
+        <div style="font-size:3rem">📱</div>
+        <h2 style="color:var(--gold);font-size:1.2rem;margin:8px 0 4px">{{ 'إعداد واتساب' if is_ar else 'Configuration WhatsApp' }}</h2>
+        <p style="color:var(--muted);font-size:.75rem">{{ 'استقبل رمز التحقق عبر واتساب' if is_ar else 'Recevez votre code OTP sur WhatsApp' }}</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="flash-msg {{ cat }}" style="border-radius:10px;padding:10px 16px;text-align:center;border-left:none;margin-bottom:10px;
+        {% if cat == 'success' %}background:rgba(34,197,94,.1);border:1px solid var(--green);color:var(--green)
+        {% elif cat == 'danger' %}background:rgba(239,68,68,.1);border:1px solid var(--red);color:var(--red)
+        {% else %}background:rgba(59,130,246,.1);border:1px solid var(--blue);color:var(--blue){% endif %}">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    {% if has_apikey %}
+    <!-- Already Active -->
+    <div class="status-active">
+        <div class="icon">✅</div>
+        <div class="label">{{ 'واتساب مفعّل' if is_ar else 'WhatsApp Activé' }}</div>
+        <div class="sub">{{ 'سيتم إرسال رمز التحقق تلقائياً عبر واتساب' if is_ar else 'Le code OTP sera envoyé automatiquement sur WhatsApp' }}</div>
+    </div>
+    <form method="POST" action="/espace-client/whatsapp-setup/remove">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-remove" onclick="return confirm('{{ 'هل أنت متأكد؟' if is_ar else 'Êtes-vous sûr?' }}')">🗑️ {{ 'إلغاء تفعيل واتساب' if is_ar else 'Désactiver WhatsApp' }}</button>
+    </form>
+    {% else %}
+    <!-- Setup Instructions -->
+    <div class="ws-card">
+        <h3>📋 {{ 'خطوات التفعيل' if is_ar else 'Étapes d\'activation' }}</h3>
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+                {% if is_ar %}
+                افتح واتساب على هاتفك وأرسل هذه الرسالة للرقم <strong>+34 644 51 95 23</strong>:<br>
+                <code style="background:var(--bg3);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
+                {% else %}
+                Ouvrez WhatsApp et envoyez ce message au <strong>+34 644 51 95 23</strong> :<br>
+                <code style="background:var(--bg3);padding:4px 10px;border-radius:6px;color:var(--gold);font-size:.85rem;display:inline-block;margin-top:6px">I allow callmebot to send me messages</code>
+                {% endif %}
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+                {% if is_ar %}
+                ستتلقى رسالة تأكيد تحتوي على <strong>مفتاح API</strong> (رقم من 6 أرقام تقريباً)
+                {% else %}
+                Vous recevrez une confirmation avec votre <strong>clé API</strong> (un numéro à ~6 chiffres)
+                {% endif %}
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+                {% if is_ar %}
+                أدخل مفتاح API أدناه وسيتم تفعيل الإرسال التلقائي
+                {% else %}
+                Entrez la clé API ci-dessous et l'envoi automatique sera activé
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Form -->
+    <div class="ws-card">
+        <h3>🔑 {{ 'مفتاح API' if is_ar else 'Clé API' }}</h3>
+        <form method="POST" action="/espace-client/whatsapp-setup/save">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="apikey" class="form-input" placeholder="{{ 'أدخل مفتاح API هنا' if is_ar else 'Entrez votre clé API' }}" required pattern="[0-9]{4,10}" inputmode="numeric" autocomplete="off">
+            <button type="submit" class="btn-gold">✅ {{ 'تفعيل واتساب' if is_ar else 'Activer WhatsApp' }}</button>
+        </form>
+        <p style="color:var(--muted);font-size:.68rem;text-align:center;margin-top:12px">
+            {{ 'سيتم إرسال رسالة تجريبية للتأكد من صحة المفتاح' if is_ar else 'Un message test sera envoyé pour vérifier la clé' }}
+        </p>
+    </div>
+    {% endif %}
+
+    <div style="text-align:center">
+        <a href="/espace-client/accueil" class="back-link">← {{ 'العودة' if is_ar else 'Retour' }}</a>
+    </div>
+</div>
+
+{% set active_nav = 'accueil' %}
+{% include '_client_foot.html' %}

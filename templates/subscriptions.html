@@ -92,9 +92,9 @@
                     {% if s[9] == 'active' %}
                     <div class="d-flex gap-1">
                         <form method="POST" action="/subscriptions/use/{{ s[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px" title="Utiliser 1 séance">+1</button></form>
+                            <button class="btn btn-sm btn-success" style="font-size:0.70rem;padding:2px 5px" title="Utiliser 1 séance">+1</button></form>
                         <form method="POST" action="/subscriptions/cancel/{{ s[0] }}" onsubmit="return confirm('Annuler ?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">✗</button></form>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.70rem;padding:2px 5px">✗</button></form>
                     </div>
                     {% else %}-{% endif %}
                 </td>

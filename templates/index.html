@@ -1,20 +1,26 @@
 {% extends "base.html" %}
 {% block title %} - {{ t.dashboard }}{% endblock %}
-{% block hero_extra %}<p class="sub">SOIN AUTOMOBILE &mdash; MAHRES, SFAX</p>{% endblock %}
 {% block content %}
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="page-title mb-0">{{ t.dashboard }}</h3>
-            <p class="page-subtitle mb-0">{{ t.overview }}</p>
+    <!-- Hero Welcome Banner -->
+    <div class="dash-hero">
+        <div class="dash-hero-text">
+            <p class="dash-greeting">
+                <span class="dash-dot"></span>
+                {{ t.get('welcome_back','Bienvenue') }}, {{ session.get('username','Admin') }}
+            </p>
+            <h1 class="dash-title"><span class="dash-hero-icon">🏎️</span> {{ t.dashboard }}</h1>
+            <p class="dash-sub">{{ t.overview }} — <span class="dash-date">{{ now.strftime('%A %d %B %Y') if now else '' }}</span></p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="dash-actions">
             <a href="/add_customer" class="btn-outline-gold btn-sm">+ {{ t.client }}</a>
             <a href="/add_appointment" class="btn-gold btn-sm">+ {{ t.appointments }}</a>
         </div>
+        <div class="dash-tagline">
+            SOIN AUTOMOBILE &mdash; MAHRES, SFAX
+        </div>
     </div>
 
-    <!-- Stat Cards -->
+    <!-- Stat Cards — Bold Numbers -->
     <div class="row g-3 mb-4">
         <div class="col-lg-2 col-md-4 col-6">
             <div class="stat-card">
@@ -56,7 +62,7 @@
         </div>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Quick Stats Row -->
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6">
             <div class="quick-stat">
@@ -192,12 +198,24 @@
     </div>
     {% endif %}
 
-    <!-- Quick Actions -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6"><a href="/add_customer" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_customer }}</a></div>
-        <div class="col-md-3 col-6"><a href="/add_appointment" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_appointment }}</a></div>
-        <div class="col-md-3 col-6"><a href="/add_invoice" class="btn-outline-gold w-100 d-flex justify-content-center">{{ t.new_invoice }}</a></div>
-        <div class="col-md-3 col-6"><a href="/quotes" class="btn-ghost w-100 d-flex justify-content-center">{{ t.see_quotes }}</a></div>
+    <!-- Quick Actions — MobileWash Grid -->
+    <div class="quick-actions-grid">
+        <a href="/add_customer" class="quick-action-card">
+            <span class="qa-icon">◉</span>
+            <span class="qa-label">{{ t.new_customer }}</span>
+        </a>
+        <a href="/add_appointment" class="quick-action-card">
+            <span class="qa-icon">▦</span>
+            <span class="qa-label">{{ t.new_appointment }}</span>
+        </a>
+        <a href="/add_invoice" class="quick-action-card">
+            <span class="qa-icon">▤</span>
+            <span class="qa-label">{{ t.new_invoice }}</span>
+        </a>
+        <a href="/quotes" class="quick-action-card">
+            <span class="qa-icon">◆</span>
+            <span class="qa-label">{{ t.see_quotes }}</span>
+        </a>
     </div>
 
     <!-- Charts -->

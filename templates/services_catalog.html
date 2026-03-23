@@ -1,126 +1,458 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ shop_name }} — Nos Services</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
     :root{--gold:#D4AF37;--gd:#B8860B;--navy:#1A1A2E;--nv2:#0F3460;
-          --bg:#0D0D1A;--card:#1A1A2E;--r:16px;--text:#E8E6E3;--muted:#9A9A9A;
-          --card-border:#2A2A3E;--card-hover:#222240;--surface:#141425}
+          --bg:#09090b;--card:#141418;--r:16px;--text:#E8E6E3;--muted:#9A9A9A;
+          --card-border:#1f1f28;--card-hover:#1c1c25;--surface:#111116;
+          --red:#ef4444;--green:#22c55e;--blue:#3b82f6}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text)}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+    html{scroll-behavior:smooth}
 
-    /* ── Hero ── */
-    .hero{background:linear-gradient(135deg,#0a0a18 0%,var(--nv2) 50%,#0a0a18 100%);
-          padding:50px 20px 70px;text-align:center;position:relative}
-    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60px;
-          background:linear-gradient(180deg,transparent,var(--bg))}
-    .brand{font-family:'Playfair Display',serif;color:var(--gold);font-size:2.8rem;letter-spacing:5px}
-    .tagline{color:rgba(255,255,255,.35);font-size:.65rem;letter-spacing:5px;text-transform:uppercase;margin-top:4px}
-    .hero h1{color:#fff;font-size:1.8rem;font-weight:700;margin-top:22px}
-    .hero p{color:rgba(255,255,255,.6);font-size:.95rem;margin-top:8px;max-width:550px;margin-left:auto;margin-right:auto}
+    /* ======= ANIMATIONS ======= */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+    @keyframes pulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.8;transform:scale(1.5)}}
+    @keyframes countUp{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+    .anim-up{animation:fadeUp .8s ease-out both}
+    .anim-up-d1{animation:fadeUp .8s ease-out .1s both}
+    .anim-up-d2{animation:fadeUp .8s ease-out .2s both}
+    .anim-up-d3{animation:fadeUp .8s ease-out .3s both}
+    .anim-up-d4{animation:fadeUp .8s ease-out .4s both}
 
-    /* ── Nav pills ── */
-    .cat-nav{max-width:900px;margin:-20px auto 30px;position:relative;z-index:2;
+    /* ======= HERO ======= */
+    .hero{position:relative;padding:70px 20px 90px;text-align:center;overflow:hidden;
+          background:url('/static/uploads/presentation/page_8.jpg') center/cover no-repeat;
+          background-color:#080810}
+    .hero::before{content:'';position:absolute;inset:0;width:100%;height:100%;
+          background:linear-gradient(135deg,rgba(8,8,16,.88),rgba(13,21,48,.82),rgba(10,10,24,.88));
+          z-index:1}
+    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;
+          background:linear-gradient(180deg,transparent,var(--bg));z-index:2}
+    .hero-content{position:relative;z-index:3}
+    .hero-shield{font-size:4rem;display:block;animation:float 4s ease-in-out infinite;margin-bottom:16px}
+    .hero-brand{font-family:'Playfair Display',serif;font-size:3.2rem;letter-spacing:8px;
+          background:linear-gradient(90deg,var(--gd),var(--gold),#fff,var(--gold),var(--gd));
+          background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+          background-clip:text;animation:shimmer 5s ease-in-out infinite}
+    .hero-tagline{color:rgba(255,255,255,.3);font-size:.65rem;letter-spacing:6px;text-transform:uppercase;margin-top:4px}
+    .hero h1{color:#fff;font-size:2.2rem;font-weight:800;margin-top:28px;line-height:1.2}
+    .hero h1 span{color:var(--gold)}
+    .hero-desc{color:rgba(255,255,255,.55);font-size:1rem;margin-top:12px;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.7}
+    .hero-stats{display:flex;justify-content:center;gap:40px;margin-top:36px;flex-wrap:wrap}
+    .hero-stat{text-align:center;animation:countUp .6s ease-out both}
+    .hero-stat-num{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:900;color:var(--gold);display:block;line-height:1}
+    .hero-stat-label{font-size:.68rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+
+    /* ======= NAV PILLS ======= */
+    .cat-nav{max-width:1000px;margin:-30px auto 0;position:relative;z-index:3;
              display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:0 16px}
-    .cat-pill{background:var(--surface);border:2px solid var(--card-border);border-radius:50px;padding:8px 18px;
-              font-size:.78rem;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;color:var(--text);
-              display:flex;align-items:center;gap:6px;white-space:nowrap}
-    .cat-pill:hover,.cat-pill.active{border-color:var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(184,134,11,.1));color:var(--gold)}
+    .cat-pill{background:var(--surface);border:1.5px solid var(--card-border);border-radius:50px;padding:10px 20px;
+              font-size:.78rem;font-weight:600;cursor:pointer;transition:.3s;text-decoration:none;color:var(--text);
+              display:flex;align-items:center;gap:6px;white-space:nowrap;backdrop-filter:blur(10px)}
+    .cat-pill:hover,.cat-pill.active{border-color:var(--gold);background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(184,134,11,.08));
+              color:var(--gold);transform:translateY(-2px);box-shadow:0 4px 16px rgba(212,175,55,.15)}
     .cat-pill span{font-size:1rem}
 
-    /* ── Section ── */
-    .wrap{max-width:1000px;margin:0 auto;padding:0 16px 60px}
-    .cat-section{margin-bottom:50px;scroll-margin-top:20px}
-    .cat-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
-    .cat-icon{width:50px;height:50px;background:linear-gradient(135deg,var(--gold),var(--gd));
+    /* ======= SECTION COMMON ======= */
+    .wrap{max-width:1100px;margin:0 auto;padding:0 20px 60px}
+    .sec-label{font-size:.68rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold);font-weight:700;
+          margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:10px}
+    .sec-label::before,.sec-label::after{content:'';width:30px;height:1px;background:var(--gold);opacity:.4}
+    .sec-title{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:#fff;margin-bottom:16px;line-height:1.2}
+    .sec-sub{color:var(--muted);font-size:.95rem;max-width:650px;margin:0 auto 50px;line-height:1.7}
+
+    /* ======= PHILOSOPHY ======= */
+    .philosophy{padding:80px 20px;text-align:center;position:relative;
+          background:url('/static/uploads/presentation/page_2.jpg') center/cover no-repeat fixed}
+    .philosophy::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(180deg,var(--bg) 0%,rgba(9,9,11,.88) 20%,rgba(9,9,11,.85) 80%,var(--bg) 100%);
+          pointer-events:none}
+    .phil-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1000px;margin:0 auto}
+    @media(max-width:768px){.phil-grid{grid-template-columns:1fr}}
+    .phil-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r);padding:32px 24px;
+          text-align:center;transition:.4s;position:relative;overflow:hidden}
+    .phil-card:hover{border-color:rgba(212,175,55,.3);transform:translateY(-6px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
+    .phil-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+          background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:.4s}
+    .phil-card:hover::after{opacity:1}
+    .phil-icon{font-size:2.8rem;display:block;margin-bottom:16px;animation:float 5s ease-in-out infinite}
+    .phil-card h3{font-family:'Playfair Display',serif;color:var(--gold);font-size:1.15rem;margin-bottom:10px}
+    .phil-card p{color:var(--muted);font-size:.85rem;line-height:1.7}
+
+    /* ======= ENEMIES ======= */
+    .enemies{padding:70px 20px;position:relative;
+          background:url('/static/uploads/presentation/page_7.jpg') center/cover no-repeat fixed}
+    .enemies::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(180deg,var(--bg),rgba(12,12,20,.90),var(--bg));pointer-events:none;z-index:0}
+    .enemies>*{position:relative;z-index:1}
+    .enemies-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1000px;margin:0 auto}
+    @media(max-width:768px){.enemies-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:480px){.enemies-grid{grid-template-columns:1fr}}
+    .enemy{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r);padding:28px 20px;
+          text-align:center;transition:.4s;position:relative;overflow:hidden}
+    .enemy:hover{border-color:var(--red);transform:translateY(-4px);box-shadow:0 12px 32px rgba(239,68,68,.1)}
+    .enemy::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+          background:linear-gradient(90deg,transparent,var(--red),transparent);opacity:0;transition:.3s}
+    .enemy:hover::before{opacity:1}
+    .enemy-icon{font-size:2.4rem;display:block;margin-bottom:14px}
+    .enemy h4{font-size:.9rem;font-weight:700;color:var(--red);margin-bottom:8px}
+    .enemy p{font-size:.78rem;color:var(--muted);line-height:1.6}
+
+    /* ======= TIMELINE ======= */
+    .timeline-section{padding:80px 20px;position:relative;
+          background:url('/static/uploads/presentation/page_3.jpg') center/cover no-repeat fixed}
+    .timeline-section::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(180deg,var(--bg),rgba(9,9,11,.90) 15%,rgba(9,9,11,.88) 85%,var(--bg));pointer-events:none;z-index:0}
+    .timeline-section>*{position:relative;z-index:1}
+    .timeline{max-width:800px;margin:0 auto;position:relative;padding-left:40px}
+    .timeline::before{content:'';position:absolute;left:15px;top:0;bottom:0;width:2px;
+          background:linear-gradient(180deg,transparent,var(--gold),var(--gold),transparent)}
+    .tl-step{position:relative;margin-bottom:50px;padding-left:30px}
+    .tl-step:last-child{margin-bottom:0}
+    .tl-dot{position:absolute;left:-33px;top:4px;width:28px;height:28px;border-radius:50%;
+          background:var(--bg);border:2.5px solid var(--gold);display:flex;align-items:center;justify-content:center;
+          font-size:.7rem;font-weight:800;color:var(--gold);z-index:2;transition:.4s}
+    .tl-step:hover .tl-dot{background:var(--gold);color:var(--bg);box-shadow:0 0 20px rgba(212,175,55,.4);transform:scale(1.15)}
+    .tl-content{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r);padding:24px 28px;transition:.4s}
+    .tl-step:hover .tl-content{border-color:rgba(212,175,55,.3);box-shadow:0 8px 28px rgba(0,0,0,.3)}
+    .tl-icon{font-size:1.8rem;margin-bottom:10px;display:inline-block}
+    .tl-content h3{font-family:'Playfair Display',serif;color:var(--gold);font-size:1.1rem;margin-bottom:8px}
+    .tl-content p{color:var(--muted);font-size:.85rem;line-height:1.7}
+    .tl-tag{display:inline-block;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.2);
+          border-radius:50px;padding:4px 12px;font-size:.68rem;color:var(--gold);font-weight:600;margin-top:10px}
+
+    /* ======= WHY US ======= */
+    .why-section{padding:70px 20px;position:relative;
+          background:url('/static/uploads/presentation/page_14.jpg') center/cover no-repeat fixed}
+    .why-section::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(180deg,var(--bg),rgba(13,13,24,.88));pointer-events:none;z-index:0}
+    .why-section>*{position:relative;z-index:1}
+    .why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto}
+    @media(max-width:768px){.why-grid{grid-template-columns:1fr}}
+    .why-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r);padding:28px 24px;
+          text-align:center;transition:.4s;position:relative}
+    .why-card:hover{border-color:rgba(212,175,55,.3);transform:translateY(-5px);box-shadow:0 12px 36px rgba(212,175,55,.1)}
+    .why-icon{font-size:2rem;margin-bottom:14px;display:block}
+    .why-card h4{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:8px}
+    .why-card p{font-size:.8rem;color:var(--muted);line-height:1.6}
+    .why-badge{display:inline-block;margin-top:12px;background:linear-gradient(135deg,rgba(212,175,55,.1),rgba(212,175,55,.05));
+          border:1px solid rgba(212,175,55,.2);border-radius:50px;padding:5px 14px;
+          font-size:.68rem;color:var(--gold);font-weight:700;letter-spacing:1px}
+
+    /* ======= SERVICE CATALOG ======= */
+    .catalog-section{padding:60px 0 40px}
+    .cat-section{margin-bottom:50px;scroll-margin-top:30px}
+    .cat-head{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+    .cat-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gd));
               border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;
-              box-shadow:0 4px 16px rgba(212,175,55,.25)}
+              box-shadow:0 4px 18px rgba(212,175,55,.2)}
     .cat-head h2{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--gold)}
     .cat-head p{font-size:.82rem;color:var(--muted)}
-
-    /* ── Service cards ── */
-    .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+    .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
     @media(max-width:640px){.svc-grid{grid-template-columns:1fr}}
     .svc{background:var(--card);border-radius:var(--r);overflow:hidden;
-         box-shadow:0 4px 20px rgba(0,0,0,.2);transition:.3s;position:relative;border:1px solid var(--card-border)}
-    .svc:hover{transform:translateY(-4px);box-shadow:0 12px 36px rgba(212,175,55,.15);border-color:rgba(212,175,55,.4);background:var(--card-hover)}
+         box-shadow:0 4px 20px rgba(0,0,0,.2);transition:.4s;position:relative;border:1px solid var(--card-border)}
+    .svc:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(212,175,55,.12);
+         border-color:rgba(212,175,55,.3);background:var(--card-hover)}
     .svc-pop{position:absolute;top:12px;right:12px;background:linear-gradient(135deg,#FF6B35,#e53935);
-             color:#fff;font-size:.6rem;font-weight:800;padding:4px 10px;border-radius:50px;
-             text-transform:uppercase;letter-spacing:1px}
-    .svc-top{padding:20px 20px 14px;display:flex;align-items:flex-start;gap:14px}
+             color:#fff;font-size:.6rem;font-weight:800;padding:5px 12px;border-radius:50px;
+             text-transform:uppercase;letter-spacing:1px;z-index:2}
+    .svc-top{padding:22px 22px 14px;display:flex;align-items:flex-start;gap:14px}
     .svc-emoji{font-size:2.2rem;line-height:1;flex-shrink:0;margin-top:2px}
     .svc-info{flex:1}
     .svc-name{font-size:1rem;font-weight:700;color:#fff;margin-bottom:6px;padding-right:70px}
-    .svc-desc{font-size:.8rem;color:var(--muted);line-height:1.55;
+    .svc-desc{font-size:.8rem;color:var(--muted);line-height:1.6;
               display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-    .svc-meta{display:flex;align-items:center;gap:12px;padding:0 20px;margin-bottom:12px}
+    .svc-meta{display:flex;align-items:center;gap:12px;padding:0 22px;margin-bottom:14px}
     .svc-dur{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:4px;
-             background:var(--surface);padding:4px 10px;border-radius:50px;border:1px solid var(--card-border)}
+             background:var(--surface);padding:5px 12px;border-radius:50px;border:1px solid var(--card-border)}
     .svc-price-tag{margin-left:auto;display:flex;align-items:baseline;gap:3px}
     .svc-price-val{font-size:1.3rem;font-weight:800;color:var(--gold)}
-    .svc-price-unit{font-size:.7rem;color:var(--muted)}
-    .svc-devis{font-size:.78rem;font-weight:700;color:var(--gd);font-style:italic}
-
-    /* Includes */
-    .svc-includes{border-top:1px solid var(--card-border);padding:14px 20px;background:rgba(0,0,0,.15)}
+    .svc-price-unit{font-size:.72rem;color:var(--muted)}
+    .svc-devis{font-size:.8rem;font-weight:700;color:var(--gd);font-style:italic}
+    .svc-includes{border-top:1px solid var(--card-border);padding:14px 22px;background:rgba(0,0,0,.15)}
     .svc-includes h4{font-size:.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px}
     .inc-list{display:flex;flex-wrap:wrap;gap:6px}
-    .inc-tag{background:var(--surface);border:1px solid var(--card-border);border-radius:50px;padding:4px 11px;
-             font-size:.7rem;color:var(--text);font-weight:500;line-height:1.4}
-
-    /* CTA */
-    .svc-cta{padding:0 20px 18px}
-    .btn-book{display:block;width:100%;padding:11px;border:none;border-radius:10px;
+    .inc-tag{background:var(--surface);border:1px solid var(--card-border);border-radius:50px;padding:4px 12px;
+             font-size:.7rem;color:var(--text);font-weight:500}
+    .svc-cta{padding:0 22px 18px}
+    .btn-book{display:block;width:100%;padding:12px;border:none;border-radius:10px;
               font-size:.85rem;font-weight:700;font-family:inherit;cursor:pointer;
               background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy);
-              text-align:center;text-decoration:none;transition:.2s}
-    .btn-book:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(212,175,55,.35)}
+              text-align:center;text-decoration:none;transition:.3s}
+    .btn-book:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(212,175,55,.3)}
 
-    /* ── Footer CTA ── */
-    .footer-cta{text-align:center;padding:50px 20px;background:linear-gradient(135deg,var(--navy),var(--nv2))}
-    .footer-cta h2{font-family:'Playfair Display',serif;color:var(--gold);font-size:1.8rem;margin-bottom:10px}
-    .footer-cta p{color:rgba(255,255,255,.6);margin-bottom:24px;font-size:.92rem}
-    .btn-big{display:inline-flex;align-items:center;gap:10px;padding:16px 36px;
+    /* ======= INVESTMENT ======= */
+    .invest-section{padding:70px 20px;text-align:center;position:relative;
+          background:url('/static/uploads/presentation/page_13.jpg') center/cover no-repeat fixed}
+    .invest-section::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(180deg,var(--bg),rgba(9,9,11,.88) 15%,rgba(9,9,11,.88) 85%,var(--bg));pointer-events:none;z-index:0}
+    .invest-section>*{position:relative;z-index:1}
+    .invest-compare{display:grid;grid-template-columns:1fr auto 1fr;gap:0;max-width:800px;margin:40px auto 0;align-items:stretch}
+    @media(max-width:640px){.invest-compare{grid-template-columns:1fr;gap:20px}}
+    .invest-box{background:var(--card);border:1px solid var(--card-border);border-radius:var(--r);padding:32px 24px;text-align:center}
+    .invest-box.bad{border-color:rgba(239,68,68,.2)}
+    .invest-box.good{border-color:rgba(212,175,55,.3);box-shadow:0 8px 28px rgba(212,175,55,.1)}
+    .invest-box h4{font-size:.9rem;font-weight:700;margin-bottom:16px}
+    .invest-box.bad h4{color:var(--red)}
+    .invest-box.good h4{color:var(--gold)}
+    .invest-item{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted);margin-bottom:10px;justify-content:center}
+    .invest-box.bad .invest-item::before{content:'\2717';color:var(--red);font-weight:800;font-size:.9rem}
+    .invest-box.good .invest-item::before{content:'\2713';color:var(--green);font-weight:800;font-size:.9rem}
+    .invest-vs{display:flex;align-items:center;justify-content:center;padding:0 20px}
+    .invest-vs span{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gd));
+          display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:var(--navy)}
+    @media(max-width:640px){.invest-vs{padding:10px 0}.invest-vs span{width:36px;height:36px;font-size:.7rem}}
+
+    /* ======= FOOTER CTA ======= */
+    .footer-cta{text-align:center;padding:70px 20px;position:relative;overflow:hidden;
+          background:url('/static/uploads/presentation/page_15.jpg') center/cover no-repeat}
+    .footer-cta::before{content:'';position:absolute;inset:0;
+          background:linear-gradient(135deg,rgba(10,10,24,.90),rgba(15,52,96,.85),rgba(10,10,24,.90));
+          pointer-events:none}
+    .footer-cta h2{font-family:'Playfair Display',serif;color:var(--gold);font-size:2rem;margin-bottom:10px;position:relative;z-index:1}
+    .footer-cta p{color:rgba(255,255,255,.55);margin-bottom:28px;font-size:.95rem;position:relative;z-index:1}
+    .btn-big{display:inline-flex;align-items:center;gap:10px;padding:16px 38px;
              background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy);
-             border-radius:14px;font-size:1.1rem;font-weight:700;text-decoration:none;transition:.2s;border:none;cursor:pointer}
-    .btn-big:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(212,175,55,.4)}
+             border-radius:14px;font-size:1.1rem;font-weight:800;text-decoration:none;transition:.3s;border:none;cursor:pointer;position:relative}
+    .btn-big:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(212,175,55,.4)}
     .btn-big-outline{display:inline-flex;align-items:center;gap:10px;padding:14px 30px;
              border:2px solid var(--gold);color:var(--gold);background:transparent;
-             border-radius:14px;font-size:.95rem;font-weight:600;text-decoration:none;transition:.2s;margin-left:12px}
-    .btn-big-outline:hover{background:rgba(212,175,55,.1)}
-
-    /* Smooth scroll */
-    html{scroll-behavior:smooth}
-
-    /* Footer */
-    .pg-foot{text-align:center;padding:20px;color:var(--muted);font-size:.72rem;background:var(--bg)}
+             border-radius:14px;font-size:.95rem;font-weight:700;text-decoration:none;transition:.3s;margin-left:12px;position:relative}
+    .btn-big-outline:hover{background:rgba(212,175,55,.08);transform:translateY(-2px)}
+    .pg-foot{text-align:center;padding:24px;color:var(--muted);font-size:.75rem;background:var(--bg);border-top:1px solid var(--card-border)}
     .pg-foot a{color:var(--gold);text-decoration:none}
+    .pg-foot a:hover{text-decoration:underline}
+
+    /* ======= SCROLL REVEAL ======= */
+    .reveal{opacity:0;transform:translateY(30px);transition:all .7s ease-out}
+    .reveal.visible{opacity:1;transform:translateY(0)}
   </style>
 </head>
 <body>
 
+<!-- ======== HERO ======== -->
 <div class="hero">
-  <div class="brand">{{ shop_name }}</div>
-  <div class="tagline">Where Cars Become Art</div>
-  <h1>🔧 Nos Services</h1>
-  <p>Des soins experts pour sublimer votre véhicule — intérieur, extérieur, protection et correction.</p>
+  <div class="hero-content">
+    <span class="hero-shield anim-up">🛡️</span>
+    <div class="hero-brand anim-up-d1">{{ shop_name }}</div>
+    <div class="hero-tagline anim-up-d1">DETAILING &bull; POLISHING &bull; NANO CERAMIC</div>
+    <h1 class="anim-up-d2">الدرع المنيع و<span>الحماية القصوى</span> لسيارتك</h1>
+    <p class="hero-desc anim-up-d3">أميلكار للعناية بالسيارات &mdash; حيث تتحول سيارتك إلى تحفة فنية محمية بأحدث تقنيات النانو سيراميك</p>
+    <div class="hero-stats anim-up-d4">
+      <div class="hero-stat"><span class="hero-stat-num">7+</span><span class="hero-stat-label">خدمات متخصصة</span></div>
+      <div class="hero-stat" style="animation-delay:.2s"><span class="hero-stat-num">4</span><span class="hero-stat-label">مراحل حماية</span></div>
+      <div class="hero-stat" style="animation-delay:.3s"><span class="hero-stat-num">100%</span><span class="hero-stat-label">مواد احترافية</span></div>
+    </div>
+  </div>
 </div>
 
+<!-- ======== NAV PILLS ======== -->
 <nav class="cat-nav">
+  <a href="#philosophy" class="cat-pill"><span>💎</span>فلسفتنا</a>
+  <a href="#enemies" class="cat-pill"><span>⚠️</span>أعداء الطلاء</a>
+  <a href="#timeline" class="cat-pill"><span>🔄</span>مراحل العمل</a>
   {% for cat_key, cat_data in categories.items() %}
   <a href="#cat-{{ cat_key }}" class="cat-pill"><span>{{ cat_data.info.icon }}</span>{{ cat_data.info.label }}</a>
   {% endfor %}
-  <a href="/book" class="cat-pill" style="background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy);border-color:var(--gold)">
+  <a href="/book" class="cat-pill" style="background:linear-gradient(135deg,var(--gold),var(--gd));color:var(--navy);border-color:var(--gold);font-weight:700">
     <span>📅</span>Réserver
   </a>
 </nav>
 
-<div class="wrap">
+<!-- ======== PHILOSOPHY ======== -->
+<section class="philosophy" id="philosophy">
+  <div class="sec-label reveal">فلسفة الدرع المحارب</div>
+  <h2 class="sec-title reveal">ليست مجرد عناية، بل <span style="color:var(--gold)">حماية شاملة</span></h2>
+  <p class="sec-sub reveal">سيارتك ليست مجرد وسيلة نقل، بل هي استثمار ثمين يتعرض لهجوم مستمر. في أميلكار، نحن لا نلمّع فقط — نحن نبني درعاً.</p>
+  <div class="phil-grid">
+    <div class="phil-card reveal">
+      <span class="phil-icon">🛡️</span>
+      <h3>الحماية المطلقة</h3>
+      <p>درعنا المتطور يوفر حاجزاً لا مثيل له ضد التآكل، الخدوش، والعوامل البيئية. مما يضمن بقاء سيارتك في حالة ممتازة لسنوات.</p>
+    </div>
+    <div class="phil-card reveal">
+      <span class="phil-icon" style="animation-delay:.5s">✨</span>
+      <h3>الأداء والفخامة</h3>
+      <p>الأداء لا يكتمل إلا بالجمال. تبرز تقنياتنا اللمعان العميق وتفاصيل التصميم الدقيقة لسيارتك، معزّزة حضورها على الطريق.</p>
+    </div>
+    <div class="phil-card reveal">
+      <span class="phil-icon" style="animation-delay:1s">♾️</span>
+      <h3>المتانة المستدامة</h3>
+      <p>المتانة هي التزامنا نحو المستقبل. موادنا مصممة لتحمل أقسى الظروف مع الحفاظ على فعاليتها وحمايتها لفترات طويلة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======== ENEMIES ======== -->
+<section class="enemies" id="enemies">
+  <div style="text-align:center;margin-bottom:50px">
+    <div class="sec-label reveal">الخطر الخفي</div>
+    <h2 class="sec-title reveal">أعداء <span style="color:var(--red)">الطلاء</span> اليومية</h2>
+    <p class="sec-sub reveal">سيارتك تتعرض يومياً لتهديدات خفية تدمّر طلاءها ببطء. تعرّف على أعدائها لتحميها.</p>
+  </div>
+  <div class="enemies-grid">
+    <div class="enemy reveal">
+      <span class="enemy-icon">🐦</span>
+      <h4>المخلفات العضوية</h4>
+      <p>فضلات الطيور والحشرات تسبّب حروقاً حمضية تتغلغل في طبقة الطلاء الشفافة</p>
+    </div>
+    <div class="enemy reveal">
+      <span class="enemy-icon">🏜️</span>
+      <h4>الرمال والأتربة</h4>
+      <p>تحدث خدوشاً دقيقة تراكمية تشوّه انعكاس الضوء وتُفقد اللمعان تدريجياً</p>
+    </div>
+    <div class="enemy reveal">
+      <span class="enemy-icon">🧪</span>
+      <h4>المواد الكيميائية</h4>
+      <p>المنظفات الرديئة والمواد القاسية تسرّع من عملية الأكسدة وتلف الطلاء</p>
+    </div>
+    <div class="enemy reveal">
+      <span class="enemy-icon">☀️</span>
+      <h4>الأشعة فوق البنفسجية</h4>
+      <p>التعرّض المستمر للشمس يسبب بهتان اللون وتشقق طبقة الحماية الأصلية</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======== TIMELINE ======== -->
+<section class="timeline-section" id="timeline">
+  <div style="text-align:center;margin-bottom:50px">
+    <div class="sec-label reveal">بروتوكول أميلكار</div>
+    <h2 class="sec-title reveal">رحلة <span style="color:var(--gold)">التحوّل</span> &mdash; 4 مراحل</h2>
+    <p class="sec-sub reveal">كل مركبة تمر بمسار علمي دقيق من 4 مراحل لضمان أعلى مستوى من الحماية والجمال.</p>
+  </div>
+  <div class="timeline">
+    <div class="tl-step reveal">
+      <div class="tl-dot">1</div>
+      <div class="tl-content">
+        <span class="tl-icon">🔍</span>
+        <h3>الفحص والتقييم</h3>
+        <p>قياس سماكة الطلاء بأجهزة رقمية دقيقة، تحديد الخدوش والعيوب بإضاءة متخصصة، ووضع خطة عمل مفصّلة تناسب حالة سيارتك.</p>
+        <span class="tl-tag">🎯 تشخيص دقيق</span>
+      </div>
+    </div>
+    <div class="tl-step reveal">
+      <div class="tl-dot">2</div>
+      <div class="tl-content">
+        <span class="tl-icon">🧹</span>
+        <h3>التطهير الشامل</h3>
+        <p>غسيل متعادل الحموضة، تنظيف عميق للمسام الداخلية والخارجية، وإزالة الشوائب والمعادن المترسبة كيميائياً.</p>
+        <span class="tl-tag">💧 تنقية كاملة</span>
+      </div>
+    </div>
+    <div class="tl-step reveal">
+      <div class="tl-dot">3</div>
+      <div class="tl-content">
+        <span class="tl-icon">💎</span>
+        <h3>التصحيح المجهري والتلميع</h3>
+        <p>تلميع متعدد المراحل لاستعادة البريق. عملية التصحيح المجهري تقوم بتسوية طبقة الحماية الشفافة لضمان انعكاس مثالي للضوء ولمعان كالمرآة.</p>
+        <span class="tl-tag">✨ بريق المرآة</span>
+      </div>
+    </div>
+    <div class="tl-step reveal">
+      <div class="tl-dot">4</div>
+      <div class="tl-content">
+        <span class="tl-icon">🛡️</span>
+        <h3>طلاء النانو سيراميك</h3>
+        <p>تطبيق طبقة النانو سيراميك &mdash; بوليمر سائل يتحد كيميائياً مع طلاء المصنع على المستوى الجزيئي. النتيجة: طبقة زجاجية قاسية تضحي بنفسها لحماية الطلاء الأصلي. التثبيت بالأشعة تحت الحمراء.</p>
+        <span class="tl-tag">🔬 تقنية النانو</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======== WHY US ======== -->
+<section class="why-section" id="why">
+  <div style="text-align:center;margin-bottom:50px">
+    <div class="sec-label reveal">لماذا أميلكار</div>
+    <h2 class="sec-title reveal">ما يجعلنا <span style="color:var(--gold)">نتفوّق</span></h2>
+    <p class="sec-sub reveal">معايير صارمة، مواد احترافية، وخبرة عملية تجعل من أميلكار الخيار الأول في حماية السيارات.</p>
+  </div>
+  <div class="why-grid">
+    <div class="why-card reveal">
+      <span class="why-icon">🔬</span>
+      <h4>مواد فائقة الجودة</h4>
+      <p>نستخدم منتجات احترافية معتمدة عالمياً، ليست متاحة في الأسواق العادية.</p>
+      <span class="why-badge">PRO GRADE</span>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon">💡</span>
+      <h4>إضاءة متخصصة</h4>
+      <p>بيئة عمل خالية من الظلال بإضاءة LED احترافية لكشف أدق العيوب.</p>
+      <span class="why-badge">STUDIO LIGHT</span>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon">🌡️</span>
+      <h4>تحكم في البيئة</h4>
+      <p>بيئة خاضعة لدرجة حرارة ورطوبة متحكّم بها لضمان أفضل نتائج التطبيق.</p>
+      <span class="why-badge">CONTROLLED</span>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon">📐</span>
+      <h4>قياسات دقيقة</h4>
+      <p>أجهزة قياس سماكة الطلاء الرقمية لتحديد حالة كل سطح قبل البدء.</p>
+      <span class="why-badge">MEASURED</span>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon">🏆</span>
+      <h4>خبرة مثبتة</h4>
+      <p>سنوات من التجربة في تصحيح الطلاء وحماية السيارات بكل أنواعها.</p>
+      <span class="why-badge">EXPERIENCED</span>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon">🤝</span>
+      <h4>ضمان الرضا</h4>
+      <p>نتابع مع عملائنا بعد كل خدمة ونضمن رضاهم التام عن النتيجة.</p>
+      <span class="why-badge">GUARANTEED</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======== INVESTMENT ======== -->
+<section class="invest-section" id="invest">
+  <div class="sec-label reveal">الاستثمار الذكي</div>
+  <h2 class="sec-title reveal">حماية اليوم هي <span style="color:var(--gold)">أرباح الغد</span></h2>
+  <p class="sec-sub reveal">أميلكار ليست تكلفة إضافية، بل هي استراتيجية لحفظ أصولك.</p>
+  <div class="invest-compare reveal">
+    <div class="invest-box bad">
+      <h4>❌ بدون حماية</h4>
+      <div class="invest-item">الخدوش وفقدان اللمعان</div>
+      <div class="invest-item">تكاليف صيانة مرتفعة</div>
+      <div class="invest-item">انخفاض قيمة إعادة البيع</div>
+      <div class="invest-item">غسيل أسبوعي مكلف</div>
+      <div class="invest-item">إعادة طلاء مستقبلية</div>
+    </div>
+    <div class="invest-vs"><span>VS</span></div>
+    <div class="invest-box good">
+      <h4>✨ مع حماية أميلكار</h4>
+      <div class="invest-item">لمعان دائم كالمرآة</div>
+      <div class="invest-item">سهولة التنظيف اليومي</div>
+      <div class="invest-item">زيادة قيمة إعادة البيع</div>
+      <div class="invest-item">حماية من الخدوش والكيماويات</div>
+      <div class="invest-item">توفير على المدى الطويل</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======== SERVICE CATALOG ======== -->
+<div class="wrap catalog-section" id="services">
+  <div style="text-align:center;margin-bottom:50px">
+    <div class="sec-label reveal">خدماتنا</div>
+    <h2 class="sec-title reveal">اختر <span style="color:var(--gold)">خدمتك</span></h2>
+    <p class="sec-sub reveal">باقات متنوعة تناسب كل احتياج — من العناية الأساسية إلى الحماية القصوى.</p>
+  </div>
+
   {% for cat_key, cat_data in categories.items() %}
-  <section class="cat-section" id="cat-{{ cat_key }}">
+  <section class="cat-section reveal" id="cat-{{ cat_key }}">
     <div class="cat-head">
       <div class="cat-icon">{{ cat_data.info.icon }}</div>
       <div>
@@ -128,7 +460,6 @@
         <p>{{ cat_data.info.desc }}</p>
       </div>
     </div>
-
     <div class="svc-grid">
       {% for svc in cat_data.services %}
       <div class="svc">
@@ -175,18 +506,41 @@
   {% endfor %}
 </div>
 
+<!-- ======== FOOTER CTA ======== -->
 <div class="footer-cta">
-  <h2>Prêt à sublimer votre véhicule ?</h2>
-  <p>Réservez en ligne en 30 secondes — notre équipe vous contacte pour confirmer.</p>
-  <a href="/book" class="btn-big">📅 Réserver Maintenant</a>
-  <a href="/book/qr_page" class="btn-big-outline">📲 QR Code</a>
+  <h2 class="reveal">🛡️ احجز درعك الخاص</h2>
+  <p class="reveal">دعنا نحمي ونعيد إحياء مركبتك — احجز الآن في 30 ثانية</p>
+  <div class="reveal">
+    <a href="/book" class="btn-big">📅 Réserver Maintenant</a>
+    <a href="/book/qr_page" class="btn-big-outline">📲 QR Code</a>
+  </div>
 </div>
 
 <div class="pg-foot">
-  <a href="/book">📅 Réservation</a> &nbsp;|&nbsp;
-  <a href="/book/qr_page">📲 QR Code</a> &nbsp;|&nbsp;
+  <a href="/book">📅 Réservation</a> &nbsp;&bull;&nbsp;
+  <a href="/book/qr_page">📲 QR Code</a> &nbsp;&bull;&nbsp;
   {{ shop_name }} — Mahres, Sfax, Tunisia
 </div>
 
+<script>
+/* Scroll Reveal */
+(function(){
+  var els=document.querySelectorAll('.reveal');
+  if(!els.length)return;
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}
+    });
+  },{threshold:0.12,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(el){io.observe(el)});
+})();
+/* Smooth scroll for nav pills */
+document.querySelectorAll('.cat-pill[href^="#"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    var t=document.querySelector(this.getAttribute('href'));
+    if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'})}
+  });
+});
+</script>
 </body>
 </html>

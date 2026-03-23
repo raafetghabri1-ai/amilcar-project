@@ -33,9 +33,9 @@
                     {% if b[11] == 'pending' %}
                     <div class="d-flex gap-1">
                         <form method="POST" action="/booking_confirm/{{ b[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px">✅</button></form>
+                            <button class="btn btn-sm btn-success" style="font-size:0.70rem;padding:2px 5px">✅</button></form>
                         <form method="POST" action="/booking_reject/{{ b[0] }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-danger" style="font-size:0.55rem;padding:2px 5px">❌</button></form>
+                            <button class="btn btn-sm btn-danger" style="font-size:0.70rem;padding:2px 5px">❌</button></form>
                     </div>
                     {% else %}-{% endif %}
                 </td>

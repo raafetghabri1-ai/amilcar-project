@@ -37,17 +37,17 @@
                         {% if status != 'Convertie' and q[5] != 'accepted' %}
                         <form method="POST" action="/quote_to_invoice/{{ q[0] }}" class="d-inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-success" style="font-size:0.55rem;padding:2px 5px" title="Convertir en facture">📄→💰</button>
+                            <button class="btn btn-sm btn-success" style="font-size:0.70rem;padding:2px 5px" title="Convertir en facture">📄→💰</button>
                         </form>
                         {% endif %}
                         {% if q[5] == 'pending' %}
                         <form method="POST" action="/quote_status/{{ q[0] }}/accepted" class="d-inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-outline-primary" style="font-size:0.55rem;padding:2px 5px">✓</button>
+                            <button class="btn btn-sm btn-outline-primary" style="font-size:0.70rem;padding:2px 5px">✓</button>
                         </form>
                         <form method="POST" action="/quote_status/{{ q[0] }}/rejected" class="d-inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.55rem;padding:2px 5px">✗</button>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.70rem;padding:2px 5px">✗</button>
                         </form>
                         {% endif %}
                     </div>
