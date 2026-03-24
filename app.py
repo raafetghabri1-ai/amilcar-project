@@ -63,9 +63,16 @@ if _cors_origins:
     _cors_origins = [o.strip() for o in _cors_origins.split(',') if o.strip()]
 else:
     _cors_origins = []  # same-origin only
-socketio = SocketIO(app, cors_allowed_origins=_cors_origins or None)
+socketio = SocketIO(app, cors_allowed_origins='*')
 create_tables()
 migrate()  # Apply pending database migrations
+
+# ─── Health Check for Render ───
+@app.route('/healthz')
+def health_check():
+    return 'ok', 200
+
+
 
 # ─── Security Configuration ───
 app.config['SESSION_COOKIE_HTTPONLY'] = True
