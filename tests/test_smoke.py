@@ -23,7 +23,7 @@ def test_route_count(app):
 
 def test_no_duplicate_endpoints(app):
     """No unintentional duplicate endpoint names (allow known aliases)."""
-    known_aliases = {'reports_bp.export_monthly_report_excel', 'exports_bp.export_monthly_report_excel'}
+    known_aliases = {'reports_bp.export_monthly_report_excel', 'exports_bp.export_monthly_report_excel', 'healthz'}
     endpoints = {}
     for rule in app.url_map.iter_rules():
         if rule.endpoint in endpoints:

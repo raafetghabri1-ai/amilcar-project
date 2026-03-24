@@ -63,17 +63,15 @@ if _cors_origins:
     _cors_origins = [o.strip() for o in _cors_origins.split(',') if o.strip()]
 else:
     _cors_origins = []  # same-origin only
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins=_cors_origins if _cors_origins else '*')
 create_tables()
 migrate()  # Apply pending database migrations
 
 # ─── Health Check for Render ───
 @app.route('/healthz')
+@app.route('/health')
 def healthz():
-    return 'ok', 200
-
-
-# ─── Health Check for Render ───
+    return jsonify({'status': 'healthy'}), 200
 
 
 
@@ -97,10 +95,10 @@ def set_security_headers(response):
     if not request.path.startswith('/static/'):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.socket.io; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.socket.io https://cdn.tailwindcss.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com data:; "
-            "img-src 'self' data: blob:; "
+            "img-src 'self' data: blob: https:; "
             "connect-src 'self' wss: ws:; "
             "object-src 'none'; "
             "base-uri 'self'; "
