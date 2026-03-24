@@ -69,8 +69,11 @@ migrate()  # Apply pending database migrations
 
 # ─── Health Check for Render ───
 @app.route('/healthz')
-def health_check():
+def healthz():
     return 'ok', 200
+
+
+# ─── Health Check for Render ───
 
 
 
@@ -338,14 +341,6 @@ def internal_error(e):
     return render_template('error.html', code=500, message="Erreur interne du serveur"), 500
 
 # ─── Health Check ───
-@app.route('/health')
-def health_check():
-    try:
-        with get_db() as conn:
-            conn.execute('SELECT 1').fetchone()
-        return jsonify({'status': 'healthy', 'db': 'ok'}), 200
-    except Exception as e:
-        return jsonify({'status': 'unhealthy', 'error': str(e)}), 503
 
 # ─── WebSocket Events ───
 from flask_socketio import emit
