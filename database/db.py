@@ -1584,62 +1584,6 @@ def create_tables():
         "CREATE INDEX IF NOT EXISTS idx_smart_reminders_due ON smart_reminders(due_date)",
         "CREATE INDEX IF NOT EXISTS idx_pack_configs_status ON pack_configurations(status)",
         "CREATE INDEX IF NOT EXISTS idx_cars_qr ON cars(qr_token)",
-        # Phase 15 indexes
-        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_customer ON wallet_transactions(customer_id)",
-        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_type ON wallet_transactions(transaction_type)",
-        "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_service ON dynamic_pricing_rules(service_id)",
-        "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_active ON dynamic_pricing_rules(is_active)",
-        "CREATE INDEX IF NOT EXISTS idx_employee_scores_employee ON employee_gamification(employee_id)",
-        "CREATE INDEX IF NOT EXISTS idx_employee_scores_month ON employee_gamification(month)",
-        "CREATE INDEX IF NOT EXISTS idx_nps_surveys_customer ON nps_surveys(customer_id)",
-        "CREATE INDEX IF NOT EXISTS idx_nps_surveys_date ON nps_surveys(created_at)",
-        "CREATE INDEX IF NOT EXISTS idx_service_timer_appt ON service_timer(appointment_id)",
-        "CREATE INDEX IF NOT EXISTS idx_stock_forecasts_product ON stock_forecasts(product_id)",
-        "CREATE INDEX IF NOT EXISTS idx_monthly_goals_month ON monthly_goals(month)",
-        "CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_customer ON whatsapp_logs(customer_id)",
-        "CREATE INDEX IF NOT EXISTS idx_loyalty_challenges_status ON loyalty_challenges(status)",
-        # Phase 16 indexes
-        "CREATE INDEX IF NOT EXISTS idx_commission_log_employee ON commission_log(employee_id)",
-        "CREATE INDEX IF NOT EXISTS idx_commission_log_month ON commission_log(month)",
-        "CREATE INDEX IF NOT EXISTS idx_revenue_daily_date ON revenue_daily(date)",
-        "CREATE INDEX IF NOT EXISTS idx_channel_inbox_customer ON channel_inbox(customer_id)",
-        "CREATE INDEX IF NOT EXISTS idx_channel_inbox_status ON channel_inbox(status)",
-        "CREATE INDEX IF NOT EXISTS idx_import_history_type ON import_history(import_type)",
-        "CREATE INDEX IF NOT EXISTS idx_health_score_date ON business_health_score(date)",
-        "CREATE INDEX IF NOT EXISTS idx_report_builder_created ON report_builder(created_by)",
-        "CREATE INDEX IF NOT EXISTS idx_flash_sales_active ON flash_sales(is_active)",
-        "CREATE INDEX IF NOT EXISTS idx_flash_sales_dates ON flash_sales(start_datetime, end_datetime)",
-        # Phase 17 indexes
-        "CREATE INDEX IF NOT EXISTS idx_damage_claims_appointment ON damage_claims(appointment_id)",
-        "CREATE INDEX IF NOT EXISTS idx_damage_claims_status ON damage_claims(status)",
-        "CREATE INDEX IF NOT EXISTS idx_revenue_forecast_month ON revenue_forecast(month)",
-        "CREATE INDEX IF NOT EXISTS idx_customer_segments_segment ON customer_segments(segment)",
-        "CREATE INDEX IF NOT EXISTS idx_waitlist_date ON appointment_waitlist(preferred_date)",
-        "CREATE INDEX IF NOT EXISTS idx_waitlist_status ON appointment_waitlist(status)",
-        "CREATE INDEX IF NOT EXISTS idx_attendance_employee ON employee_attendance(employee_id)",
-        "CREATE INDEX IF NOT EXISTS idx_attendance_date ON employee_attendance(date)",
-        "CREATE INDEX IF NOT EXISTS idx_supplier_reviews_supplier ON supplier_reviews(supplier_id)",
-        "CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category)",
-        # Critical performance indexes
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
-        "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
-        "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
-        "CREATE INDEX IF NOT EXISTS idx_online_bookings_created ON online_bookings(created_at)",
-        "CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)",
-        "CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)",
-        "CREATE INDEX IF NOT EXISTS idx_ratings_created ON ratings(created_at)",
-        # Soft delete indexes
-        "CREATE INDEX IF NOT EXISTS idx_customers_deleted ON customers(is_deleted)",
-        "CREATE INDEX IF NOT EXISTS idx_cars_deleted ON cars(is_deleted)",
-        "CREATE INDEX IF NOT EXISTS idx_appointments_deleted ON appointments(is_deleted)",
-        "CREATE INDEX IF NOT EXISTS idx_invoices_deleted ON invoices(is_deleted)",
-        "CREATE INDEX IF NOT EXISTS idx_expenses_deleted ON expenses(is_deleted)",
-        "CREATE INDEX IF NOT EXISTS idx_quotes_deleted ON quotes(is_deleted)",
-        # Phase 8: additional performance indexes
-        "CREATE INDEX IF NOT EXISTS idx_appointments_assigned ON appointments(assigned_to)",
-        "CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(time)",
-        "CREATE INDEX IF NOT EXISTS idx_appointments_date_status ON appointments(date, status)",
-        "CREATE INDEX IF NOT EXISTS idx_invoices_status_amount ON invoices(status, amount)",
     ]
     for idx in indexes:
         try:
@@ -2107,6 +2051,72 @@ def create_tables():
 
     # Rebuild FTS indexes from source tables
     _rebuild_fts(cursor)
+
+
+    # ─── Phase 15-17 Indexes (must be after table creation) ───
+    late_indexes = [
+            # Phase 15 indexes
+            "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_customer ON wallet_transactions(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_type ON wallet_transactions(transaction_type)",
+            "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_service ON dynamic_pricing_rules(service_id)",
+            "CREATE INDEX IF NOT EXISTS idx_dynamic_pricing_active ON dynamic_pricing_rules(is_active)",
+            "CREATE INDEX IF NOT EXISTS idx_employee_scores_employee ON employee_gamification(employee_id)",
+            "CREATE INDEX IF NOT EXISTS idx_employee_scores_month ON employee_gamification(month)",
+            "CREATE INDEX IF NOT EXISTS idx_nps_surveys_customer ON nps_surveys(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_nps_surveys_date ON nps_surveys(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_service_timer_appt ON service_timer(appointment_id)",
+            "CREATE INDEX IF NOT EXISTS idx_stock_forecasts_product ON stock_forecasts(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_monthly_goals_month ON monthly_goals(month)",
+            "CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_customer ON whatsapp_logs(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_loyalty_challenges_status ON loyalty_challenges(status)",
+            # Phase 16 indexes
+            "CREATE INDEX IF NOT EXISTS idx_commission_log_employee ON commission_log(employee_id)",
+            "CREATE INDEX IF NOT EXISTS idx_commission_log_month ON commission_log(month)",
+            "CREATE INDEX IF NOT EXISTS idx_revenue_daily_date ON revenue_daily(date)",
+            "CREATE INDEX IF NOT EXISTS idx_channel_inbox_customer ON channel_inbox(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_channel_inbox_status ON channel_inbox(status)",
+            "CREATE INDEX IF NOT EXISTS idx_import_history_type ON import_history(import_type)",
+            "CREATE INDEX IF NOT EXISTS idx_health_score_date ON business_health_score(date)",
+            "CREATE INDEX IF NOT EXISTS idx_report_builder_created ON report_builder(created_by)",
+            "CREATE INDEX IF NOT EXISTS idx_flash_sales_active ON flash_sales(is_active)",
+            "CREATE INDEX IF NOT EXISTS idx_flash_sales_dates ON flash_sales(start_datetime, end_datetime)",
+            # Phase 17 indexes
+            "CREATE INDEX IF NOT EXISTS idx_damage_claims_appointment ON damage_claims(appointment_id)",
+            "CREATE INDEX IF NOT EXISTS idx_damage_claims_status ON damage_claims(status)",
+            "CREATE INDEX IF NOT EXISTS idx_revenue_forecast_month ON revenue_forecast(month)",
+            "CREATE INDEX IF NOT EXISTS idx_customer_segments_segment ON customer_segments(segment)",
+            "CREATE INDEX IF NOT EXISTS idx_waitlist_date ON appointment_waitlist(preferred_date)",
+            "CREATE INDEX IF NOT EXISTS idx_waitlist_status ON appointment_waitlist(status)",
+            "CREATE INDEX IF NOT EXISTS idx_attendance_employee ON employee_attendance(employee_id)",
+            "CREATE INDEX IF NOT EXISTS idx_attendance_date ON employee_attendance(date)",
+            "CREATE INDEX IF NOT EXISTS idx_supplier_reviews_supplier ON supplier_reviews(supplier_id)",
+            "CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category)",
+            # Critical performance indexes
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)",
+            "CREATE INDEX IF NOT EXISTS idx_online_bookings_created ON online_bookings(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_ratings_created ON ratings(created_at)",
+            # Soft delete indexes
+            "CREATE INDEX IF NOT EXISTS idx_customers_deleted ON customers(is_deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_cars_deleted ON cars(is_deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_appointments_deleted ON appointments(is_deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_invoices_deleted ON invoices(is_deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_expenses_deleted ON expenses(is_deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_quotes_deleted ON quotes(is_deleted)",
+            # Phase 8: additional performance indexes
+            "CREATE INDEX IF NOT EXISTS idx_appointments_assigned ON appointments(assigned_to)",
+            "CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(time)",
+            "CREATE INDEX IF NOT EXISTS idx_appointments_date_status ON appointments(date, status)",
+            "CREATE INDEX IF NOT EXISTS idx_invoices_status_amount ON invoices(status, amount)",
+    ]
+    for idx in late_indexes:
+        try:
+            cursor.execute(idx)
+        except Exception as e:
+            _mig_log.warning('Index failed: %s — %s', idx[:60], e)
 
     conn.commit()
     conn.close()
