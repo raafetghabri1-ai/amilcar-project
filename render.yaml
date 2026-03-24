@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: amilcar-autocare
+    runtime: python
+    pythonVersion: "3.12.0"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 --bind 0.0.0.0:$PORT app:app"
+    healthCheckPath: /login
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.0"

@@ -71,6 +71,7 @@ migrate()  # Apply pending database migrations
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+app.config['SESSION_COOKIE_NAME'] = '__Host-session' if os.environ.get('FLASK_ENV') == 'production' else 'session'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24h
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
@@ -276,6 +277,8 @@ from routes.vehicles import vehicles_bp
 from routes.inventory import inventory_bp
 from routes.communications import comms_bp
 from routes.reports import reports_bp
+from routes.exports import exports_bp
+from routes.analytics import analytics_bp
 from routes.settings_admin import admin_bp
 from routes.team import team_bp
 from routes.operations import ops_bp
@@ -291,6 +294,8 @@ app.register_blueprint(vehicles_bp)
 app.register_blueprint(inventory_bp)
 app.register_blueprint(comms_bp)
 app.register_blueprint(reports_bp)
+app.register_blueprint(exports_bp)
+app.register_blueprint(analytics_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(team_bp)
 app.register_blueprint(ops_bp)

@@ -1,102 +1,583 @@
-{% include '_client_head.html' %}
+{% set lang = session.get('client_lang', 'fr') %}
+{% set theme = session.get('client_theme', 'dark') %}
+{% set is_ar = (lang == 'ar') %}
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if is_ar else 'ltr' }}" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AMILCAR — {{ 'حجز موعد' if is_ar else 'Réserver' }}</title>
+    <link rel="manifest" href="/client-manifest.json">
+    <meta name="theme-color" content="#131313">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="csrf" content="{{ csrf_token() }}">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#C0001D',
+                    'primary-light': '#FF1A3D',
+                    tertiary: '#C9A84C',
+                    'tertiary-light': '#E5C76B',
+                    surface: '#131313',
+                    'surface-card': '#1A1A1A',
+                    'surface-high': '#242424',
+                    'surface-border': '#2A2A2A',
+                    'on-surface': '#E8E8E8',
+                    'on-surface-muted': '#888888',
+                },
+                fontFamily: {
+                    sans: ['Inter', 'Noto Sans Arabic', 'sans-serif'],
+                    serif: ['Noto Sans Arabic', 'Inter', 'serif'],
+                }
+            }
+        }
+    }
+    </script>
     <style>
-        .form-card{background:rgba(20,20,20,0.70);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(212,175,55,0.10);border-radius:var(--radius);padding:24px 20px}
-        .form-card h5{color:var(--gold);font-size:1rem;font-weight:700;margin-bottom:20px;text-align:center}
-        .form-group{margin-bottom:18px}
-        .form-group label{display:block;color:var(--muted);font-size:.72rem;font-weight:600;letter-spacing:.5px;margin-bottom:6px;text-transform:uppercase}
-        .form-group select,.form-group input,.form-group textarea{width:100%;background:rgba(30,30,30,0.70);border:1px solid rgba(212,175,55,0.10);color:var(--text);padding:14px 16px;border-radius:12px;font-size:.9rem;outline:none;transition:border .2s;-webkit-appearance:none}
-        .form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:var(--gold)}
-        .form-group select option{background:rgba(30,30,30,0.70);color:var(--text)}
-        .form-group textarea{resize:vertical;min-height:80px}
-        .btn-submit{display:block;width:100%;background:var(--gold);color:#000;font-weight:700;border:none;border-radius:12px;padding:16px;font-size:1rem;cursor:pointer;margin-top:24px;letter-spacing:1px}
-        .btn-submit:hover{background:#e5c040}
-        .flash-danger{border-left-color:#ef4444}
-        .service-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
-        .service-option{background:rgba(30,30,30,0.70);border:2px solid rgba(212,175,55,0.10);border-radius:12px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;font-size:.78rem}
-        .service-option:hover,.service-option.selected{border-color:var(--gold);background:rgba(212,175,55,.08)}
-        .service-option .price{color:var(--gold);font-weight:700;font-size:.7rem;margin-top:4px}
+        * { -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', 'Noto Sans Arabic', sans-serif; overscroll-behavior: none; }
+        ::-webkit-scrollbar { display: none; }
+
+        .glass { background: rgba(26,26,26,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(201,168,76,0.08); }
+        .glass-strong { background: rgba(26,26,26,0.95); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); }
+
+        .gradient-primary { background: linear-gradient(135deg, #C0001D 0%, #8B0015 100%); }
+        .gradient-gold { background: linear-gradient(135deg, #C9A84C 0%, #A6863A 100%); }
+        .gradient-confirm { background: linear-gradient(135deg, #C0001D 0%, #C9A84C 100%); }
+        .gradient-confirm:active { transform: scale(0.98); }
+
+        .car-card { scroll-snap-align: center; min-width: 260px; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+        .car-card.selected { border-color: rgba(201,168,76,0.5) !important; box-shadow: 0 0 20px rgba(201,168,76,0.15); }
+
+        .service-chip { transition: all 0.2s; }
+        .service-chip.selected { background: rgba(192,0,29,0.15) !important; border-color: rgba(192,0,29,0.5) !important; color: #FF1A3D !important; }
+
+        .day-cell { transition: all 0.15s; }
+        .day-cell.selected { background: linear-gradient(135deg, #C0001D, #C9A84C); color: white !important; }
+        .day-cell.today { border: 1px solid rgba(201,168,76,0.4); }
+        .day-cell:disabled { opacity: 0.25; pointer-events: none; }
+
+        .time-slot { transition: all 0.2s; }
+        .time-slot.selected { background: linear-gradient(135deg, #C0001D, #C9A84C) !important; color: white !important; border-color: transparent !important; }
+        .time-slot.booked { opacity: 0.25; pointer-events: none; text-decoration: line-through; }
+
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .summary-row:last-child { border-bottom: none; }
+
+        .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scroll-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
-{% set is_ar = session.get('client_lang','fr') == 'ar' %}
-<div class="top-bar">
-    <a href="/espace-client/accueil">←</a>
-    <h2>📅 {{ 'حجز' if is_ar else 'Réserver' }}</h2>
-    <span style="width:20px"></span>
-</div>
+<body class="bg-surface text-on-surface min-h-screen pb-28">
 
-<div class="container-c">
+    <!-- ═══ Top App Bar ═══ -->
+    <header class="glass-strong fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between" style="border-bottom: 1px solid rgba(201,168,76,0.08);">
+        <a href="/espace-client/accueil" class="flex items-center gap-2 no-underline">
+            <span class="material-symbols-outlined text-tertiary" style="font-size:22px">arrow_back</span>
+        </a>
+        <div class="text-center">
+            <h1 class="text-tertiary font-bold text-sm tracking-[3px] uppercase" style="font-family:'Inter',sans-serif; letter-spacing:3px;">AMILCAR</h1>
+            <p class="text-on-surface-muted text-[10px] tracking-wider">{{ 'حجز موعد' if is_ar else 'RÉSERVATION' }}</p>
+        </div>
+        <a href="/espace-client/set-lang/{{ 'fr' if is_ar else 'ar' }}" class="text-on-surface-muted text-xs font-medium px-2 py-1 rounded-lg" style="background:rgba(255,255,255,0.05)">
+            {{ '🇫🇷 FR' if is_ar else '🇹🇳 AR' }}
+        </a>
+    </header>
+
+    <!-- Spacer for fixed header -->
+    <div class="h-16"></div>
+
+    <!-- ═══ Flash Messages ═══ -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div class="flash-msg {{ 'flash-danger' if cat=='danger' }}">{{ msg }}</div>
-    {% endfor %}{% endif %}{% endwith %}
-
-    <div class="form-card">
-        <h5>✨ {{ 'موعد جديد' if is_ar else 'Nouveau rendez-vous' }}</h5>
-        <form method="POST" action="/espace-client/reserver">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-            <div class="form-group">
-                <label>🚗 {{ 'السيارة' if is_ar else 'Véhicule' }}</label>
-                <select name="car_id" required>
-                    <option value="">— {{ 'اختر سيارة' if is_ar else 'Sélectionner un véhicule' }} —</option>
-                    {% for c in cars %}
-                    <option value="{{ c.id }}">{{ c.brand }} {{ c.model }} ({{ c.plate }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>🔧 {{ 'الخدمة المطلوبة' if is_ar else 'Service souhaité' }}</label>
-                <select name="service_type" id="serviceSelect" required>
-                    <option value="">— {{ 'اختر خدمة' if is_ar else 'Choisir un service' }} —</option>
-                    {% for s in services %}
-                    <option value="{{ s.name }}" data-price="{{ s.price }}">{{ s.name }} — {{ s.price }} DT</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>📅 {{ 'التاريخ المطلوب' if is_ar else 'Date souhaitée' }}</label>
-                <input type="date" name="date" required min="{{ now().strftime('%Y-%m-%d') if now is defined else '' }}">
-            </div>
-
-            <div class="form-group">
-                <label>🕐 {{ 'الوقت المفضل' if is_ar else 'Heure préférée' }}</label>
-                <select name="time">
-                    <option value="">— {{ 'بدون تفضيل' if is_ar else 'Pas de préférence' }} —</option>
-                    <option value="08:00">08:00</option>
-                    <option value="08:30">08:30</option>
-                    <option value="09:00">09:00</option>
-                    <option value="09:30">09:30</option>
-                    <option value="10:00">10:00</option>
-                    <option value="10:30">10:30</option>
-                    <option value="11:00">11:00</option>
-                    <option value="11:30">11:30</option>
-                    <option value="12:00">12:00</option>
-                    <option value="14:00">14:00</option>
-                    <option value="14:30">14:30</option>
-                    <option value="15:00">15:00</option>
-                    <option value="15:30">15:30</option>
-                    <option value="16:00">16:00</option>
-                    <option value="16:30">16:30</option>
-                    <option value="17:00">17:00</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>📝 {{ 'ملاحظات (اختياري)' if is_ar else 'Notes (optionnel)' }}</label>
-                <textarea name="notes" placeholder="{{ 'اوصف حاجتك...' if is_ar else 'Décrivez votre besoin...' }}" maxlength="500"></textarea>
-            </div>
-
-            <button type="submit" class="btn-submit">{{ 'طلب موعد' if is_ar else 'Demander un rendez-vous' }}</button>
-        </form>
+    {% if messages %}
+    <div class="px-4 pt-3">
+        {% for cat, msg in messages %}
+        <div class="flash-msg rounded-xl px-4 py-3 text-sm mb-2 fade-in {% if cat == 'danger' %}bg-red-900/40 border border-red-500/30 text-red-300{% else %}bg-emerald-900/40 border border-emerald-500/30 text-emerald-300{% endif %}">
+            {{ msg }}
+        </div>
+        {% endfor %}
     </div>
+    {% endif %}
+    {% endwith %}
 
-    <div style="text-align:center;margin-top:16px;padding:12px">
-        <small style="color:var(--muted);font-size:.7rem">{{ 'ستتلقى تأكيداً عبر الهاتف' if is_ar else 'Vous recevrez une confirmation par téléphone' }}</small>
-    </div>
-</div>
+    <!-- ═══ HIDDEN FORM (posted on confirm) ═══ -->
+    <form method="POST" action="/espace-client/reserver" id="bookingForm" class="hidden">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="car_id" id="hCarId">
+        <input type="hidden" name="service_type" id="hService">
+        <input type="hidden" name="date" id="hDate">
+        <input type="hidden" name="time" id="hTime">
+        <input type="hidden" name="notes" id="hNotes">
+    </form>
 
-{% set active_nav = 'reserver' %}
-{% include '_client_foot.html' %}
+    <main class="px-4 space-y-5 pt-3">
+
+        <!-- ═══ 1. GREETING ═══ -->
+        <div class="fade-in">
+            <p class="text-on-surface-muted text-xs">{{ 'مرحباً' if is_ar else 'Bonjour' }} 👋</p>
+            <h2 class="text-lg font-bold text-on-surface">{{ client_name or ('عميل' if is_ar else 'Client') }}</h2>
+        </div>
+
+        <!-- ═══ 2. VEHICLE SELECTOR ═══ -->
+        <section class="fade-in">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-on-surface flex items-center gap-2">
+                    <span class="material-symbols-outlined text-tertiary" style="font-size:18px">garage</span>
+                    {{ 'اختر سيارتك' if is_ar else 'Sélectionner un véhicule' }}
+                </h3>
+                <span class="text-[10px] text-on-surface-muted">{{ cars|length }} {{ 'سيارة' if is_ar else 'véhicule(s)' }}</span>
+            </div>
+            {% if cars|length == 0 %}
+            <a href="/espace-client/vehicules" class="glass rounded-2xl p-6 flex flex-col items-center gap-2 text-center no-underline">
+                <span class="material-symbols-outlined text-tertiary" style="font-size:36px">add_circle</span>
+                <p class="text-sm text-on-surface-muted">{{ 'أضف سيارة أولاً' if is_ar else 'Ajoutez un véhicule d\'abord' }}</p>
+            </a>
+            {% else %}
+            <div class="flex gap-3 overflow-x-auto scroll-hide pb-2" style="scroll-snap-type: x mandatory;" id="carScroller">
+                {% for c in cars %}
+                <div class="car-card glass rounded-2xl p-4 cursor-pointer flex-shrink-0"
+                     data-car-id="{{ c.id }}"
+                     data-car-label="{{ c.brand }} {{ c.model }}"
+                     onclick="selectCar(this)">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(201,168,76,0.1)">
+                            <span class="material-symbols-outlined text-tertiary" style="font-size:22px">directions_car</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-on-surface truncate">{{ c.brand }} {{ c.model }}</p>
+                            <p class="text-[11px] text-on-surface-muted">{{ c.plate }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-on-surface-muted">
+                        {% if c.color %}<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background:{{ c.color }}"></span>{{ c.color }}</span>{% endif %}
+                        {% if c.year and c.year != '0' %}<span>{{ c.year }}</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- ═══ 3. SERVICE SELECTOR ═══ -->
+        <section class="fade-in">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-tertiary" style="font-size:18px">build</span>
+                <h3 class="text-sm font-semibold text-on-surface">{{ 'اختر الخدمة' if is_ar else 'Choisir le service' }}</h3>
+            </div>
+
+            <!-- Category Tabs -->
+            {% set cats = [] %}
+            {% for s in services %}
+                {% if s.category and s.category not in cats %}
+                    {% if cats.append(s.category) %}{% endif %}
+                {% endif %}
+            {% endfor %}
+            {% if cats %}
+            <div class="flex gap-2 overflow-x-auto scroll-hide mb-3 pb-1">
+                <button type="button" class="service-chip selected text-[11px] px-3 py-1.5 rounded-full border border-surface-border whitespace-nowrap" style="background:rgba(192,0,29,0.15); border-color:rgba(192,0,29,0.5); color:#FF1A3D;" onclick="filterServices('all', this)">
+                    {{ 'الكل' if is_ar else 'Tous' }}
+                </button>
+                {% for cat in cats %}
+                <button type="button" class="service-chip text-[11px] text-on-surface-muted px-3 py-1.5 rounded-full border border-surface-border whitespace-nowrap" style="background:rgba(255,255,255,0.03)" onclick="filterServices('{{ cat }}', this)">
+                    {{ cat }}
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Services Grid -->
+            <div class="grid grid-cols-2 gap-2" id="servicesGrid">
+                {% for s in services %}
+                <div class="svc-card glass rounded-xl p-3 cursor-pointer border border-transparent hover:border-tertiary/20 transition-all"
+                     data-category="{{ s.category or '' }}"
+                     data-svc-name="{{ s.name }}"
+                     data-svc-price="{{ s.price }}"
+                     data-svc-duration="{{ s.duration_label or (s.estimated_minutes|string + ' min') }}"
+                     onclick="selectService(this)">
+                    {% if s.icon %}
+                    <div class="text-lg mb-1">{{ s.icon }}</div>
+                    {% endif %}
+                    <p class="text-xs font-semibold text-on-surface leading-tight mb-1">{{ s.name }}</p>
+                    <p class="text-tertiary text-[11px] font-bold">{{ '%.0f'|format(s.price) }} DT</p>
+                    {% if s.duration_label %}
+                    <p class="text-[10px] text-on-surface-muted mt-0.5">{{ s.duration_label }}</p>
+                    {% endif %}
+                    {% if s.popular %}
+                    <span class="inline-block text-[8px] px-1.5 py-0.5 rounded-full mt-1 text-primary-light" style="background:rgba(192,0,29,0.1)">⭐ {{ 'شائع' if is_ar else 'Populaire' }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- ═══ 4. CALENDAR ═══ -->
+        <section class="fade-in glass rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-4">
+                <button type="button" onclick="changeMonth(-1)" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:rgba(255,255,255,0.05)">
+                    <span class="material-symbols-outlined text-on-surface-muted" style="font-size:18px">{{ 'chevron_right' if is_ar else 'chevron_left' }}</span>
+                </button>
+                <h3 class="text-sm font-semibold text-on-surface" id="calMonthLabel"></h3>
+                <button type="button" onclick="changeMonth(1)" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:rgba(255,255,255,0.05)">
+                    <span class="material-symbols-outlined text-on-surface-muted" style="font-size:18px">{{ 'chevron_left' if is_ar else 'chevron_right' }}</span>
+                </button>
+            </div>
+
+            <!-- Day names -->
+            <div class="grid grid-cols-7 gap-1 mb-2" id="dayNamesRow"></div>
+
+            <!-- Calendar grid -->
+            <div class="grid grid-cols-7 gap-1" id="calGrid"></div>
+        </section>
+
+        <!-- ═══ 5. TIME SLOTS ═══ -->
+        <section class="fade-in glass rounded-2xl p-4" id="timeSection" style="display:none;">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-tertiary" style="font-size:18px">schedule</span>
+                <h3 class="text-sm font-semibold text-on-surface">{{ 'اختر الوقت' if is_ar else 'Choisir l\'heure' }}</h3>
+            </div>
+
+            <!-- Morning -->
+            <p class="text-[10px] text-on-surface-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">wb_sunny</span>
+                {{ 'صباحاً' if is_ar else 'Matin' }}
+            </p>
+            <div class="flex flex-wrap gap-2 mb-4" id="morningSlots"></div>
+
+            <!-- Afternoon -->
+            <p class="text-[10px] text-on-surface-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:14px">wb_twilight</span>
+                {{ 'مساءً' if is_ar else 'Après-midi' }}
+            </p>
+            <div class="flex flex-wrap gap-2" id="afternoonSlots"></div>
+        </section>
+
+        <!-- ═══ 6. NOTES ═══ -->
+        <section class="fade-in" id="notesSection" style="display:none;">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-tertiary" style="font-size:18px">edit_note</span>
+                <h3 class="text-sm font-semibold text-on-surface">{{ 'ملاحظات (اختياري)' if is_ar else 'Notes (optionnel)' }}</h3>
+            </div>
+            <textarea id="notesInput" maxlength="500"
+                class="w-full glass rounded-xl p-3 text-sm text-on-surface placeholder-on-surface-muted/50 resize-none border-0 outline-none focus:ring-1 focus:ring-tertiary/30"
+                rows="2" placeholder="{{ 'اوصف حاجتك...' if is_ar else 'Décrivez votre besoin...' }}"></textarea>
+        </section>
+
+        <!-- ═══ 7. BOOKING SUMMARY ═══ -->
+        <section class="fade-in glass rounded-2xl p-4" id="summarySection" style="display:none;">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-tertiary" style="font-size:18px">receipt_long</span>
+                <h3 class="text-sm font-semibold text-on-surface">{{ 'ملخص الحجز' if is_ar else 'Résumé' }}</h3>
+            </div>
+            <div class="space-y-0">
+                <div class="summary-row">
+                    <span class="text-xs text-on-surface-muted">{{ '🚗 السيارة' if is_ar else '🚗 Véhicule' }}</span>
+                    <span class="text-xs font-medium text-on-surface" id="sumCar">—</span>
+                </div>
+                <div class="summary-row">
+                    <span class="text-xs text-on-surface-muted">{{ '🔧 الخدمة' if is_ar else '🔧 Service' }}</span>
+                    <span class="text-xs font-medium text-on-surface" id="sumService">—</span>
+                </div>
+                <div class="summary-row">
+                    <span class="text-xs text-on-surface-muted">{{ '📅 التاريخ' if is_ar else '📅 Date' }}</span>
+                    <span class="text-xs font-medium text-on-surface" id="sumDate">—</span>
+                </div>
+                <div class="summary-row">
+                    <span class="text-xs text-on-surface-muted">{{ '🕐 الوقت' if is_ar else '🕐 Heure' }}</span>
+                    <span class="text-xs font-medium text-on-surface" id="sumTime">—</span>
+                </div>
+                <div class="summary-row" style="border-bottom:none; padding-top:12px;">
+                    <span class="text-sm font-bold text-on-surface">{{ 'المبلغ' if is_ar else 'Total' }}</span>
+                    <span class="text-sm font-bold text-tertiary" id="sumPrice">—</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══ 8. CONFIRM BUTTON ═══ -->
+        <div class="pt-2 pb-4" id="confirmWrap" style="display:none;">
+            <button type="button" onclick="submitBooking()"
+                class="w-full gradient-confirm text-white font-bold py-4 rounded-2xl text-sm tracking-wide shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined" style="font-size:20px">event_available</span>
+                {{ 'تأكيد الحجز' if is_ar else 'Confirmer la réservation' }}
+            </button>
+        </div>
+
+    </main>
+
+    <!-- ═══ Bottom Navigation ═══ -->
+    <nav class="glass-strong fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center py-2 px-2" style="border-top: 1px solid rgba(201,168,76,0.08); padding-bottom: max(8px, env(safe-area-inset-bottom));">
+        <a href="/espace-client/accueil" class="flex flex-col items-center gap-0.5 no-underline px-3 py-1">
+            <span class="material-symbols-outlined text-on-surface-muted" style="font-size:22px">home</span>
+            <span class="text-[9px] text-on-surface-muted">{{ 'الرئيسية' if is_ar else 'Accueil' }}</span>
+        </a>
+        <a href="/espace-client/vehicules" class="flex flex-col items-center gap-0.5 no-underline px-3 py-1">
+            <span class="material-symbols-outlined text-on-surface-muted" style="font-size:22px">directions_car</span>
+            <span class="text-[9px] text-on-surface-muted">{{ 'سياراتي' if is_ar else 'Véhicules' }}</span>
+        </a>
+        <a href="/espace-client/reserver" class="flex flex-col items-center gap-0.5 no-underline px-3 py-1 relative">
+            <div class="absolute -top-3 w-10 h-10 rounded-full gradient-confirm flex items-center justify-center shadow-lg shadow-primary/30">
+                <span class="material-symbols-outlined text-white" style="font-size:22px">calendar_month</span>
+            </div>
+            <span class="text-[9px] text-primary-light font-semibold mt-6">{{ 'حجز' if is_ar else 'Réserver' }}</span>
+        </a>
+        <a href="/espace-client/factures" class="flex flex-col items-center gap-0.5 no-underline px-3 py-1">
+            <span class="material-symbols-outlined text-on-surface-muted" style="font-size:22px">receipt</span>
+            <span class="text-[9px] text-on-surface-muted">{{ 'فواتير' if is_ar else 'Factures' }}</span>
+        </a>
+        <a href="/espace-client/fidelite" class="flex flex-col items-center gap-0.5 no-underline px-3 py-1">
+            <span class="material-symbols-outlined text-on-surface-muted" style="font-size:22px">loyalty</span>
+            <span class="text-[9px] text-on-surface-muted">{{ 'ولاء' if is_ar else 'Fidélité' }}</span>
+        </a>
+    </nav>
+
+    <!-- ═══ JavaScript ═══ -->
+    <script>
+    const IS_AR = {{ 'true' if is_ar else 'false' }};
+    const BOOKED = {{ booked_slots | tojson }};
+    const TIME_SLOTS = {{ time_slots | tojson }};
+    const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const DAYS_AR = ['أحد','إثن','ثلا','أرب','خمي','جمع','سبت'];
+    const DAYS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+    let selectedCar = null;
+    let selectedService = null;
+    let selectedDate = null;
+    let selectedTime = null;
+    let calYear, calMonth;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    calYear = today.getFullYear();
+    calMonth = today.getMonth();
+
+    /* ── Vehicle Selection ── */
+    function selectCar(el) {
+        document.querySelectorAll('.car-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedCar = { id: el.dataset.carId, label: el.dataset.carLabel };
+        updateSummary();
+    }
+
+    /* ── Service Selection ── */
+    function selectService(el) {
+        document.querySelectorAll('.svc-card').forEach(c => {
+            c.classList.remove('border-primary/40');
+            c.style.background = '';
+        });
+        el.classList.add('border-primary/40');
+        el.style.background = 'rgba(192,0,29,0.08)';
+        selectedService = {
+            name: el.dataset.svcName,
+            price: el.dataset.svcPrice,
+            duration: el.dataset.svcDuration
+        };
+        updateSummary();
+    }
+
+    function filterServices(cat, btn) {
+        document.querySelectorAll('.service-chip').forEach(c => {
+            c.classList.remove('selected');
+            c.style.background = 'rgba(255,255,255,0.03)';
+            c.style.borderColor = '';
+            c.style.color = '';
+        });
+        btn.classList.add('selected');
+        btn.style.background = 'rgba(192,0,29,0.15)';
+        btn.style.borderColor = 'rgba(192,0,29,0.5)';
+        btn.style.color = '#FF1A3D';
+
+        document.querySelectorAll('.svc-card').forEach(card => {
+            if (cat === 'all' || card.dataset.category === cat) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    /* ── Calendar ── */
+    function renderCalendar() {
+        const names = IS_AR ? DAYS_AR : DAYS_FR;
+        const months = IS_AR ? MONTHS_AR : MONTHS_FR;
+        document.getElementById('calMonthLabel').textContent = months[calMonth] + ' ' + calYear;
+
+        const dnRow = document.getElementById('dayNamesRow');
+        dnRow.innerHTML = '';
+        names.forEach(d => {
+            const span = document.createElement('span');
+            span.className = 'text-[10px] text-on-surface-muted text-center font-medium';
+            span.textContent = d;
+            dnRow.appendChild(span);
+        });
+
+        const grid = document.getElementById('calGrid');
+        grid.innerHTML = '';
+        const firstDay = new Date(calYear, calMonth, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const maxDate = new Date(today);
+        maxDate.setDate(maxDate.getDate() + 30);
+
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            grid.appendChild(empty);
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dt = new Date(calYear, calMonth, d);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'day-cell w-full aspect-square rounded-xl text-xs font-medium flex items-center justify-center';
+            btn.textContent = d;
+
+            const isToday = dt.getTime() === today.getTime();
+            const isPast = dt < tomorrow;
+            const isFuture = dt > maxDate;
+            const isFriday = dt.getDay() === 5;
+            const dateStr = dt.toISOString().split('T')[0];
+
+            if (isPast || isFuture || isFriday) {
+                btn.disabled = true;
+                btn.classList.add('text-on-surface-muted/30');
+            } else {
+                btn.classList.add('text-on-surface', 'cursor-pointer');
+                btn.style.background = 'rgba(255,255,255,0.03)';
+                btn.addEventListener('click', () => pickDate(dateStr, btn));
+            }
+            if (isToday) btn.classList.add('today');
+            if (selectedDate === dateStr) btn.classList.add('selected');
+
+            grid.appendChild(btn);
+        }
+    }
+
+    function changeMonth(dir) {
+        calMonth += dir;
+        if (calMonth > 11) { calMonth = 0; calYear++; }
+        if (calMonth < 0) { calMonth = 11; calYear--; }
+        renderCalendar();
+    }
+
+    function pickDate(dateStr, btn) {
+        selectedDate = dateStr;
+        document.querySelectorAll('.day-cell').forEach(c => c.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedTime = null;
+        renderTimeSlots();
+        document.getElementById('timeSection').style.display = '';
+        document.getElementById('notesSection').style.display = '';
+        document.getElementById('timeSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        updateSummary();
+    }
+
+    /* ── Time Slots ── */
+    function renderTimeSlots() {
+        const morning = document.getElementById('morningSlots');
+        const afternoon = document.getElementById('afternoonSlots');
+        morning.innerHTML = '';
+        afternoon.innerHTML = '';
+
+        const bookedForDate = BOOKED[selectedDate] || [];
+
+        TIME_SLOTS.forEach(t => {
+            const hour = parseInt(t.split(':')[0]);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'time-slot px-3 py-2 rounded-xl text-xs font-medium border border-surface-border';
+            btn.style.background = 'rgba(255,255,255,0.03)';
+            btn.textContent = t;
+
+            if (bookedForDate.includes(t)) {
+                btn.classList.add('booked');
+            } else {
+                btn.classList.add('text-on-surface', 'cursor-pointer');
+                btn.addEventListener('click', () => pickTime(t, btn));
+            }
+
+            if (selectedTime === t) btn.classList.add('selected');
+
+            if (hour < 12) {
+                morning.appendChild(btn);
+            } else {
+                afternoon.appendChild(btn);
+            }
+        });
+    }
+
+    function pickTime(t, btn) {
+        selectedTime = t;
+        document.querySelectorAll('.time-slot').forEach(c => c.classList.remove('selected'));
+        btn.classList.add('selected');
+        updateSummary();
+    }
+
+    /* ── Summary ── */
+    function updateSummary() {
+        const sumSection = document.getElementById('summarySection');
+        const confirmWrap = document.getElementById('confirmWrap');
+
+        document.getElementById('sumCar').textContent = selectedCar ? selectedCar.label : '—';
+        document.getElementById('sumService').textContent = selectedService ? selectedService.name : '—';
+        document.getElementById('sumPrice').textContent = selectedService ? selectedService.price + ' DT' : '—';
+
+        if (selectedDate) {
+            const d = new Date(selectedDate);
+            const months = IS_AR ? MONTHS_AR : MONTHS_FR;
+            document.getElementById('sumDate').textContent = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+        } else {
+            document.getElementById('sumDate').textContent = '—';
+        }
+        document.getElementById('sumTime').textContent = selectedTime || '—';
+
+        const ready = selectedCar && selectedService && selectedDate && selectedTime;
+        sumSection.style.display = (selectedCar || selectedService) ? '' : 'none';
+        confirmWrap.style.display = ready ? '' : 'none';
+    }
+
+    /* ── Submit ── */
+    function submitBooking() {
+        if (!selectedCar || !selectedService || !selectedDate || !selectedTime) return;
+        document.getElementById('hCarId').value = selectedCar.id;
+        document.getElementById('hService').value = selectedService.name;
+        document.getElementById('hDate').value = selectedDate;
+        document.getElementById('hTime').value = selectedTime;
+        document.getElementById('hNotes').value = document.getElementById('notesInput').value;
+        document.getElementById('bookingForm').submit();
+    }
+
+    /* ── Init ── */
+    renderCalendar();
+
+    const carCards = document.querySelectorAll('.car-card');
+    if (carCards.length === 1) selectCar(carCards[0]);
+
+    setTimeout(() => {
+        document.querySelectorAll('.flash-msg').forEach(el => {
+            el.style.transition = 'opacity .5s';
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 500);
+        });
+    }, 5000);
+    </script>
+
+    <!-- Service Worker -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', {scope:'/'}).catch(() => {});
+    }
+    </script>
+</body>
+</html>

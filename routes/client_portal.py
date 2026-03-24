@@ -524,17 +524,21 @@ def espace_client_rdv():
 @client_required
 def espace_client_reserver():
     client_id = session['client_id']
+    client_name = session.get('client_name', '')
     with get_db() as conn:
-        cars = conn.execute("SELECT * FROM cars WHERE customer_id=?", (client_id,)).fetchall()
-        services = conn.execute("SELECT * FROM services WHERE active=1 ORDER BY name").fetchall()
+        cars = conn.execute("SELECT * FROM cars WHERE customer_id=? AND (is_deleted=0 OR is_deleted IS NULL)", (client_id,)).fetchall()
+        services = conn.execute(
+            "SELECT id, name, price, category, icon, description, duration_label, estimated_minutes, popular "
+            "FROM services WHERE active=1 ORDER BY sort_order, name"
+        ).fetchall()
         shop = dict(conn.execute("SELECT key, value FROM settings").fetchall() or [])
         if request.method == "POST":
             car_id = request.form.get("car_id", type=int)
             service_type = request.form.get("service_type", "").strip()
-            date = request.form.get("date", "").strip()
+            date_val = request.form.get("date", "").strip()
             time_slot = request.form.get("time", "").strip()
             notes = request.form.get("notes", "").strip()[:500]
-            if not all([car_id, service_type, date]):
+            if not all([car_id, service_type, date_val]):
                 flash("Veuillez remplir tous les champs obligatoires", "danger")
             else:
                 # Verify car belongs to client
@@ -546,11 +550,32 @@ def espace_client_reserver():
                     conn.execute("""INSERT INTO appointments (car_id, date, time, service,
                         status)
                         VALUES (?,?,?,?,'pending')""",
-                        (car_id, date, time_slot, service_type))
+                        (car_id, date_val, time_slot, service_type))
                     conn.commit()
                     flash("Rendez-vous demandé avec succès! Nous vous confirmerons bientôt.", "success")
                     return redirect("/espace-client/rendez-vous")
-    return render_template("client_reserver.html", cars=cars, services=services, shop=shop)
+
+        # Booked slots for availability display
+        today_str = date.today().isoformat()
+        booked_raw = conn.execute(
+            "SELECT date, time, COUNT(*) as cnt FROM appointments "
+            "WHERE date >= ? AND status NOT IN ('cancelled','Annulé') AND (is_deleted=0 OR is_deleted IS NULL) "
+            "GROUP BY date, time", (today_str,)
+        ).fetchall()
+
+    booked_slots = {}
+    for b in booked_raw:
+        key = b['date']
+        if key not in booked_slots:
+            booked_slots[key] = []
+        if b['cnt'] >= 3:
+            booked_slots[key].append(b['time'])
+
+    time_slots = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
+                  "14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"]
+
+    return render_template("client_reserver.html", cars=cars, services=services, shop=shop,
+        client_name=client_name, booked_slots=booked_slots, time_slots=time_slots)
 
 
 

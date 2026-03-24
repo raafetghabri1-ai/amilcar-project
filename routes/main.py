@@ -94,6 +94,11 @@ def index():
         return _technician_dashboard()
     from datetime import date, timedelta
     today_str = str(date.today())
+    # Try cache first (30s TTL)
+    cache_key = f'dashboard:{today_str}'
+    cached = cache.get(cache_key)
+    if cached:
+        return render_template('index.html', **cached, now=datetime.now())
     yesterday_str = str(date.today() - timedelta(days=1))
     tomorrow = str(date.today() + timedelta(days=1))
     week_start = str(date.today() - timedelta(days=date.today().weekday()))
@@ -182,8 +187,10 @@ def index():
         'appt_trend': today_appointments - yesterday_appointments,
         'week_trend': week_revenue - last_week_revenue,
     }
-    return render_template('index.html', stats=stats, pending_appointments=pending_appointments,
-                           tomorrow_appointments=tomorrow_appointments, now=datetime.now())
+    ctx = dict(stats=stats, pending_appointments=pending_appointments,
+               tomorrow_appointments=tomorrow_appointments)
+    cache.set(cache_key, ctx, ttl=30)
+    return render_template('index.html', **ctx, now=datetime.now())
 
 
 
