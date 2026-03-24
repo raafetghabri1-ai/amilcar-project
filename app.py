@@ -36,6 +36,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# ─── Reverse Proxy Support (Render, Heroku, etc.) ───
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 # ─── Logging ───
 log = setup_logging(app)
 
@@ -79,7 +83,7 @@ def healthz():
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
-app.config['SESSION_COOKIE_NAME'] = '__Host-session' if os.environ.get('FLASK_ENV') == 'production' else 'session'
+app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24h
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
 
@@ -163,17 +167,18 @@ def init_admin():
         admin = conn.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
         if not admin:
             init_pw = os.environ.get('ADMIN_PASSWORD', 'Amilcar2026')
-            conn.execute("INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, 1)",
+            conn.execute("INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, 0)",
                 ('admin', generate_password_hash(init_pw), 'admin'))
             conn.commit()
-            print(f'\n⚠️  ADMIN CREATED — username: admin / password: {init_pw}\n⚠️  Change it immediately after first login!\n')
+            print(f'\n⚠️  ADMIN CREATED — username: admin / password: {init_pw}\n')
         else:
             conn.execute("UPDATE users SET role = 'admin' WHERE username = 'admin' AND (role IS NULL OR role = 'employee')")
-            # Reset admin password on every startup (temporary — remove after first login)
-            reset_pw = os.environ.get('ADMIN_PASSWORD', 'Amilcar2026')
-            conn.execute("UPDATE users SET password = ?, must_change_password = 1 WHERE username = 'admin'",
-                (generate_password_hash(reset_pw),))
-            print('✅ Admin password reset to default — change it after login!')
+            # If ADMIN_PASSWORD env var is set, reset password
+            env_pw = os.environ.get('ADMIN_PASSWORD')
+            if env_pw:
+                conn.execute("UPDATE users SET password = ?, must_change_password = 0 WHERE username = 'admin'",
+                    (generate_password_hash(env_pw),))
+                print('✅ Admin password reset from ADMIN_PASSWORD env var')
             conn.commit()
 
 init_admin()
