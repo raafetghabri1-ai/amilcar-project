@@ -77,6 +77,45 @@ migrate()  # Apply pending database migrations
 def healthz():
     return jsonify({'status': 'healthy'}), 200
 
+@app.route('/debug-check')
+def debug_check():
+    """Temporary diagnostic endpoint for Render deployment."""
+    import traceback
+    checks = {}
+    try:
+        with get_db() as conn:
+            tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            checks['db'] = f'OK — {len(tables)} tables'
+            checks['tables'] = tables[:20]
+    except Exception as e:
+        checks['db'] = f'FAIL: {e}'
+    try:
+        checks['static_folder'] = os.path.exists(app.static_folder)
+        checks['style_min'] = os.path.exists(os.path.join(app.static_folder, 'style.min.css'))
+        checks['style_css'] = os.path.exists(os.path.join(app.static_folder, 'style.css'))
+    except Exception as e:
+        checks['filesystem'] = f'FAIL: {e}'
+    try:
+        from helpers import TRANSLATIONS
+        checks['translations'] = list(TRANSLATIONS.keys())
+    except Exception as e:
+        checks['translations'] = f'FAIL: {e}'
+    checks['env'] = os.environ.get('FLASK_ENV', 'not set')
+    checks['data_dir'] = os.environ.get('DATA_DIR', 'not set')
+    checks['cwd'] = os.getcwd()
+    # Try rendering index to catch the actual error
+    try:
+        with app.test_request_context('/'):
+            session['user_id'] = 1
+            session['username'] = 'admin'
+            session['role'] = 'admin'
+            from routes.main import index
+            index()
+            checks['dashboard'] = 'OK'
+    except Exception as e:
+        checks['dashboard'] = f'FAIL: {traceback.format_exc()[-500:]}'
+    return jsonify(checks)
+
 
 
 # ─── Security Configuration ───
@@ -341,8 +380,14 @@ def too_many_requests(e):
 
 @app.errorhandler(500)
 def internal_error(e):
-    log.error('500 %s — %s — %s', request.path, request.remote_addr, e)
-    return render_template('error.html', code=500, message="Erreur interne du serveur"), 500
+    import traceback
+    tb = traceback.format_exc()
+    log.error('500 %s — %s — %s\n%s', request.path, request.remote_addr, e, tb)
+    # Show error detail on Render (remove after debugging)
+    detail = str(e)
+    if os.environ.get('FLASK_ENV') == 'production':
+        detail = f"{e}\n{tb[-300:]}"
+    return render_template('error.html', code=500, message=detail), 500
 
 # ─── Health Check ───
 
