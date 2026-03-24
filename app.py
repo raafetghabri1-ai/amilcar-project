@@ -162,17 +162,18 @@ def init_admin():
             pass
         admin = conn.execute("SELECT id FROM users WHERE username = 'admin'").fetchone()
         if not admin:
-            init_pw = secrets.token_urlsafe(12)
+            init_pw = os.environ.get('ADMIN_PASSWORD', 'Amilcar2026')
             conn.execute("INSERT INTO users (username, password, role, must_change_password) VALUES (?, ?, ?, 1)",
                 ('admin', generate_password_hash(init_pw), 'admin'))
             conn.commit()
-            pw_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.admin_init_pw')
-            with open(pw_file, 'w') as f:
-                f.write(f'Admin initial password: {init_pw}\nChange it immediately after first login.\n')
-            os.chmod(pw_file, 0o600)
-            print(f'\n⚠️  Admin initial password saved to .admin_init_pw — change it immediately!\n')
+            print(f'\n⚠️  ADMIN CREATED — username: admin / password: {init_pw}\n⚠️  Change it immediately after first login!\n')
         else:
             conn.execute("UPDATE users SET role = 'admin' WHERE username = 'admin' AND (role IS NULL OR role = 'employee')")
+            # Reset admin password on every startup (temporary — remove after first login)
+            reset_pw = os.environ.get('ADMIN_PASSWORD', 'Amilcar2026')
+            conn.execute("UPDATE users SET password = ?, must_change_password = 1 WHERE username = 'admin'",
+                (generate_password_hash(reset_pw),))
+            print('✅ Admin password reset to default — change it after login!')
             conn.commit()
 
 init_admin()
